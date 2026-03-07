@@ -42,13 +42,16 @@ Current validation expectation:
 - `uv run ruff check .` passes
 - `uv run pyright` passes
 - `uv run pytest` is green with one expected xfail:
+  `121 passed, 1 xfailed`
   `tests/test_bbp_reference.py::test_bbp_reference_issue_7_matches_bbp_expected_output`
 
 Important open items:
 
 - `issue_7` remains the main checked 2026 Dutch gap
-- full real-world Aeroflot sweep beyond the fixed round-2 / round-3 regressions
-  has not been fully closed out yet
+- the Aeroflot corpus is only partially closed out: rounds 1-3 now match the
+  published pairings, round 5 now matches `bbpPairings`, and rounds 4 / 6 / 7
+  / 8 / 9 still disagree with the published pairings even though
+  `swisspairing`, `bbpPairings`, and `py4swiss` agree with each other there
 - pychess integration is still pending
 
 ## Repository Map
@@ -211,8 +214,10 @@ files live next to the starting list, the exporter auto-discovers them.
   corpus rather than from synthetic data.
 - The first checked-in real-world corpus is
   `benchmarks/fixtures/chess_results/aeroflot_open_2026`.
-- Aeroflot round 2 and round 3 mismatches are already fixed and covered in
-  `tests/test_chess_results.py`.
+- Aeroflot rounds 1-3 published-pairing regressions are already fixed and
+  covered in `tests/test_chess_results.py`.
+- Aeroflot round 5 is the main real-world BBP-backed Dutch regression and is
+  also covered in `tests/test_chess_results.py`.
 
 ## Integration Tuning
 
@@ -237,6 +242,9 @@ Current practical default:
 
 - `dutch_2025_C5` is the clearest local case where `bbpPairings` and
   `swisspairing` agree while `py4swiss` disagrees
+- Aeroflot round 5 is another concrete `bbpPairings`/`swisspairing` vs
+  `py4swiss` split, but only on the final 3-player bracket; `swisspairing`
+  now matches `bbpPairings` there
 - `issue_7` remains the tracked BBP-backed xfail and is believed to live in the
   weighted heterogeneous plus round-collapse path, not the basic exact critical
   bracket itself

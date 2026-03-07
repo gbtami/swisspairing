@@ -1,7 +1,13 @@
+# pyright: reportPrivateUsage=false
 """Unit tests for the stage-1 Dutch bracket pairing."""
 
 from __future__ import annotations
 
+from typing import Any
+
+import pytest
+
+import swisspairing.dutch as dutch
 from swisspairing.dutch import BracketContext, NextBracketKey, NextBracketLocalKey, pair_bracket
 from swisspairing.exceptions import PairingError
 from swisspairing.model import Color, FloatKind, Pairing, PlayerState
@@ -336,6 +342,30 @@ def test_pair_bracket_weighted_fallback_uses_odd_sequence_order_after_c9_rejects
 
     assert ("p3", "p5") in pairs
     assert ("p4", None) in pairs
+
+
+def test_pair_bracket_large_weighted_final_bye_avoids_scanning_every_legal_bye(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    players = tuple(
+        _player(player_id=f"p{index}", pairing_no=index, score=0)
+        for index in range(1, 22)
+    )
+
+    call_count = 0
+    original_solve_even_players = dutch._solve_even_players
+
+    def wrapped_solve_even_players(*args: Any, **kwargs: Any):
+        nonlocal call_count
+        call_count += 1
+        return original_solve_even_players(*args, **kwargs)
+
+    monkeypatch.setattr(dutch, "_solve_even_players", wrapped_solve_even_players)
+
+    result = dutch.pair_bracket(players, sequential_search_max_players=0)
+
+    assert ("p21", None) in _to_pairs(result.pairings)
+    assert call_count == 1
 
 
 def test_pair_bracket_uses_c14_for_resident_downfloat_history() -> None:

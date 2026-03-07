@@ -123,10 +123,21 @@ matching.
     which restores BBP / py4swiss parity on the checked late-entry fixture.
   - Added a Chess-Results XLSX importer plus a first checked-in real-world OTB
     corpus reconstructed from Aeroflot Open 2026 (`9` pre-round TRF snapshots
-    and published-pairings manifest). The first checked round-2 and round-3
-    Aeroflot regressions now have direct tests and currently match the
-    published pairings in `swisspairing` fast mode, `bbpPairings`, and
-    `py4swiss`.
+    and published-pairings manifest). Aeroflot rounds 1-3 now have direct
+    published-pairing tests and currently match the published pairings in
+    `swisspairing` fast mode, `bbpPairings`, and `py4swiss`.
+  - Aeroflot round 5 exposed two medium-large fallback gaps: a 33-player
+    homogeneous odd bracket needed the weighted downfloater refinement beyond
+    the old 20-player cutoff, and a 21-player one-MDP odd bracket needed a
+    narrow resident-partner scan. `swisspairing` fast/strict now match
+    `bbpPairings` on the full round-5 snapshot.
+  - Aeroflot round 5 also surfaced another concrete local `py4swiss` split:
+    `bbpPairings` and `swisspairing` agree on the final 3-player bracket while
+    `py4swiss` chooses a different last-bracket pairing/bye outcome.
+  - Aeroflot rounds 4 / 6 / 7 / 8 / 9 still disagree with the published
+    pairings, but all three engines currently agree with each other there, so
+    the remaining gap looks more like reconstruction or tournament-specific
+    non-engine handling than a checked Dutch solver bug.
   - Extended unit-test coverage for criteria and sequence behavior.
 - Next:
   - Extend the real-world OTB corpus beyond Aeroflot and use it to drive the

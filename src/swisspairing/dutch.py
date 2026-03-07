@@ -267,6 +267,9 @@ _SEQUENTIAL_SEARCH_MAX_PLAYERS = 12
 _MAX_EXACT_SEQUENCE_CANDIDATES = 5_000
 _ODD_DOWNFLOATER_SCAN_MAX_PLAYERS = 20
 _ODD_REFINEMENT_EXACT_SEARCH_MAX_PLAYERS = 10
+_ODD_FINAL_BYE_SCAN_MAX_PLAYERS = 20
+_ODD_HOMOGENEOUS_REFINEMENT_SCAN_MAX_PLAYERS = 34
+_SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS = 24
 
 
 @cache
@@ -1127,7 +1130,10 @@ def _solve_even_players_via_heterogeneous_weighted_steps(
         partner = state.partner(mdp)
         has_resident_match = partner is not None and partner.player_id in resident_ids
         if not has_resident_match:
-            state.add_to_weights(mdp, residents, 1)
+            # Article 4.4 first maximizes the number of paired MDPs. Use a
+            # dominating bonus here so a feasible MDP-resident match wins
+            # before pair-local penalty tie-breaks are considered.
+            state.add_to_weights(mdp, residents, state.final_bonus)
             state.update_matching()
             partner = state.partner(mdp)
             has_resident_match = partner is not None and partner.player_id in resident_ids
@@ -1183,7 +1189,10 @@ def _solve_without_bye_candidate_via_weighted_steps(
             partner = state.partner(mdp)
             has_resident_match = partner is not None and partner.player_id in resident_ids
             if not has_resident_match:
-                state.add_to_weights(mdp, residents, 1)
+                # Article 4.4 first maximizes the number of paired MDPs. Use a
+                # dominating bonus here so a feasible MDP-resident match wins
+                # before pair-local penalty tie-breaks are considered.
+                state.add_to_weights(mdp, residents, state.final_bonus)
                 state.update_matching()
                 partner = state.partner(mdp)
                 has_resident_match = partner is not None and partner.player_id in resident_ids
@@ -1213,6 +1222,7 @@ def _solve_without_bye_candidate_via_weighted_steps(
     return state.to_candidate()
 
 
+@cache
 def _refine_weighted_homogeneous_odd_candidate(
     players: Sequence[PlayerState],
     *,
@@ -1304,6 +1314,7 @@ def _refine_weighted_homogeneous_odd_candidate(
     return best_candidate
 
 
+@cache
 def _refine_weighted_heterogeneous_odd_candidate(
     players: Sequence[PlayerState],
     *,
@@ -1333,6 +1344,109 @@ def _refine_weighted_heterogeneous_odd_candidate(
         context=context,
     )
     return best_candidate or weighted_candidate
+
+
+@cache
+def _refine_weighted_single_mdp_odd_candidate(
+    players: Sequence[PlayerState],
+    *,
+    context: BracketContext,
+    sequential_search_max_players: int,
+) -> _CandidateInternal | None:
+    """Refine small one-MDP odd brackets by scanning resident partners only."""
+    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    if (
+        len(ordered_players) > _SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS
+        or len(context.mdp_ids) != 1
+    ):
+        return None
+
+    mdp = next((player for player in ordered_players if player.player_id in context.mdp_ids), None)
+    if mdp is None:
+        return None
+
+    residents = tuple(player for player in ordered_players if player.player_id != mdp.player_id)
+    best_candidate: _CandidateInternal | None = None
+    best_key: tuple[object, ...] | None = None
+
+    for sequence_no, resident in enumerate(residents):
+        if not _is_legal_pair(mdp, resident, context=context):
+            continue
+        remainder_players = tuple(
+            player for player in residents if player.player_id != resident.player_id
+        )
+        remainder_candidate = _solve_without_bye_candidate(
+            remainder_players,
+            context=BracketContext(),
+            sequential_search_max_players=sequential_search_max_players,
+        )
+        candidate = _CandidateInternal(
+            pairings=tuple(
+                sorted(
+                    (*remainder_candidate.pairings, (mdp, resident)),
+                    key=_candidate_pair_sort_key,
+                )
+            ),
+            unresolved=remainder_candidate.unresolved,
+            bye_player=None,
+            sequence_no=sequence_no,
+        )
+        candidate_key = _candidate_quality_key(candidate=candidate, context=context)
+        if best_key is None or candidate_key < best_key:
+            best_key = candidate_key
+            best_candidate = candidate
+
+    return best_candidate
+
+
+def _select_large_final_bye_candidate_via_weighted_steps(
+    players: Sequence[PlayerState],
+    *,
+    context: BracketContext,
+    bye_candidates: Sequence[PlayerState],
+    sequential_search_max_players: int,
+) -> _CandidateInternal | None:
+    """Pick one large final-bracket bye without scanning every legal candidate.
+
+    For very large odd final brackets, evaluating every legal bye candidate means
+    re-solving the full even remainder once per player. Reuse the odd weighted
+    matcher to identify the likely article-order bye first, then solve the
+    even remainder exactly once for that selected player.
+    """
+    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    if len(ordered_players) <= _ODD_FINAL_BYE_SCAN_MAX_PLAYERS:
+        return None
+
+    weighted_candidate = _solve_without_bye_candidate_via_weighted_steps(
+        ordered_players,
+        context=context,
+    )
+    if weighted_candidate is None or len(weighted_candidate.unresolved) != 1:
+        return None
+
+    bye_player = weighted_candidate.unresolved[0]
+    reversed_bye_candidates = tuple(reversed(tuple(bye_candidates)))
+    try:
+        sequence_no = next(
+            index
+            for index, candidate in enumerate(reversed_bye_candidates)
+            if candidate.player_id == bye_player.player_id
+        )
+    except StopIteration:
+        return None
+
+    rest = tuple(player for player in ordered_players if player.player_id != bye_player.player_id)
+    even_result = _solve_even_players(
+        rest,
+        context=context,
+        sequential_search_max_players=sequential_search_max_players,
+    )
+    return _CandidateInternal(
+        pairings=even_result.pairings,
+        unresolved=even_result.unresolved,
+        bye_player=bye_player,
+        sequence_no=sequence_no,
+    )
 
 
 def _solve_even_players(
@@ -1962,22 +2076,31 @@ def _solve_without_bye_candidate(
             context=context,
         )
         if weighted_candidate is not None and weighted_candidate.unresolved:
-            if (
-                len(weighted_candidate.unresolved) == 1
-                and len(ordered_players) <= _ODD_DOWNFLOATER_SCAN_MAX_PLAYERS
-            ):
-                if context.mdp_ids:
+            if len(weighted_candidate.unresolved) == 1:
+                if context.mdp_ids and len(ordered_players) <= _ODD_DOWNFLOATER_SCAN_MAX_PLAYERS:
                     return _refine_weighted_heterogeneous_odd_candidate(
                         ordered_players,
                         context=context,
                         weighted_candidate=weighted_candidate,
                     )
-                return _refine_weighted_homogeneous_odd_candidate(
-                    ordered_players,
-                    context=context,
-                    weighted_candidate=weighted_candidate,
-                    sequential_search_max_players=sequential_search_max_players,
-                )
+                if (
+                    not context.mdp_ids
+                    and len(ordered_players) <= _ODD_HOMOGENEOUS_REFINEMENT_SCAN_MAX_PLAYERS
+                ):
+                    return _refine_weighted_homogeneous_odd_candidate(
+                        ordered_players,
+                        context=context,
+                        weighted_candidate=weighted_candidate,
+                        sequential_search_max_players=sequential_search_max_players,
+                    )
+                if len(context.mdp_ids) == 1:
+                    refined_single_mdp = _refine_weighted_single_mdp_odd_candidate(
+                        ordered_players,
+                        context=context,
+                        sequential_search_max_players=sequential_search_max_players,
+                    )
+                    if refined_single_mdp is not None:
+                        return refined_single_mdp
             return weighted_candidate
 
     generated: list[_CandidateInternal] = []
@@ -2138,31 +2261,40 @@ def pair_bracket(
         if best_candidate is None:
             raise PairingError("no legal bye candidate available under C2 constraints")
     else:
-        best_candidate = None
-        best_key: tuple[object, ...] | None = None
+        best_candidate = _select_large_final_bye_candidate_via_weighted_steps(
+            ordered_players,
+            context=local_context,
+            bye_candidates=bye_candidates,
+            sequential_search_max_players=sequential_search_max_players,
+        )
+        if best_candidate is None:
+            best_key: tuple[object, ...] | None = None
 
-        # Exact odd-bracket generation already yields article sequence order.
-        # Keep the weighted fallback aligned with that direction so equal-quality
-        # bye candidates still resolve to the same last-sequence resident.
-        for sequence_no, bye_candidate in enumerate(reversed(bye_candidates)):
-            rest = tuple(
-                player for player in ordered_players if player.player_id != bye_candidate.player_id
-            )
-            even_result = _solve_even_players(
-                rest,
-                context=local_context,
-                sequential_search_max_players=sequential_search_max_players,
-            )
-            candidate = _CandidateInternal(
-                pairings=even_result.pairings,
-                unresolved=even_result.unresolved,
-                bye_player=bye_candidate,
-                sequence_no=sequence_no,
-            )
-            candidate_key = _candidate_quality_key(candidate=candidate, context=local_context)
-            if best_key is None or candidate_key < best_key:
-                best_key = candidate_key
-                best_candidate = candidate
+            # Exact odd-bracket generation already yields article sequence
+            # order. Keep the fallback scan aligned with that direction so
+            # equal-quality bye candidates still resolve to the same
+            # last-sequence resident.
+            for sequence_no, bye_candidate in enumerate(reversed(bye_candidates)):
+                rest = tuple(
+                    player
+                    for player in ordered_players
+                    if player.player_id != bye_candidate.player_id
+                )
+                even_result = _solve_even_players(
+                    rest,
+                    context=local_context,
+                    sequential_search_max_players=sequential_search_max_players,
+                )
+                candidate = _CandidateInternal(
+                    pairings=even_result.pairings,
+                    unresolved=even_result.unresolved,
+                    bye_player=bye_candidate,
+                    sequence_no=sequence_no,
+                )
+                candidate_key = _candidate_quality_key(candidate=candidate, context=local_context)
+                if best_key is None or candidate_key < best_key:
+                    best_key = candidate_key
+                    best_candidate = candidate
 
     if best_candidate is None:
         raise PairingError("internal failure selecting bye candidate")

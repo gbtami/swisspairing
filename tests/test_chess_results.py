@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 from __future__ import annotations
 
 import json
@@ -7,9 +8,13 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
+from py4swiss.engines.common.float import Float as PyFloat
+from py4swiss.engines.dutch.player import get_player_infos_from_trf
+from py4swiss.trf import TrfParser
 
 from swisspairing.benchmarking import (
     build_pythonpath_env,
+    build_trf_unplayed_games_by_player_id,
     discover_bbp_executable,
     py4swiss_runtime_probe,
 )
@@ -22,6 +27,9 @@ from swisspairing.chess_results import (
     parse_chess_results_points,
     published_pairings_for_round,
 )
+from swisspairing.dutch import BracketContext, pair_bracket
+from swisspairing.model import FloatKind, PlayerState
+from swisspairing.tournament import _group_residents_by_score
 
 RUNNER_PATH = (
     Path(__file__).resolve().parents[1] / "benchmarks" / "reference_compare_case_runner.py"
@@ -83,6 +91,72 @@ def _normalize_manifest_pairings(
         normalized.append((left, right))
     normalized.sort(key=lambda pair: (pair[1] is None, pair[0], pair[1] or ""))
     return tuple(normalized)
+
+
+def _aeroflot_manifest_path() -> Path:
+    return (
+        Path(__file__).resolve().parents[1]
+        / "benchmarks"
+        / "fixtures"
+        / "chess_results"
+        / "aeroflot_open_2026"
+        / "published_pairings.json"
+    )
+
+
+def _load_aeroflot_manifest() -> dict[str, Any]:
+    return cast(dict[str, Any], json.loads(_aeroflot_manifest_path().read_text(encoding="utf-8")))
+
+
+def _aeroflot_round_entry(round_number: int) -> dict[str, Any]:
+    payload = _load_aeroflot_manifest()
+    return cast(
+        dict[str, Any],
+        next(item for item in payload["rounds"] if item["round_number"] == round_number),
+    )
+
+
+def _aeroflot_states_for_round(round_number: int) -> tuple[PlayerState, ...]:
+    manifest_path = _aeroflot_manifest_path()
+    round_entry = _aeroflot_round_entry(round_number)
+    trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
+    py4swiss_players = get_player_infos_from_trf(trf)
+    top_ids = {player.id for player in py4swiss_players if player.top_scorer}
+    forbidden_map: dict[int, set[int]] = {}
+    for left_id, right_id in trf.x_section.forbidden_pairs:
+        forbidden_map.setdefault(left_id, set()).add(right_id)
+        forbidden_map.setdefault(right_id, set()).add(left_id)
+    unplayed_games_by_id = build_trf_unplayed_games_by_player_id(trf)
+
+    def to_float_kind(float_value: PyFloat) -> FloatKind:
+        if float_value == PyFloat.UP:
+            return FloatKind.UP
+        if float_value == PyFloat.DOWN:
+            return FloatKind.DOWN
+        return FloatKind.NONE
+
+    states = tuple(
+        PlayerState(
+            player_id=str(player.id),
+            pairing_no=player.number,
+            score=player.points_with_acceleration,
+            opponents=frozenset(str(opponent_id) for opponent_id in player.opponents),
+            forbidden_opponents=frozenset(
+                str(opponent_id) for opponent_id in forbidden_map.get(player.id, set())
+            ),
+            color_history=tuple("white" if is_white else "black" for is_white in player.colors),
+            unplayed_games=unplayed_games_by_id.get(player.id, 0),
+            had_full_point_bye=player.bye_received,
+            is_top_scorer=player.top_scorer,
+            is_topscorer_or_opponent=player.top_scorer or bool(player.opponents & top_ids),
+            float_history=(
+                to_float_kind(player.float_2),
+                to_float_kind(player.float_1),
+            ),
+        )
+        for player in py4swiss_players
+    )
+    return tuple(sorted(states, key=lambda player: (-player.score, player.pairing_no)))
 
 
 def _player(
@@ -306,14 +380,7 @@ def test_build_chess_results_snapshot_reconstructs_game_bye_and_not_paired() -> 
 
 
 def test_checked_in_aeroflot_manifest_references_existing_trfs() -> None:
-    manifest_path = (
-        Path(__file__).resolve().parents[1]
-        / "benchmarks"
-        / "fixtures"
-        / "chess_results"
-        / "aeroflot_open_2026"
-        / "published_pairings.json"
-    )
+    manifest_path = _aeroflot_manifest_path()
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
 
     rounds = payload["rounds"]
@@ -332,20 +399,12 @@ def test_checked_in_aeroflot_manifest_references_existing_trfs() -> None:
         "reference checks"
     ),
 )
-@pytest.mark.parametrize("round_number", [2, 3])
+@pytest.mark.parametrize("round_number", [1, 2, 3])
 def test_aeroflot_fast_pairing_matches_published_round(round_number: int) -> None:
-    manifest_path = (
-        Path(__file__).resolve().parents[1]
-        / "benchmarks"
-        / "fixtures"
-        / "chess_results"
-        / "aeroflot_open_2026"
-        / "published_pairings.json"
-    )
-    payload = cast(dict[str, Any], json.loads(manifest_path.read_text(encoding="utf-8")))
-    round_entry = next(item for item in payload["rounds"] if item["round_number"] == round_number)
+    manifest_path = _aeroflot_manifest_path()
+    round_entry = _aeroflot_round_entry(round_number)
 
-    compare = _run_reference_compare(manifest_path.parent / round_entry["trf"])
+    compare = _run_reference_compare(manifest_path.parent / cast(str, round_entry["trf"]))
     swisspairing = cast(dict[str, Any], compare["swisspairing"])
     assert isinstance(swisspairing, dict)
     pairings = cast(list[list[str | None]], swisspairing["pairings"])
@@ -353,3 +412,65 @@ def test_aeroflot_fast_pairing_matches_published_round(round_number: int) -> Non
     assert _normalize_manifest_pairings(pairings) == _normalize_manifest_pairings(
         round_entry["published_pairings"]
     )
+
+
+@pytest.mark.skipif(
+    not _has_py4swiss_runtime(),
+    reason="active Python interpreter unavailable for Aeroflot bracket checks",
+)
+def test_aeroflot_round_5_score_20_bracket_refines_weighted_downfloater() -> None:
+    scoregroups = _group_residents_by_score(_aeroflot_states_for_round(5))
+
+    result = pair_bracket(
+        scoregroups[4],
+        allow_bye=False,
+        sequential_search_max_players=6,
+    )
+
+    assert result.unpaired_ids == ("160",)
+
+
+@pytest.mark.skipif(
+    not _has_py4swiss_runtime(),
+    reason="active Python interpreter unavailable for Aeroflot bracket checks",
+)
+def test_aeroflot_round_5_score_10_bracket_refines_single_mdp_partner() -> None:
+    scoregroups = _group_residents_by_score(_aeroflot_states_for_round(5))
+    mdp = next(player for player in scoregroups[5] if player.pairing_no == 161)
+    bracket_players = tuple(
+        sorted(
+            (mdp, *scoregroups[6]),
+            key=lambda player: (-player.score, player.pairing_no),
+        )
+    )
+
+    result = pair_bracket(
+        bracket_players,
+        context=BracketContext(mdp_ids=frozenset({mdp.player_id})),
+        allow_bye=False,
+        sequential_search_max_players=6,
+    )
+
+    paired_ids = {
+        frozenset({pairing.white_id, pairing.black_id})
+        for pairing in result.pairings
+        if pairing.black_id is not None
+    }
+    assert result.unpaired_ids == ("158",)
+    assert frozenset({"161", "63"}) in paired_ids
+
+
+@pytest.mark.skipif(
+    not (_has_py4swiss_runtime() and _has_bbp_executable()),
+    reason=(
+        "active Python interpreter or bbpPairings runtime unavailable for Aeroflot "
+        "reference checks"
+    ),
+)
+def test_aeroflot_fast_round_5_matches_bbp_reference() -> None:
+    manifest_path = _aeroflot_manifest_path()
+    round_entry = _aeroflot_round_entry(5)
+
+    compare = _run_reference_compare(manifest_path.parent / round_entry["trf"])
+
+    assert compare["pairings_equal_vs_bbp"] is True
