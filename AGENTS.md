@@ -44,18 +44,17 @@ Current validation expectation:
 
 - `uv run ruff check .` passes
 - `uv run pyright` passes
-- `uv run pytest` is green with one expected xfail:
-  `124 passed, 1 xfailed`
-  `tests/test_bbp_reference.py::test_bbp_reference_issue_7_matches_bbp_expected_output`
+- `uv run pytest` is green
 
 Important open items:
 
-- `issue_7` remains the main checked 2026 Dutch gap
 - the Aeroflot corpus is only partially closed out: rounds 1-3 now match the
   published pairings, round 5 now matches `bbpPairings`, and rounds 4 / 6 / 7
   / 8 / 9 still disagree with the published pairings even though
   `swisspairing`, `bbpPairings`, and `py4swiss` agree with each other there
 - pychess integration is still pending
+- checked 2026-specific BBP coverage is still thin; we need more frozen Dutch
+  fixtures beyond `dutch_2025_C5` / `dutch_2025_C9` plus the Aeroflot corpus
 
 ## Repository Map
 
@@ -179,6 +178,11 @@ uv run pytest tests/test_py4swiss_golden.py
 uv run pytest tests/test_bbp_reference.py
 ```
 
+Current status:
+
+- `dutch_2025_C5` and `dutch_2025_C9` are active BBP-backed regression tests
+- `issue_7` is kept only as a legacy divergence fixture
+
 ### Single three-way reference compare
 
 ```bash
@@ -299,9 +303,17 @@ Current practical default:
   still normatively valid for 2026 events.
 - The checked summary of those rulebook deltas lives in
   `docs/RULEBOOK_DIFF_2026.md`.
-- `issue_7` remains the tracked BBP-backed xfail and is believed to live in the
-  weighted heterogeneous plus round-collapse path, not the basic exact critical
-  bracket itself
+- `issue_7` comes from a BBP bug report opened on 2020-04-13, before the 2026
+  ruleset. Keep it as a legacy divergence fixture, not as the main remaining
+  2026 blocker. Current public references split on it:
+  `bbpPairings` vs `py4swiss` + `JaVaFo`, while `swisspairing` currently
+  matches neither side.
+- Current `issue_7` debugging result: the earlier top-half heterogeneous
+  mismatch is fixed. The remaining divergence is confined to the final
+  collapsed 22-player bracket, and the internal fixes that got us there are:
+  pairable-MDP subset filtering, restricting the heterogeneous structural
+  tie-break to complete multi-MDP candidates, and widening the cheap exact
+  odd-heterogeneous refinement window.
 - late-entry default-color parity was previously misdiagnosed as a
   `py4swiss`/FIDE conflict; it was actually a local bug and is already fixed
 

@@ -111,16 +111,21 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     candidate-scoring overhead in large benchmark cases.
   - Current golden parity suite has no xfail fixtures.
   - Imported checked-in Dutch reference fixtures from `bbpPairings`
-    (`dutch_2025_C5`, `dutch_2025_C9`, and tracked `issue_7`) plus the extra
-    upstream `py4swiss` parity fixture `burstein_late_entries.trf`.
-    `issue_7` is now a checked-in `xfail`; `dutch_2025_C5` is the first
-    concrete local fixture where `bbpPairings` and `swisspairing` agree while
-    `py4swiss` disagrees.
-  - `issue_7` diagnosis tightened: the decisive 14-player heterogeneous
-    bracket can reach the BBP result via the exact sequence path, but that
-    direct exact solve is still too slow to use naively; the checked gap
-    remains in the cheaper weighted heterogeneous plus round-collapse
-    selection path, so fixing the bracket tie-break alone is not enough.
+    (`dutch_2025_C5`, `dutch_2025_C9`, and the legacy diagnostic `issue_7`)
+    plus the extra upstream `py4swiss` parity fixture
+    `burstein_late_entries.trf`. `dutch_2025_C5` is the first concrete local
+    fixture where `bbpPairings` and `swisspairing` agree while `py4swiss`
+    disagrees.
+  - `issue_7` is no longer treated as the main remaining 2026 blocker. That
+    BBP bug report was opened on 2020-04-13, well before the 2026 ruleset, and
+    current public references still split on it (`bbpPairings` vs
+    `py4swiss` + `JaVaFo`). Keep it as a checked-in legacy divergence fixture.
+  - Additional `issue_7` solver triage still improved the generic path:
+    infeasible high-score MDP selections are now filtered before ranking,
+    incomplete multi-MDP heterogeneous ties keep article sequence order, and
+    the cheap exact odd-heterogeneous refinement window is wider. Those fixes
+    remove the earlier top-half mismatch and confine the remaining divergence
+    to the final collapsed 22-player bracket.
   - The heterogeneous structural tie-break is now limited to multi-MDP ties;
     single-MDP final-bracket ties keep exact article sequence order again,
     which restores BBP / py4swiss parity on the checked late-entry fixture.

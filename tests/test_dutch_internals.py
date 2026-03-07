@@ -11,6 +11,7 @@ from swisspairing.dutch import (
     _heterogeneous_structural_tie_key,
     _homogeneous_article_order_key,
     _homogeneous_exact_candidate_upper_bound,
+    _iter_pairable_mdp_sets,
     _pair_color_quality,
     _select_best_candidate,
     _use_heterogeneous_exact_search,
@@ -25,12 +26,14 @@ def _player(
     pairing_no: int,
     score: int,
     color_history: tuple[Color, ...],
+    opponents: frozenset[str] = frozenset(),
 ) -> PlayerState:
     return PlayerState(
         player_id=player_id,
         pairing_no=pairing_no,
         score=score,
         color_history=color_history,
+        opponents=opponents,
     )
 
 
@@ -210,3 +213,112 @@ def test_homogeneous_exact_search_budget_skips_10_player_explosion() -> None:
         mdp_count=1,
         sequential_search_max_players=12,
     ) is False
+
+
+def test_pairable_mdp_sets_skip_infeasible_high_score_selection() -> None:
+    mdps = (
+        _player(
+            player_id="p1",
+            pairing_no=1,
+            score=105,
+            color_history=(),
+            opponents=frozenset({"p2", "p10"}),
+        ),
+        _player(
+            player_id="p3",
+            pairing_no=3,
+            score=100,
+            color_history=(),
+            opponents=frozenset({"p10"}),
+        ),
+        _player(
+            player_id="p7",
+            pairing_no=7,
+            score=95,
+            color_history=(),
+            opponents=frozenset({"p2"}),
+        ),
+        _player(
+            player_id="p8",
+            pairing_no=8,
+            score=95,
+            color_history=(),
+            opponents=frozenset({"p2"}),
+        ),
+    )
+    residents = (
+        _player(player_id="p2", pairing_no=2, score=85, color_history=()),
+        _player(player_id="p10", pairing_no=10, score=85, color_history=()),
+    )
+    bsn_by_player_id = {
+        player.player_id: index + 1 for index, player in enumerate((*mdps, *residents))
+    }
+
+    mdp_sets = _iter_pairable_mdp_sets(
+        mdps=mdps,
+        residents=residents,
+        bsn_by_player_id=bsn_by_player_id,
+    )
+
+    assert tuple(tuple(player.player_id for player in mdp_set) for mdp_set in mdp_sets) == (
+        ("p3", "p7"),
+        ("p3", "p8"),
+    )
+
+
+def test_multi_mdp_incomplete_tie_keeps_article_sequence_order() -> None:
+    by_id = {
+        player.player_id: player
+        for player in (
+            _player(
+                player_id="p1",
+                pairing_no=1,
+                score=105,
+                color_history=(),
+                opponents=frozenset({"p2", "p10"}),
+            ),
+            _player(
+                player_id="p3",
+                pairing_no=3,
+                score=100,
+                color_history=(),
+                opponents=frozenset({"p10"}),
+            ),
+            _player(
+                player_id="p7",
+                pairing_no=7,
+                score=95,
+                color_history=(),
+                opponents=frozenset({"p2"}),
+            ),
+            _player(
+                player_id="p8",
+                pairing_no=8,
+                score=95,
+                color_history=(),
+                opponents=frozenset({"p2"}),
+            ),
+            _player(player_id="p2", pairing_no=2, score=85, color_history=()),
+            _player(player_id="p10", pairing_no=10, score=85, color_history=()),
+        )
+    }
+    article_first = _CandidateInternal(
+        pairings=((by_id["p3"], by_id["p2"]), (by_id["p7"], by_id["p10"])),
+        unresolved=(by_id["p1"], by_id["p8"]),
+        bye_player=None,
+        sequence_no=0,
+    )
+    structural_later = _CandidateInternal(
+        pairings=((by_id["p3"], by_id["p2"]), (by_id["p8"], by_id["p10"])),
+        unresolved=(by_id["p1"], by_id["p7"]),
+        bye_player=None,
+        sequence_no=1,
+    )
+
+    assert (
+        _select_best_candidate(
+            (structural_later, article_first),
+            context=BracketContext(mdp_ids=frozenset({"p1", "p3", "p7", "p8"})),
+        )
+        == article_first
+    )

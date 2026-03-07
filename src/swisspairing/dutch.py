@@ -267,6 +267,9 @@ _SEQUENTIAL_SEARCH_MAX_PLAYERS = 12
 _MAX_EXACT_SEQUENCE_CANDIDATES = 5_000
 _ODD_DOWNFLOATER_SCAN_MAX_PLAYERS = 20
 _ODD_REFINEMENT_EXACT_SEARCH_MAX_PLAYERS = 10
+_ODD_HETEROGENEOUS_REFINEMENT_MAX_PLAYERS = 11
+_ODD_HETEROGENEOUS_REFINEMENT_EXACT_UPPER_BOUND = 80_000
+_ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES = 20_000
 _ODD_FINAL_BYE_SCAN_MAX_PLAYERS = 20
 _ODD_HOMOGENEOUS_REFINEMENT_SCAN_MAX_PLAYERS = 34
 _SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS = 24
@@ -929,7 +932,7 @@ def _select_best_candidate(
     for candidate in candidates:
         candidate_key = _candidate_quality_key(candidate=candidate, context=context)
         selection_key: tuple[object, ...]
-        if len(context.mdp_ids) > 1:
+        if len(context.mdp_ids) > 1 and not candidate.unresolved and candidate.bye_player is None:
             selection_key = (
                 *candidate_key[:-1],
                 _heterogeneous_structural_tie_key(
@@ -1329,20 +1332,21 @@ def _refine_weighted_heterogeneous_odd_candidate(
     the weighted approximation's downfloater choice.
     """
     ordered_players = tuple(sorted(players, key=_player_rank_key))
+    exact_upper_bound = _heterogeneous_exact_candidate_upper_bound(
+        len(ordered_players),
+        len(context.mdp_ids),
+    )
     if (
-        len(ordered_players) > _ODD_REFINEMENT_EXACT_SEARCH_MAX_PLAYERS
-        or _heterogeneous_exact_candidate_upper_bound(
-            len(ordered_players),
-            len(context.mdp_ids),
-        )
-        > _MAX_EXACT_SEQUENCE_CANDIDATES
+        len(ordered_players) > _ODD_HETEROGENEOUS_REFINEMENT_MAX_PLAYERS
+        or exact_upper_bound > _ODD_HETEROGENEOUS_REFINEMENT_EXACT_UPPER_BOUND
     ):
         return weighted_candidate
 
-    best_candidate = _select_best_candidate(
-        _iter_heterogeneous_candidates(ordered_players, context=context),
-        context=context,
-    )
+    exact_candidates = _iter_heterogeneous_candidates(ordered_players, context=context)
+    if len(exact_candidates) > _ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES:
+        return weighted_candidate
+
+    best_candidate = _select_best_candidate(exact_candidates, context=context)
     return best_candidate or weighted_candidate
 
 
@@ -1883,6 +1887,48 @@ def _split_mdps_and_residents(
     return mdps, residents
 
 
+def _selected_mdp_set_is_pairable(
+    *,
+    selected_mdps: Sequence[PlayerState],
+    residents: Sequence[PlayerState],
+) -> bool:
+    """Return whether each selected MDP can be matched to a distinct resident."""
+    if not selected_mdps:
+        return True
+
+    options_by_mdp_id: dict[str, tuple[PlayerState, ...]] = {}
+    for mdp in selected_mdps:
+        options = tuple(
+            resident for resident in residents if _is_legal_pair(mdp, resident)
+        )
+        if not options:
+            return False
+        options_by_mdp_id[mdp.player_id] = options
+
+    ordered_mdps = tuple(
+        sorted(
+            selected_mdps,
+            key=lambda mdp: (len(options_by_mdp_id[mdp.player_id]), _player_rank_key(mdp)),
+        )
+    )
+    matched_resident_ids: set[str] = set()
+
+    def assign(index: int) -> bool:
+        if index >= len(ordered_mdps):
+            return True
+        mdp = ordered_mdps[index]
+        for resident in options_by_mdp_id[mdp.player_id]:
+            if resident.player_id in matched_resident_ids:
+                continue
+            matched_resident_ids.add(resident.player_id)
+            if assign(index + 1):
+                return True
+            matched_resident_ids.remove(resident.player_id)
+        return False
+
+    return assign(0)
+
+
 def _iter_pairable_mdp_sets(
     *,
     mdps: Sequence[PlayerState],
@@ -1904,6 +1950,11 @@ def _iter_pairable_mdp_sets(
     specs: list[tuple[tuple[int, ...], tuple[int, ...], tuple[PlayerState, ...]]] = []
     for indices in combinations(range(len(ordered_mdps)), m1):
         selected = tuple(ordered_mdps[index] for index in indices)
+        if not _selected_mdp_set_is_pairable(
+            selected_mdps=selected,
+            residents=residents,
+        ):
+            continue
         selected_ids = frozenset(player.player_id for player in selected)
         limbo = tuple(player for player in ordered_mdps if player.player_id not in selected_ids)
         limbo_scores_desc = tuple(
@@ -1911,6 +1962,9 @@ def _iter_pairable_mdp_sets(
         )
         selected_bsns = tuple(sorted(bsn_by_player_id[player.player_id] for player in selected))
         specs.append((limbo_scores_desc, selected_bsns, selected))
+
+    if not specs:
+        return ()
 
     best_limbo_scores = min(spec[0] for spec in specs)
     filtered = [spec for spec in specs if spec[0] == best_limbo_scores]
