@@ -159,6 +159,10 @@ Current project view:
   `https://handbook.fide.com/chapter/C0403202602`
 - FIDE Handbook `C.04.3` till 31 January 2026:
   `https://handbook.fide.com/chapter/C0403Till2026`
+- FIDE Handbook `C.04.7` from 1 February 2026:
+  `https://handbook.fide.com/chapter/C0407202602`
+- FIDE Handbook `C.04.7` till 31 January 2026:
+  `https://handbook.fide.com/chapter/C0407Till2026`
 - Aeroflot Open 2026 festival page:
   `https://aeroflotopen.ru/en/international-chess-festival`
 - Aeroflot Open 2026 regulations:
