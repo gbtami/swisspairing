@@ -14,6 +14,7 @@ from swisspairing.benchmarking import (
     discover_bbp_executable,
     discover_javafo_jar,
     evaluate_benchmark_sla,
+    normalize_lenient_trf16_text,
     parse_bbp_pairings_output,
     parse_javafo_pairings_output,
     portable_path_str,
@@ -190,3 +191,128 @@ def test_build_trf_unplayed_games_by_player_id_counts_played_vs_unplayed() -> No
     counts = build_trf_unplayed_games_by_player_id(trf)
 
     assert counts == {1: 1, 2: 2, 3: 0, 4: 2}
+
+
+def _lenient_player_line(
+    *,
+    starting_number: int,
+    name: str,
+    rating: int,
+    points: str,
+    result_blob: str,
+) -> str:
+    return (
+        f"001 {starting_number:>4} {'':1}{'':>3} {name:<33}{rating:>5} {'':<3} {'':>11} "
+        f"{'':<10} {points:>4} {'':>4}  {result_blob}"
+    )
+
+
+def test_normalize_lenient_trf16_text_handles_blank_rank_and_single_tokens() -> None:
+    input_text = "\n".join(
+        (
+            _lenient_player_line(
+                starting_number=1,
+                name="Alpha",
+                rating=2100,
+                points="0.5",
+                result_blob="H    2 b 1",
+            ),
+            _lenient_player_line(
+                starting_number=2,
+                name="Beta",
+                rating=1900,
+                points="0.0",
+                result_blob="1 w 0    -",
+            ),
+            "XXR 2",
+            "XXC white1",
+        )
+    )
+
+    normalized = normalize_lenient_trf16_text(input_text)
+    lines = normalized.splitlines()
+    first = lines[0]
+    second = lines[1]
+
+    assert first[85:89] == "   1"
+    assert second[85:89] == "   2"
+    assert first[91:99] == "0000 - H"
+    assert first[101:109] == "   2 b 1"
+    assert second[91:99] == "   1 w 0"
+    assert second[101:109] == "0000 - Z"
+
+
+def test_normalize_lenient_trf16_text_rejects_unknown_result_token() -> None:
+    input_text = "\n".join(
+        (
+            _lenient_player_line(
+                starting_number=1,
+                name="Alpha",
+                rating=2100,
+                points="0.5",
+                result_blob="Q",
+            ),
+            "XXR 1",
+            "XXC white1",
+        )
+    )
+
+    try:
+        normalize_lenient_trf16_text(input_text)
+    except ValueError as exc:
+        assert "unsupported TRF result token" in str(exc)
+    else:
+        raise AssertionError("expected unknown result token to raise ValueError")
+
+
+def test_normalize_lenient_trf16_text_supports_bbp_next_round_xxr_mode() -> None:
+    input_text = "\n".join(
+        (
+            _lenient_player_line(
+                starting_number=1,
+                name="Alpha",
+                rating=2100,
+                points="0.5",
+                result_blob="H    2 b 1",
+            ),
+            _lenient_player_line(
+                starting_number=2,
+                name="Beta",
+                rating=1900,
+                points="0.0",
+                result_blob="1 w 0    -",
+            ),
+            "XXR 2",
+            "XXC white1",
+        )
+    )
+
+    normalized = normalize_lenient_trf16_text(input_text, xxr_mode="bbp-next-round")
+    lines = normalized.splitlines()
+
+    assert lines[2] == "XXR 3"
+    assert lines[0][91:99] == "0000 - H"
+    assert lines[1][101:109] == "0000 - Z"
+
+
+def test_normalize_lenient_trf16_text_rejects_unknown_xxr_mode() -> None:
+    input_text = "\n".join(
+        (
+            _lenient_player_line(
+                starting_number=1,
+                name="Alpha",
+                rating=2100,
+                points="0.5",
+                result_blob="H",
+            ),
+            "XXR 1",
+            "XXC white1",
+        )
+    )
+
+    try:
+        normalize_lenient_trf16_text(input_text, xxr_mode="bad-mode")
+    except ValueError as exc:
+        assert "xxr_mode must be one of" in str(exc)
+    else:
+        raise AssertionError("expected unknown xxr_mode to raise ValueError")

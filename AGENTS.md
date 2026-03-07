@@ -83,6 +83,8 @@ Key fixture directories:
   Checked-in synthetic 64-player runtime tail cases.
 - `benchmarks/fixtures/chess_results/aeroflot_open_2026`
   First checked-in real-world OTB corpus.
+- `benchmarks/fixtures/lichess`
+  Normalized TRF16 fixtures exported from Lichess Swiss events.
 
 ## Environment Notes
 
@@ -241,6 +243,15 @@ uv run python benchmarks/export_chess_results_trf_snapshots.py \
 
 If the standard `chessResultsList(1).xlsx`, `chessResultsList(2).xlsx`, ...
 files live next to the starting list, the exporter auto-discovers them.
+
+Normalize lenient TRF16 exports (for example, Lichess Swiss downloads):
+
+```bash
+uv run python benchmarks/normalize_trf16.py \
+  --input ~/Letöltések/lichess_swiss_*.trf \
+  --output-dir /tmp/normalized_trf \
+  --xxr-mode bbp-next-round
+```
 
 ## Fixture Guidance
 

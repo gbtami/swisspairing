@@ -3,15 +3,22 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, cast
 
 _PLAYED_TRF_RESULT_VALUES = frozenset({"1", "=", "0", "W", "D", "L"})
+_LENIENT_TRF_RESULT_PAIR_PATTERN = re.compile(
+    r"^(?P<opponent>\d{1,4})\s+(?P<color>[wWbB-])\s+(?P<result>[+\-WDL10=HFUZwdlhfuz])$"
+)
+_LENIENT_TRF_SINGLE_RESULT_TOKENS = frozenset({"H", "F", "U", "Z", "-"})
+_LENIENT_TRF16_XXR_MODES = frozenset({"preserve", "bbp-next-round"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -258,6 +265,215 @@ def parse_javafo_pairings_output(output_text: str) -> list[list[str | None]]:
 
     normalized.sort(key=lambda pair: (pair[1] is None, pair[0], pair[1] or ""))
     return normalized
+
+
+def _parse_trf16_points_times_ten(points_text: str) -> int:
+    """Parse a TRF16 points field and return points times ten."""
+    try:
+        decimal_points = Decimal(points_text)
+    except InvalidOperation as exc:  # pragma: no cover - defensive branch
+        raise ValueError(f"invalid TRF points value {points_text!r}") from exc
+
+    scaled = decimal_points * 10
+    if scaled != scaled.to_integral_value():
+        raise ValueError(f"TRF points value must be in tenths, got {points_text!r}")
+    return int(scaled)
+
+
+def _format_trf16_points(points_times_ten: int) -> str:
+    """Format points-times-ten into the 4-char TRF16 points field."""
+    whole = points_times_ten // 10
+    tenths = abs(points_times_ten) % 10
+    return f"{whole}.{tenths}"
+
+
+def _normalize_lenient_trf_result_token(token: str) -> str:
+    """Normalize one lenient result token into an 8-char strict TRF16 chunk."""
+    compact = token.strip()
+    if not compact:
+        raise ValueError("empty TRF result token")
+
+    single_token = compact.upper()
+    if single_token in _LENIENT_TRF_SINGLE_RESULT_TOKENS:
+        # Lichess-style single "-" means no opponent and no game in practice.
+        result_value = "Z" if single_token == "-" else single_token
+        return f"0000 - {result_value}"
+
+    pair_match = _LENIENT_TRF_RESULT_PAIR_PATTERN.fullmatch(compact)
+    if pair_match is None:
+        raise ValueError(f"unsupported TRF result token {compact!r}")
+
+    opponent = int(pair_match.group("opponent"))
+    color = pair_match.group("color").lower()
+    result = pair_match.group("result").upper()
+    opponent_field = "0000" if opponent == 0 else f"{opponent:>4}"
+    return f"{opponent_field} {color} {result}"
+
+
+def _extract_lenient_result_tokens(blob: str) -> list[str]:
+    """Split a lenient results blob into per-round tokens."""
+    stripped = blob.strip()
+    if not stripped:
+        return []
+    return [token.strip() for token in re.split(r"\s{2,}", stripped) if token.strip()]
+
+
+def _normalize_lenient_player_line(
+    line: str,
+    *,
+    rounds: int,
+    fallback_rank: int,
+) -> str:
+    """Normalize one lenient `001` line into strict fixed-column TRF16 format."""
+    if rounds < 0:
+        raise ValueError("round count must be non-negative")
+
+    padded = line.ljust(91)
+    starting_number_text = padded[4:8].strip()
+    if not starting_number_text.isdigit():
+        raise ValueError(f"invalid starting number field in player line: {line!r}")
+    starting_number = int(starting_number_text)
+
+    sex = padded[9:10]
+    title = padded[10:13]
+    name = padded[14:47].strip()
+    if not name:
+        raise ValueError(f"missing player name in player line: {line!r}")
+    federation = padded[53:56]
+    fide_number = padded[57:68]
+    birth_date = padded[69:79]
+
+    rating_text = padded[47:52].strip()
+    rating_field = rating_text if rating_text else ""
+    if rating_field and not rating_field.isdigit():
+        raise ValueError(f"invalid rating field in player line: {line!r}")
+
+    points_text = padded[80:85].strip()
+    if not points_text:
+        raise ValueError(f"missing points field in player line: {line!r}")
+    points_times_ten = _parse_trf16_points_times_ten(points_text)
+    points_field = _format_trf16_points(points_times_ten)
+
+    rank_text = padded[85:89].strip()
+    rank_value = fallback_rank if not rank_text else int(rank_text)
+    if rank_value <= 0:
+        raise ValueError(f"rank must be positive in player line: {line!r}")
+
+    raw_result_tokens = _extract_lenient_result_tokens(line[91:] if len(line) > 91 else "")
+    if len(raw_result_tokens) > rounds:
+        raise ValueError(
+            "player line has more round tokens than XXR allows: "
+            f"starting_number={starting_number} rounds={rounds} tokens={len(raw_result_tokens)}"
+        )
+
+    padded_tokens = [*raw_result_tokens, *(["Z"] * (rounds - len(raw_result_tokens)))]
+    round_chunks = [_normalize_lenient_trf_result_token(token) for token in padded_tokens]
+
+    prefix = (
+        f"001 {starting_number:>4} "
+        f"{sex[:1]}{title[:3]:>3} "
+        f"{name[:33]:<33}"
+        f"{rating_field:>5} "
+        f"{federation[:3]:<3} "
+        f"{fide_number[:11]:>11} "
+        f"{birth_date[:10]:<10} "
+        f"{points_field:>4} "
+        f"{rank_value:>4}"
+    )
+    if not round_chunks:
+        return prefix
+    return f"{prefix}  {'  '.join(round_chunks)}"
+
+
+def _extract_trf_round_count(lines: Sequence[str]) -> int:
+    for line in lines:
+        stripped = line.strip()
+        if not stripped.upper().startswith("XXR"):
+            continue
+        tail = stripped[3:].strip()
+        if not tail:
+            raise ValueError("XXR field is missing round count")
+        first_token = tail.split()[0]
+        if not first_token.isdigit():
+            raise ValueError(f"invalid XXR round count {first_token!r}")
+        return int(first_token)
+    raise ValueError("TRF file does not contain XXR round count")
+
+
+def _transform_trf_round_count_line(line: str, *, xxr_mode: str) -> str:
+    """Transform an `XXR` line according to the selected mode."""
+    if xxr_mode not in _LENIENT_TRF16_XXR_MODES:
+        raise ValueError(
+            "xxr_mode must be one of "
+            f"{sorted(_LENIENT_TRF16_XXR_MODES)!r}, got {xxr_mode!r}"
+        )
+
+    stripped = line.strip()
+    if not stripped.upper().startswith("XXR"):
+        return line
+
+    parts = stripped.split()
+    if len(parts) < 2 or not parts[1].isdigit():
+        raise ValueError(f"invalid XXR line {line!r}")
+
+    reported_round = int(parts[1])
+    if xxr_mode == "bbp-next-round":
+        reported_round += 1
+
+    return " ".join(("XXR", str(reported_round), *parts[2:]))
+
+
+def normalize_lenient_trf16_text(text: str, *, xxr_mode: str = "preserve") -> str:
+    """Normalize lenient TRF16 player lines to strict fixed-column TRF16 format."""
+    if xxr_mode not in _LENIENT_TRF16_XXR_MODES:
+        raise ValueError(
+            "xxr_mode must be one of "
+            f"{sorted(_LENIENT_TRF16_XXR_MODES)!r}, got {xxr_mode!r}"
+        )
+
+    trailing_newline = text.endswith("\n")
+    lines = text.splitlines()
+    rounds = _extract_trf_round_count(lines)
+
+    normalized_lines: list[str] = []
+    player_index = 0
+    for line in lines:
+        if line.startswith("001"):
+            player_index += 1
+            normalized_lines.append(
+                _normalize_lenient_player_line(
+                    line,
+                    rounds=rounds,
+                    fallback_rank=player_index,
+                )
+            )
+            continue
+        if line.strip().upper().startswith("XXR"):
+            normalized_lines.append(_transform_trf_round_count_line(line, xxr_mode=xxr_mode))
+            continue
+        normalized_lines.append(line)
+
+    normalized = "\n".join(normalized_lines)
+    if trailing_newline:
+        normalized += "\n"
+    return normalized
+
+
+def normalize_lenient_trf16_file(
+    source_path: str | Path,
+    target_path: str | Path,
+    *,
+    xxr_mode: str = "preserve",
+) -> None:
+    """Normalize a lenient TRF16 file and write the strict-form output."""
+    source = Path(source_path).expanduser()
+    target = Path(target_path).expanduser()
+    normalized_text = normalize_lenient_trf16_text(
+        source.read_text(encoding="utf-8"),
+        xxr_mode=xxr_mode,
+    )
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(normalized_text, encoding="utf-8")
 
 
 def portable_path_str(path: str | Path) -> str:

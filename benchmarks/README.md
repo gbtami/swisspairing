@@ -152,6 +152,20 @@ uv run python benchmarks/reference_compare_case_runner.py \
   --bbp-executable ~/bbpPairings/bbpPairings.exe
 ```
 
+Normalize lenient TRF16 exports (for example, some Lichess downloads) into
+strict fixed-column TRF16 before running py4swiss/BBP comparisons:
+
+```bash
+uv run python benchmarks/normalize_trf16.py \
+  --input ~/Letöltések/lichess_swiss_2026.03.03_7TYuxURK_bullet-increment.trf \
+  --output-dir /tmp/normalized_trf \
+  --xxr-mode bbp-next-round
+```
+
+For multiple files, pass `--input` more than once. Use `--in-place` to rewrite
+files directly. `--xxr-mode bbp-next-round` shifts `XXR` by +1, which is useful
+for BBP compatibility on Lichess exports where `XXR` matches completed rounds.
+
 Generate synthetic Swiss TRF batches when no production Swiss history exists:
 
 ```bash
@@ -259,6 +273,8 @@ Output artifacts:
   first checked Aeroflot round-2 and round-3 published-pairing regressions are
   now covered in normal tests and currently match in `swisspairing` fast mode,
   `py4swiss`, and BBP.
+- `benchmarks/fixtures/lichess` contains normalized TRF16 fixtures exported
+  from Lichess Swiss events, plus source/provenance notes.
 - `benchmarks/fixtures/p64_regressions` contains checked-in synthetic tail
   cases for 64-player fast-mode runtime work.
 - Synthetic batch generation uses the greedy round pipeline with a lower
