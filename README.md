@@ -45,7 +45,11 @@ cd swisspairing
 uv sync --group dev
 ```
 
-The `dev` dependency group includes `py4swiss` for parity and benchmark work.
+The repo is pinned to Python `3.13` via [`.python-version`](/home/tami/swisspairing/.python-version),
+so a normal `uv sync --group dev` should create the expected local environment.
+
+The `dev` dependency group includes `py4swiss` for parity and benchmark work,
+and `networkx` for local tooling such as `TieBreakServer` experiments.
 
 For 2026 Dutch comparison work, install `bbpPairings` separately:
 

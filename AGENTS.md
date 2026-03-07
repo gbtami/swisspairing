@@ -98,9 +98,14 @@ uv run pyright
 uv run pytest
 ```
 
-The `dev` dependency group now includes `py4swiss`, so a normal
-`uv sync --group dev` should install the legacy comparison dependency as part
-of project setup.
+The repo is pinned to Python `3.13` in `.python-version`. Keep it there unless
+there is a concrete reason to move it. The current oracle/tooling setup is more
+stable on `3.13`, and the `networkx` path used by `TieBreakServer` currently
+breaks on the excluded `Python 3.14.1` build.
+
+The `dev` dependency group now includes `py4swiss` and `networkx`, so a normal
+`uv sync --group dev` should install the current legacy comparison dependency
+set as part of project setup.
 
 Reference and benchmark runners reuse the active interpreter. If comparison
 runs start failing due to missing `py4swiss`, check:
