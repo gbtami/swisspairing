@@ -415,6 +415,50 @@ def test_aeroflot_fast_pairing_matches_published_round(round_number: int) -> Non
 
 
 @pytest.mark.skipif(
+    not (_has_py4swiss_runtime() and _has_bbp_executable()),
+    reason=(
+        "active Python interpreter or bbpPairings runtime unavailable for Aeroflot "
+        "reference checks"
+    ),
+)
+@pytest.mark.parametrize(
+    ("round_number", "published_non_game_count"),
+    [
+        (4, 3),
+        (6, 5),
+        (7, 7),
+        (8, 9),
+        (9, 11),
+    ],
+)
+def test_aeroflot_later_rounds_are_engine_consensus_vs_published_non_game_cases(
+    round_number: int,
+    published_non_game_count: int,
+) -> None:
+    manifest_path = _aeroflot_manifest_path()
+    round_entry = _aeroflot_round_entry(round_number)
+
+    compare = _run_reference_compare(manifest_path.parent / cast(str, round_entry["trf"]))
+    swisspairing = cast(dict[str, Any], compare["swisspairing"])
+    py4swiss = cast(dict[str, Any], compare["py4swiss"])
+    bbp = cast(dict[str, Any], compare["bbp"])
+
+    swiss_pairings = _normalize_manifest_pairings(
+        cast(list[list[str | None]], swisspairing["pairings"])
+    )
+    py4swiss_pairings = _normalize_manifest_pairings(
+        cast(list[list[str | None]], py4swiss["pairings"])
+    )
+    bbp_pairings = _normalize_manifest_pairings(cast(list[list[str | None]], bbp["pairings"]))
+    published_pairings = _normalize_manifest_pairings(round_entry["published_pairings"])
+
+    assert swiss_pairings == py4swiss_pairings
+    assert swiss_pairings == bbp_pairings
+    assert swiss_pairings != published_pairings
+    assert sum(int(right is None) for _, right in published_pairings) == published_non_game_count
+
+
+@pytest.mark.skipif(
     not _has_py4swiss_runtime(),
     reason="active Python interpreter unavailable for Aeroflot bracket checks",
 )

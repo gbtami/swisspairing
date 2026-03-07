@@ -303,6 +303,11 @@ Current practical default:
   still normatively valid for 2026 events.
 - The checked summary of those rulebook deltas lives in
   `docs/RULEBOOK_DIFF_2026.md`.
+- For Aeroflot rounds 4 / 6 / 7 / 8 / 9, the repo now treats the mismatch as a
+  consensus-engine-vs-published case, not as an active Dutch-core bug. On the
+  checked corpus, `swisspairing`, `bbpPairings`, `py4swiss`, and the public
+  JaVaFo release all agree against the published pairings, and the published
+  round exports include multiple non-game seats (`not paired` / bye).
 - `issue_7` comes from a BBP bug report opened on 2020-04-13, before the 2026
   ruleset. Keep it as a legacy divergence fixture, not as the main remaining
   2026 blocker. Current public references split on it:
