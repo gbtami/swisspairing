@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "swisspairing"
+version = "0.1.0"
+description = "FIDE Swiss (Dutch) pairing package based on rustworkx"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "rustworkx>=0.17.1,<0.18.0",
+]
+
+[dependency-groups]
+dev = [
+    "py4swiss>=0.3.1,<0.4.0",
+    "pyright>=1.1.408,<2.0.0",
+    "pytest>=8.3.5,<9.0.0",
+    "ruff>=0.15.4,<0.16.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "B",
+    "UP",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.pyright]
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+include = ["src", "tests"]
+reportMissingTypeStubs = "none"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

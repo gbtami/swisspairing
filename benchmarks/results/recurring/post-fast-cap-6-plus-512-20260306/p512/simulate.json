@@ -1,0 +1,87 @@
+{
+  "exported_paths": [
+    "~/swisspairing/benchmarks/results/recurring/post-fast-cap-6-plus-512-20260306/p512/fixtures/sim0001_r02.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-fast-cap-6-plus-512-20260306/p512/fixtures/sim0002_r02.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-fast-cap-6-plus-512-20260306/p512/fixtures/sim0003_r02.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-fast-cap-6-plus-512-20260306/p512/fixtures/sim0004_r02.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-fast-cap-6-plus-512-20260306/p512/fixtures/sim0005_r02.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-fast-cap-6-plus-512-20260306/p512/fixtures/sim0006_r02.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-fast-cap-6-plus-512-20260306/p512/fixtures/sim0007_r02.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-fast-cap-6-plus-512-20260306/p512/fixtures/sim0008_r02.trf"
+  ],
+  "skipped": [],
+  "summary": {
+    "exported_files": 8,
+    "exported_tournaments": 8,
+    "output_dir": "~/swisspairing/benchmarks/results/recurring/post-fast-cap-6-plus-512-20260306/p512/fixtures",
+    "requested_tournaments": 8,
+    "seed": 20260818,
+    "skipped": 0
+  },
+  "tournaments": [
+    {
+      "completed_rounds": 2,
+      "planned_rounds": 5,
+      "players": 512,
+      "snapshots_written": 1,
+      "stop_reason": "pairing_error",
+      "tid": "sim0001"
+    },
+    {
+      "completed_rounds": 2,
+      "planned_rounds": 7,
+      "players": 512,
+      "snapshots_written": 1,
+      "stop_reason": "pairing_error",
+      "tid": "sim0002"
+    },
+    {
+      "completed_rounds": 2,
+      "planned_rounds": 9,
+      "players": 512,
+      "snapshots_written": 1,
+      "stop_reason": "pairing_error",
+      "tid": "sim0003"
+    },
+    {
+      "completed_rounds": 2,
+      "planned_rounds": 7,
+      "players": 512,
+      "snapshots_written": 1,
+      "stop_reason": "pairing_error",
+      "tid": "sim0004"
+    },
+    {
+      "completed_rounds": 2,
+      "planned_rounds": 9,
+      "players": 512,
+      "snapshots_written": 1,
+      "stop_reason": "pairing_error",
+      "tid": "sim0005"
+    },
+    {
+      "completed_rounds": 2,
+      "planned_rounds": 5,
+      "players": 512,
+      "snapshots_written": 1,
+      "stop_reason": "pairing_error",
+      "tid": "sim0006"
+    },
+    {
+      "completed_rounds": 2,
+      "planned_rounds": 6,
+      "players": 512,
+      "snapshots_written": 1,
+      "stop_reason": "pairing_error",
+      "tid": "sim0007"
+    },
+    {
+      "completed_rounds": 2,
+      "planned_rounds": 11,
+      "players": 512,
+      "snapshots_written": 1,
+      "stop_reason": "pairing_error",
+      "tid": "sim0008"
+    }
+  ]
+}

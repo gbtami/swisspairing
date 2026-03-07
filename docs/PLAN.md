@@ -1,0 +1,139 @@
+# Implementation Plan
+
+This plan targets a new Swiss pairing package intended to replace current
+`py4swiss` usage in `pychess-variants` over time, while using `rustworkx` for
+matching.
+
+## Scope Baseline
+
+- Rule sources:
+  - C.04.1 Basic rules for Swiss Systems (effective from 1 Feb 2026)
+  - C.04.2 General handling rules for Swiss Tournaments (effective from 1 Feb 2026)
+  - C.04.3 FIDE Dutch System (effective from 1 Feb 2026)
+- Initial target scale: up to ~300 active players.
+- Architecture principle: staged optimization aligned with FIDE criterion
+  priority ordering.
+
+## Milestones
+
+1. Foundation (this repository stage)
+- Typed domain model with explicit player pairing state.
+- FIDE reference constants and article tagging in code comments.
+- Bracket-level matcher based on `rustworkx.max_weight_matching`.
+- Initial criteria coverage:
+  - C.04.1 rule 2 (no rematch),
+  - C.04.1 rule 4 and C.04.3 C2 (full-point bye repeat block),
+  - C.04.3 C3 (absolute color conflict for non-topscorers),
+  - C.04.3 C5/C6/C7 partial staged objective for byes and downfloaters.
+- Extensive unit tests for deterministic behavior and constraints.
+
+2. Dutch bracket completeness
+- Full [C5]-[C21] staged objective handling for bracket candidate choice.
+- Exact transposition/exchange sequencing per C.04.3 section 4.
+- Deterministic candidate generation order per FIDE sequence rules.
+
+3. Tournament-level Dutch process
+- Full bracket chain handling with MDPs, remainders, PPB/CLB collapse logic.
+- Color allocation implementation E.1-E.5 equivalent.
+- TRF import/export adapters and pychess-compatible state adapter.
+
+4. Integration and parity
+- Golden tests against `py4swiss` for legacy-rule parity where needed.
+- 2026-rule conformance suites driven from frozen tournament fixtures.
+- Performance profiling and bounded-time stress tests (200-300 player targets).
+
+## Progress Snapshot (2026-03-06)
+
+- Completed:
+  - [C5]-[C21] candidate key implemented in bracket solver.
+  - Deterministic candidate tie-break with explicit generation sequence index.
+  - Article 4.2/4.3 exact sequence search for small homogeneous brackets
+    (bounded by player count), with large-bracket matching fallback.
+  - Initial tournament-level round chain (scoregroups + MDP carry-over).
+  - Article 3.7-style heterogeneous sequence expansion (MDP set, S2
+    transpositions, remainder candidate nesting).
+  - Large heterogeneous fixture tests and round-pipeline stress coverage.
+  - Golden harness against py4swiss with imported TRF fixtures and
+    parity/known-gap test split.
+  - Parity closure for D.2 criterion edge-case fixture (`dutch_d2_criterion_d`).
+  - Last-bracket unresolved handling now raises `PairingError`, closing
+    `no_legal_pairings` parity fixture.
+  - TRF `XXP` forbidden-pair constraints mapped into model and legality checks.
+  - Collapse-aware tournament round solving added for bracket-chain completion
+    and parity on `dutch_e2_both_absolute_higher_favored`.
+  - Round-level collapse search now limits [C8] tie-break lookahead to the
+    immediate next bracket, recovering sub-80-player benchmark runtime on the
+    checked-in recurring `p32` fixture catalog and removing strict-mode runner
+    errors there.
+  - Large-event fast path added to bound collapse-search runtime at higher
+    player counts.
+  - Typed pychess adapter module added for snapshot conversion and
+    user-object pairing mapping.
+  - Golden fixture catalog expanded with additional parity fixtures
+    (`burstein_late_entries_black`, `dubov_bye_for_high_tpn`, `invalid_code`).
+  - Cross-engine benchmark harness added (success-rate + p50/p95 latency)
+    for TRF fixture catalogs and pychess-exported TRF state batches.
+  - pychess dump-to-TRF batch exporter added for benchmark fixture generation
+    from `tournament*.json` production dumps.
+  - Seeded synthetic Swiss batch generator added for benchmark input creation
+    before production Swiss history is available.
+  - Recurring synthetic baseline runner added with run-level JSON reports and
+    append-only trend CSV (`benchmarks/run_recurring_baselines.py`).
+  - Benchmark summary now records both-ok equality rates separately from
+    over-all-case rates, and benchmark runs fail fast when the selected
+    interpreter cannot import `py4swiss`.
+  - Refreshed checked-in recurring baselines
+    (`post-c8-next-bracket-key-cut-20260306`,
+    `post-fast-cap-6-20260306`,
+    `post-fast-cap-6-plus-512-20260306`) and matching calibrated SLA presets added,
+    with per-profile pass/fail tracking in recurring baseline outputs.
+  - Pychess adapter runtime mode control added:
+    default `SWISSPAIRING_PAIRING_MODE=fast` (cap=6), explicit `strict` opt-in,
+    while preserving direct cap override via
+    `SWISSPAIRING_SEQUENTIAL_SEARCH_MAX_PLAYERS`.
+  - Benchmark runner now reports both `swisspairing_fast` and
+    `swisspairing_strict` metrics/equality rates and supports SLA-style gates
+    (success rate, timeout/runner error rate, p95 latency, p50 ratio).
+  - Local `bbpPairings` build now works as a second external oracle, and the
+    benchmark harness can run three-way TRF comparisons across
+    `swisspairing`, `py4swiss`, and `bbpPairings`.
+  - Strict exact-search now uses candidate-budget guards plus weighted odd
+    fallback routing, removing the large recurring `p32` / `p128` strict tail
+    without changing checked py4swiss parity.
+  - Recurring synthetic coverage now includes `p512`; the full checked-in
+    sweep still holds fast/strict parity there, fast mode stays at about
+    `0.47x` py4swiss `p50`, and the main added cost is synthetic export time.
+  - Checked-in 64-player regression TRFs added for the slow fast-mode tail.
+  - `PlayerState` now precomputes color-preference state, reducing repeated
+    candidate-scoring overhead in large benchmark cases.
+  - Current golden parity suite has no xfail fixtures.
+  - Imported checked-in Dutch reference fixtures from `bbpPairings`
+    (`dutch_2025_C5`, `dutch_2025_C9`, and tracked `issue_7`) plus the extra
+    upstream `py4swiss` parity fixture `burstein_late_entries.trf`.
+    `issue_7` is now a checked-in `xfail`; `dutch_2025_C5` is the first
+    concrete local fixture where `bbpPairings` and `swisspairing` agree while
+    `py4swiss` disagrees.
+  - `issue_7` diagnosis tightened: the decisive 14-player heterogeneous
+    bracket can reach the BBP result via the exact sequence path, but that
+    direct exact solve is still too slow to use naively; the checked gap
+    remains in the cheaper weighted heterogeneous plus round-collapse
+    selection path, so fixing the bracket tie-break alone is not enough.
+  - The heterogeneous structural tie-break is now limited to multi-MDP ties;
+    single-MDP final-bracket ties keep exact article sequence order again,
+    which restores BBP / py4swiss parity on the checked late-entry fixture.
+  - Added a Chess-Results XLSX importer plus a first checked-in real-world OTB
+    corpus reconstructed from Aeroflot Open 2026 (`9` pre-round TRF snapshots
+    and published-pairings manifest). The first checked round-2 and round-3
+    Aeroflot regressions now have direct tests and currently match the
+    published pairings in `swisspairing` fast mode, `bbpPairings`, and
+    `py4swiss`.
+  - Extended unit-test coverage for criteria and sequence behavior.
+- Next:
+  - Extend the real-world OTB corpus beyond Aeroflot and use it to drive the
+    remaining parity/conformance fixes.
+
+## Non-Goals (for stage 1)
+
+- Full C.04.3 heterogeneous-bracket sequencing (Article 3.7 / 4.4).
+- Unbounded exhaustive transposition enumeration for large brackets.
+- Production pychess integration hooks.
