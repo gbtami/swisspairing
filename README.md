@@ -95,7 +95,7 @@ If you are integrating from pychess-style snapshots instead of raw
 Normal local checks:
 
 ```bash
-uv run ruff format .
+uv run ruff format --check .
 uv run ruff check .
 uv run pyright
 uv run pytest

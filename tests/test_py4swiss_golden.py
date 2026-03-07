@@ -15,6 +15,7 @@ GOLDEN_DIRECTORY = Path(__file__).parent / "golden"
 FIXTURES_DIRECTORY = GOLDEN_DIRECTORY / "fixtures"
 RUNNER_PATH = GOLDEN_DIRECTORY / "py4swiss_compare_runner.py"
 
+
 def _build_runner_env() -> dict[str, str]:
     return build_pythonpath_env(Path(__file__).parent.parent / "src")
 

@@ -166,6 +166,21 @@ For multiple files, pass `--input` more than once. Use `--in-place` to rewrite
 files directly. `--xxr-mode bbp-next-round` shifts `XXR` by +1, which is useful
 for BBP compatibility on Lichess exports where `XXR` matches completed rounds.
 
+Refresh the checked Lichess corpus from local downloads in one command
+(normalize + fixture update + 4-engine compare summary):
+
+```bash
+benchmarks/import_lichess_fixtures.sh
+```
+
+Optional parameters:
+
+1. source dir (default: `~/Letöltések`)
+2. filename pattern (default: `lichess_swiss*.trf`)
+3. normalized output dir (default: `/tmp/normalized_trf_lichess`)
+4. checked fixture dir (default: `benchmarks/fixtures/lichess`)
+5. reference compare JSON output path
+
 Generate synthetic Swiss TRF batches when no production Swiss history exists:
 
 ```bash

@@ -59,8 +59,7 @@ def test_pair_color_quality_counts_absolute_preference_as_strong() -> None:
 
 def test_homogeneous_article_order_key_prefers_zero_exchange_candidate() -> None:
     players = tuple(
-        _player(player_id=f"p{i}", pairing_no=i, score=3, color_history=())
-        for i in range(1, 6)
+        _player(player_id=f"p{i}", pairing_no=i, score=3, color_history=()) for i in range(1, 6)
     )
     by_id = {player.player_id: player for player in players}
 
@@ -149,8 +148,7 @@ def test_heterogeneous_structural_tie_key_prefers_tighter_resident_remainder() -
 
 def test_single_mdp_heterogeneous_tie_keeps_article_sequence_order() -> None:
     players = tuple(
-        _player(player_id=f"p{i}", pairing_no=i, score=0, color_history=())
-        for i in range(8, 14)
+        _player(player_id=f"p{i}", pairing_no=i, score=0, color_history=()) for i in range(8, 14)
     )
     mdp = _player(player_id="p2", pairing_no=2, score=20, color_history=())
     by_id = {player.player_id: player for player in (*players, mdp)}
@@ -198,21 +196,30 @@ def test_homogeneous_exact_search_budget_skips_10_player_explosion() -> None:
 
     assert _heterogeneous_exact_candidate_upper_bound(9, 2) == 2520
     assert _heterogeneous_exact_candidate_upper_bound(11, 1) == 151200
-    assert _use_heterogeneous_exact_search(
-        9,
-        mdp_count=2,
-        sequential_search_max_players=12,
-    ) is True
-    assert _use_heterogeneous_exact_search(
-        9,
-        mdp_count=1,
-        sequential_search_max_players=12,
-    ) is False
-    assert _use_heterogeneous_exact_search(
-        11,
-        mdp_count=1,
-        sequential_search_max_players=12,
-    ) is False
+    assert (
+        _use_heterogeneous_exact_search(
+            9,
+            mdp_count=2,
+            sequential_search_max_players=12,
+        )
+        is True
+    )
+    assert (
+        _use_heterogeneous_exact_search(
+            9,
+            mdp_count=1,
+            sequential_search_max_players=12,
+        )
+        is False
+    )
+    assert (
+        _use_heterogeneous_exact_search(
+            11,
+            mdp_count=1,
+            sequential_search_max_players=12,
+        )
+        is False
+    )
 
 
 def test_pairable_mdp_sets_skip_infeasible_high_score_selection() -> None:

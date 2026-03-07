@@ -167,6 +167,12 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     `bbpPairings` + `swisspairing`, which is useful Swiss-Manager-lineage
     evidence but not stronger normative evidence than the 2026 FIDE rules plus
     BBP.
+  - Added a normalized Lichess Swiss TRF corpus with checked provenance notes,
+    plus a dedicated regression test module (`tests/test_lichess_reference.py`)
+    to lock current multi-engine behavior on those imported real-world cases.
+  - Added a one-command Lichess fixture refresh script
+    (`benchmarks/import_lichess_fixtures.sh`) that normalizes local downloads,
+    updates checked fixtures, and emits a reference-compare JSON snapshot.
   - Extended unit-test coverage for criteria and sequence behavior.
 - Next:
   - Extend the real-world OTB corpus beyond Aeroflot and use it to drive the

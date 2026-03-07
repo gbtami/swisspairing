@@ -42,6 +42,7 @@ As of 2026-03-07, the repo already has:
 
 Current validation expectation:
 
+- `uv run ruff format --check .` passes
 - `uv run ruff check .` passes
 - `uv run pyright` passes
 - `uv run pytest` is green
@@ -94,6 +95,7 @@ Use `uv` for setup, linting, typing, tests, and benchmark runners:
 
 ```bash
 uv sync --group dev
+uv run ruff format --check .
 uv run ruff check .
 uv run pyright
 uv run pytest
@@ -163,6 +165,7 @@ java -jar ~/JaVaFo/javafo.jar -r
 ### Fast sanity checks
 
 ```bash
+uv run ruff format --check .
 uv run ruff check .
 uv run pyright
 uv run pytest
@@ -253,6 +256,12 @@ uv run python benchmarks/normalize_trf16.py \
   --xxr-mode bbp-next-round
 ```
 
+Refresh the checked Lichess fixture corpus (normalize + update + compare):
+
+```bash
+benchmarks/import_lichess_fixtures.sh
+```
+
 ## Fixture Guidance
 
 - Prefer checked-in fixtures before inventing new ad hoc repros.
@@ -340,6 +349,7 @@ Current practical default:
 - After any material pairing-path change, rerun:
 
 ```bash
+uv run ruff format --check .
 uv run ruff check .
 uv run pyright
 uv run pytest

@@ -194,7 +194,7 @@ RECURRING_SYNTHETIC_SLA_PRESETS: dict[str, dict[int, BenchmarkSLA]] = {
             max_fast_p50_ratio=0.25,
             min_fast_equality_rate_when_both_ok=1.0,
         ),
-    }
+    },
 }
 
 
@@ -404,8 +404,7 @@ def _transform_trf_round_count_line(line: str, *, xxr_mode: str) -> str:
     """Transform an `XXR` line according to the selected mode."""
     if xxr_mode not in _LENIENT_TRF16_XXR_MODES:
         raise ValueError(
-            "xxr_mode must be one of "
-            f"{sorted(_LENIENT_TRF16_XXR_MODES)!r}, got {xxr_mode!r}"
+            f"xxr_mode must be one of {sorted(_LENIENT_TRF16_XXR_MODES)!r}, got {xxr_mode!r}"
         )
 
     stripped = line.strip()
@@ -427,8 +426,7 @@ def normalize_lenient_trf16_text(text: str, *, xxr_mode: str = "preserve") -> st
     """Normalize lenient TRF16 player lines to strict fixed-column TRF16 format."""
     if xxr_mode not in _LENIENT_TRF16_XXR_MODES:
         raise ValueError(
-            "xxr_mode must be one of "
-            f"{sorted(_LENIENT_TRF16_XXR_MODES)!r}, got {xxr_mode!r}"
+            f"xxr_mode must be one of {sorted(_LENIENT_TRF16_XXR_MODES)!r}, got {xxr_mode!r}"
         )
 
     trailing_newline = text.endswith("\n")
@@ -604,8 +602,7 @@ def build_trf_unplayed_games_by_player_id(trf: Any) -> dict[int, int]:
         results = cast(Sequence[Any], section.results)
         played_games = sum(
             int(
-                getattr(getattr(result, "result", None), "value", None)
-                in _PLAYED_TRF_RESULT_VALUES
+                getattr(getattr(result, "result", None), "value", None) in _PLAYED_TRF_RESULT_VALUES
             )
             for result in results
         )

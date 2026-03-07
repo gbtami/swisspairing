@@ -150,9 +150,7 @@ def parse_chess_results_round(
         (
             row[0].strip()
             for row in rows
-            if row
-            and row[0].strip().lower().startswith("round ")
-            and " on " in row[0].lower()
+            if row and row[0].strip().lower().startswith("round ") and " on " in row[0].lower()
         ),
         "",
     )
@@ -167,9 +165,7 @@ def parse_chess_results_round(
         black_name = row[10].strip() if len(row) > 10 else ""
         seat_kind = _seat_kind(black_name)
         black_starting_number = (
-            int(row[13].strip())
-            if len(row) > 13 and row[13].strip().isdigit()
-            else None
+            int(row[13].strip()) if len(row) > 13 and row[13].strip().isdigit() else None
         )
         parsed.append(
             ChessResultsPairingRecord(
@@ -436,9 +432,7 @@ def _non_game_result_token(*, result_text: str, seat_kind: str) -> str:
         return "H"
     if points_times_ten == 0:
         return "Z"
-    raise ValueError(
-        f"unsupported Chess-Results non-game result {result_text!r} for {seat_kind!r}"
-    )
+    raise ValueError(f"unsupported Chess-Results non-game result {result_text!r} for {seat_kind!r}")
 
 
 def _token_points_times_ten(result_token: str) -> int:

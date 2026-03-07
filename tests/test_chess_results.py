@@ -354,29 +354,18 @@ def test_build_chess_results_snapshot_reconstructs_game_bye_and_not_paired() -> 
     assert player_four.rank == 4
 
     assert tuple(
-        (token.opponent_starting_number, token.color, token.result)
-        for token in player_one.results
-    ) == (
-        (2, "w", "1"),
-    )
+        (token.opponent_starting_number, token.color, token.result) for token in player_one.results
+    ) == ((2, "w", "1"),)
     assert tuple(
-        (token.opponent_starting_number, token.color, token.result)
-        for token in player_two.results
-    ) == (
-        (1, "b", "0"),
-    )
+        (token.opponent_starting_number, token.color, token.result) for token in player_two.results
+    ) == ((1, "b", "0"),)
     assert tuple(
         (token.opponent_starting_number, token.color, token.result)
         for token in player_three.results
-    ) == (
-        (0, "-", "U"),
-    )
+    ) == ((0, "-", "U"),)
     assert tuple(
-        (token.opponent_starting_number, token.color, token.result)
-        for token in player_four.results
-    ) == (
-        (0, "-", "Z"),
-    )
+        (token.opponent_starting_number, token.color, token.result) for token in player_four.results
+    ) == ((0, "-", "Z"),)
 
 
 def test_checked_in_aeroflot_manifest_references_existing_trfs() -> None:
@@ -395,8 +384,7 @@ def test_checked_in_aeroflot_manifest_references_existing_trfs() -> None:
 @pytest.mark.skipif(
     not (_has_py4swiss_runtime() and _has_bbp_executable()),
     reason=(
-        "active Python interpreter or bbpPairings runtime unavailable for Aeroflot "
-        "reference checks"
+        "active Python interpreter or bbpPairings runtime unavailable for Aeroflot reference checks"
     ),
 )
 @pytest.mark.parametrize("round_number", [1, 2, 3])
@@ -417,8 +405,7 @@ def test_aeroflot_fast_pairing_matches_published_round(round_number: int) -> Non
 @pytest.mark.skipif(
     not (_has_py4swiss_runtime() and _has_bbp_executable()),
     reason=(
-        "active Python interpreter or bbpPairings runtime unavailable for Aeroflot "
-        "reference checks"
+        "active Python interpreter or bbpPairings runtime unavailable for Aeroflot reference checks"
     ),
 )
 @pytest.mark.parametrize(
@@ -507,8 +494,7 @@ def test_aeroflot_round_5_score_10_bracket_refines_single_mdp_partner() -> None:
 @pytest.mark.skipif(
     not (_has_py4swiss_runtime() and _has_bbp_executable()),
     reason=(
-        "active Python interpreter or bbpPairings runtime unavailable for Aeroflot "
-        "reference checks"
+        "active Python interpreter or bbpPairings runtime unavailable for Aeroflot reference checks"
     ),
 )
 def test_aeroflot_fast_round_5_matches_bbp_reference() -> None:

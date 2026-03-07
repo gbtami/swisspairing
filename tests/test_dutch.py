@@ -329,8 +329,9 @@ def test_pair_bracket_uses_odd_sequence_order_after_c9_rejects_first_bye() -> No
     assert ("p4", None) in pairs
 
 
-def test_pair_bracket_weighted_fallback_uses_odd_sequence_order_after_c9_rejects_first_bye(
-) -> None:
+def test_pair_bracket_weighted_fallback_uses_odd_sequence_order_after_c9_rejects_first_bye() -> (
+    None
+):
     players = (
         _player(player_id="p3", pairing_no=3, score=0, color_history=("black",), unplayed_games=1),
         _player(player_id="p4", pairing_no=4, score=0, color_history=("white",), unplayed_games=1),
@@ -348,8 +349,7 @@ def test_pair_bracket_large_weighted_final_bye_avoids_scanning_every_legal_bye(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     players = tuple(
-        _player(player_id=f"p{index}", pairing_no=index, score=0)
-        for index in range(1, 22)
+        _player(player_id=f"p{index}", pairing_no=index, score=0) for index in range(1, 22)
     )
 
     call_count = 0

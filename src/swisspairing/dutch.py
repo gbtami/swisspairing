@@ -323,8 +323,7 @@ def _use_homogeneous_exact_search(
 ) -> bool:
     return (
         player_count <= sequential_search_max_players
-        and _homogeneous_exact_candidate_upper_bound(player_count)
-        <= _MAX_EXACT_SEQUENCE_CANDIDATES
+        and _homogeneous_exact_candidate_upper_bound(player_count) <= _MAX_EXACT_SEQUENCE_CANDIDATES
     )
 
 
@@ -556,9 +555,8 @@ def _build_heterogeneous_matching_state(
 ) -> _HomogeneousMatchingState | None:
     ordered_players = tuple(sorted(players, key=_player_rank_key))
     split_size = len(ordered_players) // 2
-    max_score_difference = (
-        max((player.score for player in ordered_players), default=0)
-        - min((player.score for player in ordered_players), default=0)
+    max_score_difference = max((player.score for player in ordered_players), default=0) - min(
+        (player.score for player in ordered_players), default=0
     )
     edge_penalties: dict[tuple[str, str], int] = {}
     for left, right in combinations(ordered_players, 2):
@@ -836,9 +834,7 @@ def _homogeneous_article_order_key(
     )
     final_s2_by_s1.sort(key=lambda pair: _player_rank_key(pair[0]))
     unresolved_tail = [player.pairing_no for player in candidate.unresolved]
-    final_s2_order = tuple(
-        (*[low.pairing_no for _, low in final_s2_by_s1], *unresolved_tail)
-    )
+    final_s2_order = tuple((*[low.pairing_no for _, low in final_s2_by_s1], *unresolved_tail))
 
     return (
         len(moved_from_s1),
@@ -908,8 +904,7 @@ def _heterogeneous_structural_tie_key(
         )
     )
     unresolved_bsns = tuple(
-        player.pairing_no
-        for player in sorted(candidate.unresolved, key=_player_rank_key)
+        player.pairing_no for player in sorted(candidate.unresolved, key=_player_rank_key)
     )
 
     return (
@@ -1359,10 +1354,7 @@ def _refine_weighted_single_mdp_odd_candidate(
 ) -> _CandidateInternal | None:
     """Refine small one-MDP odd brackets by scanning resident partners only."""
     ordered_players = tuple(sorted(players, key=_player_rank_key))
-    if (
-        len(ordered_players) > _SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS
-        or len(context.mdp_ids) != 1
-    ):
+    if len(ordered_players) > _SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS or len(context.mdp_ids) != 1:
         return None
 
     mdp = next((player for player in ordered_players if player.player_id in context.mdp_ids), None)
@@ -1472,12 +1464,9 @@ def _solve_even_players(
         if sequence_result is not None:
             return sequence_result
 
-    if (
-        not context.mdp_ids
-        and _use_homogeneous_exact_search(
-            len(players),
-            sequential_search_max_players=sequential_search_max_players,
-        )
+    if not context.mdp_ids and _use_homogeneous_exact_search(
+        len(players),
+        sequential_search_max_players=sequential_search_max_players,
     ):
         sequence_result = _solve_even_players_via_sequence(players, context=context)
         if sequence_result is not None:
@@ -1898,9 +1887,7 @@ def _selected_mdp_set_is_pairable(
 
     options_by_mdp_id: dict[str, tuple[PlayerState, ...]] = {}
     for mdp in selected_mdps:
-        options = tuple(
-            resident for resident in residents if _is_legal_pair(mdp, resident)
-        )
+        options = tuple(resident for resident in residents if _is_legal_pair(mdp, resident))
         if not options:
             return False
         options_by_mdp_id[mdp.player_id] = options

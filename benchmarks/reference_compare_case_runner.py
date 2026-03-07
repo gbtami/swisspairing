@@ -370,9 +370,7 @@ def main() -> None:
     reference_pairings_equal: bool | None = None
     reference_pairings_equal_vs_javafo: bool | None = None
     if py4swiss_result["ok"] and swisspairing_result["ok"]:
-        pairings_equal_vs_py4swiss = (
-            py4swiss_result["pairings"] == swisspairing_result["pairings"]
-        )
+        pairings_equal_vs_py4swiss = py4swiss_result["pairings"] == swisspairing_result["pairings"]
     if bbp_result["ok"] and swisspairing_result["ok"]:
         pairings_equal_vs_bbp = bbp_result["pairings"] == swisspairing_result["pairings"]
     if javafo_result is not None and javafo_result["ok"] and swisspairing_result["ok"]:

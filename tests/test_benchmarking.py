@@ -152,9 +152,7 @@ def test_discover_bbp_executable_prefers_explicit_env(
     assert discover_bbp_executable() == executable
 
 
-def test_discover_javafo_jar_prefers_explicit_env(
-    monkeypatch: MonkeyPatch, tmp_path: Path
-) -> None:
+def test_discover_javafo_jar_prefers_explicit_env(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     jar_path = tmp_path / "javafo.jar"
     jar_path.write_text("", encoding="utf-8")
 
