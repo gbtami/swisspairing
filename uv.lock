@@ -306,15 +306,15 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "rustworkx", specifier = ">=0.17.1,<0.18.0" }]
+requires-dist = [{ name = "rustworkx", specifier = ">=0.17.1" }]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "networkx", specifier = ">=3.5,<4.0.0" },
-    { name = "py4swiss", specifier = ">=0.3.1,<0.4.0" },
-    { name = "pyright", specifier = ">=1.1.408,<2.0.0" },
-    { name = "pytest", specifier = ">=8.3.5,<9.0.0" },
-    { name = "ruff", specifier = ">=0.15.4,<0.16.0" },
+    { name = "networkx", specifier = ">=3.5" },
+    { name = "py4swiss", specifier = ">=0.3.1" },
+    { name = "pyright", specifier = ">=1.1.408" },
+    { name = "pytest", specifier = ">=8.3.5" },
+    { name = "ruff", specifier = ">=0.15.4" },
 ]
 
 [[package]]
