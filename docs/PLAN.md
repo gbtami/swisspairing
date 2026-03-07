@@ -173,13 +173,21 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - Added a one-command Lichess fixture refresh script
     (`benchmarks/import_lichess_fixtures.sh`) that normalizes local downloads,
     updates checked fixtures, and emits a reference-compare JSON snapshot.
+  - External pychess integration checkpoint completed on
+    `pychess-variants` branch `feature/swiss-py4swiss-integration`
+    (commit `7cdedf470460891e30a25321742098153b921063`):
+    backend selection via `SWISS_PAIRING_BACKEND`, Swiss TRF export endpoint
+    (`/games/export/tournament/{tournamentId}/trf`), Swiss summary TRF download
+    link in the client, and matching backend/API tests.
   - Extended unit-test coverage for criteria and sequence behavior.
 - Next:
   - Extend the real-world OTB corpus beyond Aeroflot and use it to drive the
     remaining parity/conformance fixes.
+  - Upstream and deploy the pychess integration checkpoint, then run staged
+    dual-backend soak checks before any default-backend flip.
 
 ## Non-Goals (for stage 1)
 
 - Full C.04.3 heterogeneous-bracket sequencing (Article 3.7 / 4.4).
 - Unbounded exhaustive transposition enumeration for large brackets.
-- Production pychess integration hooks.
+- Full pychess production cutover away from `py4swiss`.
