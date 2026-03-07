@@ -3,6 +3,7 @@
 This folder contains a reproducible benchmark harness for comparing:
 
 - `py4swiss` Dutch engine
+- optional `JaVaFo` public release for Swiss-Manager-lineage comparisons
 - `swisspairing` Dutch round pairing in both:
   - strict mode (`sequential_search_max_players=None`)
   - fast bounded mode (`sequential_search_max_players=6` by default)
@@ -24,9 +25,21 @@ The benchmark helpers auto-discover the executable from:
 3. `~/bbpPairings/bbpPairings.exe`
 4. `PATH`
 
+For optional JaVaFo comparisons, install a local Java runtime plus the public
+[`JaVaFo`](https://www.rrweb.org/javafo/) jar. The helpers auto-discover the
+jar from:
+
+1. `SWISSPAIRING_JAVAFO_JAR`
+2. `JAVAFO_JAR`
+3. `~/JaVaFo/javafo.jar`
+
 ## Scripts
 
 - `benchmark_py4swiss_compare.py`: multi-case driver with timeout isolation.
+- `benchmark_reference_compare.py`: multi-case driver for `py4swiss`,
+  `bbpPairings`, optional `JaVaFo`, and both `swisspairing` modes.
+- `reference_compare_case_runner.py`: single-case timed runner for the same
+  engine set.
 - `py4swiss_bench_case_runner.py`: single-case timed runner (JSON output).
 - `export_pychess_trf_batches.py`: export pychess dump snapshots to TRF
   benchmark cases.
@@ -176,6 +189,18 @@ uv run python benchmarks/benchmark_reference_compare.py \
   --bbp-executable ~/bbpPairings/bbpPairings.exe
 ```
 
+Run the same comparison with optional JaVaFo enabled:
+
+```bash
+uv run python benchmarks/benchmark_reference_compare.py \
+  --fixtures-dir tests/golden/fixtures \
+  --pattern '*.trf' \
+  --warmup 0 \
+  --repeats 1 \
+  --bbp-executable ~/bbpPairings/bbpPairings.exe \
+  --javafo-jar ~/JaVaFo/javafo.jar
+```
+
 Run recurring baseline profiles (default: 16, 32, 64, 128, 256, 512):
 
 ```bash
@@ -221,6 +246,12 @@ Output artifacts:
 - `bbpPairings` is the stronger external oracle for the remaining 2026 Dutch
   work, but the FIDE handbook is still the final authority if implementations
   disagree.
+- `JaVaFo` is useful here as a Swiss-Manager-lineage oracle, especially for
+  Aeroflot-style real-world investigations, but the public release should not
+  be treated as stronger 2026 rules authority than `bbpPairings`.
+- On the checked golden catalog, the public JaVaFo release currently agrees on
+  all pairable fixtures but does not reject the two impossible-fixture cases
+  that the other three engines reject.
 - Child runners prepend the repository `src/` directory to `PYTHONPATH`, so
   local source edits are used during benchmark subprocess runs.
 - `benchmarks/fixtures/chess_results/aeroflot_open_2026` is the first
@@ -249,4 +280,5 @@ Output artifacts:
   - pairing equality rates for `swisspairing_fast` and `swisspairing_strict`
     using both-ok denominators plus over-all-case rates,
   - global p50/p95 latencies (milliseconds) for both modes,
-  - p50 ratios (`swisspairing_fast` / `py4swiss`, `swisspairing_strict` / `py4swiss`).
+  - p50 ratios against any enabled external engine (`py4swiss`,
+    `bbpPairings`, `JaVaFo`).

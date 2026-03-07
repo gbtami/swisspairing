@@ -12,8 +12,10 @@ from swisspairing.benchmarking import (
     build_benchmark_summary,
     build_trf_unplayed_games_by_player_id,
     discover_bbp_executable,
+    discover_javafo_jar,
     evaluate_benchmark_sla,
     parse_bbp_pairings_output,
+    parse_javafo_pairings_output,
     portable_path_str,
 )
 
@@ -118,6 +120,25 @@ def test_parse_bbp_pairings_output_rejects_invalid_lines() -> None:
         raise AssertionError("expected invalid bbpPairings output to raise ValueError")
 
 
+def test_parse_javafo_pairings_output_normalizes_byes_and_colors() -> None:
+    output_text = "\n".join(("3", "3 1", "4 2", "6 0"))
+
+    pairings = parse_javafo_pairings_output(output_text)
+
+    assert pairings == [["1", "3"], ["2", "4"], ["6", None]]
+
+
+def test_parse_javafo_pairings_output_rejects_mismatched_pair_count() -> None:
+    output_text = "\n".join(("2", "1 3", "4 2", "6 0"))
+
+    try:
+        parse_javafo_pairings_output(output_text)
+    except ValueError as exc:
+        assert "expected 2 pairs" in str(exc)
+    else:
+        raise AssertionError("expected invalid JaVaFo output to raise ValueError")
+
+
 def test_discover_bbp_executable_prefers_explicit_env(
     monkeypatch: MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -128,6 +149,18 @@ def test_discover_bbp_executable_prefers_explicit_env(
     monkeypatch.delenv("BBP_PAIRINGS_EXE", raising=False)
 
     assert discover_bbp_executable() == executable
+
+
+def test_discover_javafo_jar_prefers_explicit_env(
+    monkeypatch: MonkeyPatch, tmp_path: Path
+) -> None:
+    jar_path = tmp_path / "javafo.jar"
+    jar_path.write_text("", encoding="utf-8")
+
+    monkeypatch.setenv("SWISSPAIRING_JAVAFO_JAR", str(jar_path))
+    monkeypatch.delenv("JAVAFO_JAR", raising=False)
+
+    assert discover_javafo_jar() == jar_path
 
 
 def test_portable_path_str_rewrites_home_paths() -> None:

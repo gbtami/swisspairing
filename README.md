@@ -4,7 +4,8 @@
 
 It is being developed as a new pairing engine for eventual use in
 `pychess-variants`, with correctness driven by the FIDE rules and validated
-against external implementations such as `bbpPairings` and `py4swiss`.
+against external implementations such as `bbpPairings`, `py4swiss`, and
+optionally `JaVaFo` for Swiss-Manager-lineage comparisons.
 
 ## Status
 
@@ -20,6 +21,8 @@ work, but it is still under active development.
   still pending.
 
 For the current roadmap and progress notes, see [docs/PLAN.md](docs/PLAN.md).
+For the rule-transition notes that matter for this repo, see
+[docs/RULEBOOK_DIFF_2026.md](docs/RULEBOOK_DIFF_2026.md).
 
 ## Features
 
@@ -27,7 +30,8 @@ For the current roadmap and progress notes, see [docs/PLAN.md](docs/PLAN.md).
 - Dutch bracket and round pairing entry points.
 - pychess-oriented snapshot adapter helpers.
 - Synthetic tournament generation for regression and benchmark work.
-- Benchmark tooling against `py4swiss` and `bbpPairings`.
+- Benchmark tooling against `py4swiss` and `bbpPairings`, with optional
+  `JaVaFo` support for Swiss-Manager-lineage checks.
 
 ## Installation
 
@@ -53,6 +57,10 @@ make
 
 If the executable is not at `~/bbpPairings/bbpPairings.exe`, set
 `SWISSPAIRING_BBP_EXECUTABLE`.
+
+For optional Swiss-Manager-lineage comparisons, install the public
+[`JaVaFo`](https://www.rrweb.org/javafo/) jar separately and either place it
+at `~/JaVaFo/javafo.jar` or set `SWISSPAIRING_JAVAFO_JAR`.
 
 ## Quick Start
 
@@ -96,4 +104,6 @@ Benchmark and reference-compare tooling is documented in
 
 - FIDE remains the rules authority.
 - `bbpPairings` is used as the stronger external 2026 Dutch reference.
+- `JaVaFo` is useful as a Swiss-Manager-lineage reference, not as a stronger
+  2026 rules oracle than `bbpPairings`.
 - `py4swiss` is mainly a compatibility reference for pychess replacement work.

@@ -23,7 +23,9 @@ Practical oracle order used in this repo:
 
 1. FIDE handbook
 2. `bbpPairings` as the stronger external 2026 Dutch oracle
-3. `py4swiss` as the legacy compatibility oracle for pychess replacement risk
+3. `JaVaFo` as an optional Swiss-Manager-lineage oracle for real-world event
+   investigation, not as a stronger 2026 authority than BBP
+4. `py4swiss` as the legacy compatibility oracle for pychess replacement risk
 
 If `py4swiss` and FIDE/BBP disagree, do not silently follow parity. Flag the
 case as a likely upstream-report candidate.
@@ -34,7 +36,8 @@ As of 2026-03-07, the repo already has:
 
 - round-level Dutch pairing with bracket chaining
 - typed pychess adapter helpers
-- parity and benchmark harnesses against `py4swiss` and `bbpPairings`
+- parity and benchmark harnesses against `py4swiss`, `bbpPairings`, and
+  optional `JaVaFo`
 - checked-in synthetic, BBP-imported, and first real-world OTB fixture corpora
 
 Current validation expectation:
@@ -42,7 +45,7 @@ Current validation expectation:
 - `uv run ruff check .` passes
 - `uv run pyright` passes
 - `uv run pytest` is green with one expected xfail:
-  `121 passed, 1 xfailed`
+  `124 passed, 1 xfailed`
   `tests/test_bbp_reference.py::test_bbp_reference_issue_7_matches_bbp_expected_output`
 
 Important open items:
@@ -65,6 +68,9 @@ Important open items:
   corpora.
 - `docs/PLAN.md`
   Progress snapshot and remaining roadmap. Start here for project status.
+- `docs/RULEBOOK_DIFF_2026.md`
+  Working note about the pre-2026 to 2026 FIDE transition and how it affects
+  repo evidence.
 - `README.md`
   Human-facing project overview.
 
@@ -127,6 +133,25 @@ If the executable is somewhere else, set one of:
 - `SWISSPAIRING_BBP_EXECUTABLE`
 - `BBP_PAIRINGS_EXE`
 
+For Swiss-Manager-lineage comparisons, use the public JaVaFo jar plus a local
+Java runtime.
+
+Typical local layout:
+
+- jar: `~/JaVaFo/javafo.jar`
+
+Discovery order:
+
+1. `SWISSPAIRING_JAVAFO_JAR`
+2. `JAVAFO_JAR`
+3. `~/JaVaFo/javafo.jar`
+
+Sanity check:
+
+```bash
+java -jar ~/JaVaFo/javafo.jar -r
+```
+
 ## Commands That Matter
 
 ### Fast sanity checks
@@ -160,7 +185,7 @@ uv run python benchmarks/reference_compare_case_runner.py \
   --bbp-executable ~/bbpPairings/bbpPairings.exe
 ```
 
-### Full three-way catalog compare
+### Full multi-engine catalog compare
 
 ```bash
 uv run python benchmarks/benchmark_reference_compare.py \
@@ -168,7 +193,8 @@ uv run python benchmarks/benchmark_reference_compare.py \
   --pattern '*.trf' \
   --warmup 0 \
   --repeats 1 \
-  --bbp-executable ~/bbpPairings/bbpPairings.exe
+  --bbp-executable ~/bbpPairings/bbpPairings.exe \
+  --javafo-jar ~/JaVaFo/javafo.jar
 ```
 
 ### Recurring synthetic baselines
@@ -218,6 +244,16 @@ files live next to the starting list, the exporter auto-discovers them.
   covered in `tests/test_chess_results.py`.
 - Aeroflot round 5 is the main real-world BBP-backed Dutch regression and is
   also covered in `tests/test_chess_results.py`.
+- Aeroflot 2026 regulations say the pairings were managed by `Swiss Manager`;
+  later published-pairing differences where `swisspairing`, `bbpPairings`,
+  and `py4swiss` all agree with each other should therefore not be treated as
+  automatic FIDE/BBP evidence against the current solver.
+- When the question is specifically about published Swiss-Manager behavior,
+  use `JaVaFo` as an extra lineage reference before concluding the published
+  result reflects a 2026 Dutch rule difference.
+- The checked Aeroflot TRF snapshots show no acceleration markers, so
+  `C.04.7` does not currently look like the main explanation for the observed
+  Aeroflot gaps.
 
 ## Integration Tuning
 
@@ -245,6 +281,19 @@ Current practical default:
 - Aeroflot round 5 is another concrete `bbpPairings`/`swisspairing` vs
   `py4swiss` split, but only on the final 3-player bracket; `swisspairing`
   now matches `bbpPairings` there
+- On the checked public JaVaFo release, Aeroflot round 5 aligns with the
+  `py4swiss` side rather than the BBP/2026 side. Treat that as Swiss-Manager
+  lineage evidence, not as stronger normative evidence than FIDE + BBP.
+- On the checked golden catalog, the public JaVaFo release agrees on all
+  pairable fixtures but does not reject the two impossible-fixture cases that
+  `swisspairing`, `bbpPairings`, and `py4swiss` all reject.
+- The 2026 FIDE rules changed materially from the pre-2026 Dutch rules:
+  `C.04.2` now allows several limited post-publication pairing changes, and
+  `C.04.3` replaced the old PSD / PPB / CLB framing with the newer
+  PAB + [C5]-[C21] criterion stack. Do not assume a pre-2026 Dutch oracle is
+  still normatively valid for 2026 events.
+- The checked summary of those rulebook deltas lives in
+  `docs/RULEBOOK_DIFF_2026.md`.
 - `issue_7` remains the tracked BBP-backed xfail and is believed to live in the
   weighted heterogeneous plus round-collapse path, not the basic exact critical
   bracket itself

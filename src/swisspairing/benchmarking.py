@@ -228,6 +228,38 @@ def parse_bbp_pairings_output(output_text: str) -> list[list[str | None]]:
     return normalized
 
 
+def parse_javafo_pairings_output(output_text: str) -> list[list[str | None]]:
+    """Parse JaVaFo `-p` output into normalized unordered pairings."""
+    lines = [line.strip() for line in output_text.splitlines() if line.strip()]
+    if not lines:
+        raise ValueError("JaVaFo output is empty")
+
+    header = lines[0].split()
+    if len(header) != 1 or not header[0].isdigit():
+        raise ValueError("JaVaFo output header must be a pair count")
+
+    expected_pairs = int(header[0])
+    normalized: list[list[str | None]] = []
+    for line in lines[1:]:
+        pair = line.split()
+        if len(pair) != 2 or not pair[0].isdigit() or not pair[1].isdigit():
+            raise ValueError(f"invalid JaVaFo pairing line: {line!r}")
+        white_id, black_id = pair
+        if black_id == "0":
+            normalized.append([white_id, None])
+            continue
+        ordered = sorted((white_id, black_id))
+        normalized.append([ordered[0], ordered[1]])
+
+    if len(normalized) != expected_pairs:
+        raise ValueError(
+            f"JaVaFo output expected {expected_pairs} pairs but contained {len(normalized)}"
+        )
+
+    normalized.sort(key=lambda pair: (pair[1] is None, pair[0], pair[1] or ""))
+    return normalized
+
+
 def portable_path_str(path: str | Path) -> str:
     """Render paths under the current home directory with a `~/` prefix."""
 
@@ -298,6 +330,45 @@ def discover_bbp_executable() -> Path | None:
         if discovered:
             return Path(discovered)
     return None
+
+
+def discover_javafo_jar() -> Path | None:
+    """Return the local JaVaFo jar if it can be discovered.
+
+    Resolution order:
+    1. `SWISSPAIRING_JAVAFO_JAR`
+    2. `JAVAFO_JAR` (legacy name kept for compatibility)
+    3. `~/JaVaFo/javafo.jar`
+    """
+
+    for env_name in ("SWISSPAIRING_JAVAFO_JAR", "JAVAFO_JAR"):
+        env_value = os.environ.get(env_name)
+        if env_value:
+            return Path(env_value).expanduser()
+
+    home_default = Path.home() / "JaVaFo" / "javafo.jar"
+    if home_default.exists():
+        return home_default
+
+    return None
+
+
+def javafo_runtime_probe(javafo_jar: str | Path) -> tuple[bool, str]:
+    """Return whether the given JaVaFo jar can be executed."""
+    probe = subprocess.run(
+        ["java", "-jar", str(Path(javafo_jar).expanduser()), "-r"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if probe.returncode == 0:
+        message = probe.stdout.strip() or "JaVaFo probe succeeded"
+        return True, message
+
+    message = probe.stderr.strip() or probe.stdout.strip()
+    if not message:
+        message = f"JaVaFo probe failed with exit code {probe.returncode}"
+    return False, message
 
 
 def build_trf_unplayed_games_by_player_id(trf: Any) -> dict[int, int]:

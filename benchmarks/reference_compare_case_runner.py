@@ -21,6 +21,7 @@ from py4swiss.trf import TrfParser
 from swisspairing.benchmarking import (
     build_trf_unplayed_games_by_player_id,
     parse_bbp_pairings_output,
+    parse_javafo_pairings_output,
     percentile,
     portable_path_str,
 )
@@ -216,6 +217,59 @@ def _time_bbp(
     )
 
 
+def _run_javafo_once(
+    javafo_jar: str,
+    trf_path: Path,
+) -> tuple[str | None, list[list[str | None]]]:
+    with tempfile.TemporaryDirectory(prefix="javafo_pairings_") as temp_dir:
+        output_path = Path(temp_dir) / "pairings.out"
+        completed = subprocess.run(
+            ["java", "-jar", javafo_jar, str(trf_path), "-p", str(output_path)],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode != 0:
+            message = completed.stderr.strip() or completed.stdout.strip()
+            return message or f"JaVaFo exited with code {completed.returncode}", []
+        if not output_path.exists():
+            message = completed.stderr.strip() or completed.stdout.strip()
+            return message or "JaVaFo did not produce an output file", []
+        return None, parse_javafo_pairings_output(output_path.read_text(encoding="utf-8"))
+
+
+def _time_javafo(
+    trf_path: Path,
+    *,
+    warmup: int,
+    repeats: int,
+    javafo_jar: str,
+) -> dict[str, Any]:
+    timings_ms: list[float] = []
+    last_pairings: list[list[str | None]] = []
+    error: str | None = None
+
+    for _ in range(warmup):
+        error, last_pairings = _run_javafo_once(javafo_jar, trf_path)
+        if error is not None:
+            break
+
+    if error is None:
+        for _ in range(repeats):
+            start_ns = time.perf_counter_ns()
+            error, last_pairings = _run_javafo_once(javafo_jar, trf_path)
+            if error is not None:
+                break
+            timings_ms.append((time.perf_counter_ns() - start_ns) / 1_000_000)
+
+    return _timed_result(
+        ok=error is None,
+        error=error,
+        timings_ms=timings_ms,
+        pairings=last_pairings,
+    )
+
+
 def _time_swisspairing(
     states: tuple[PlayerState, ...],
     *,
@@ -276,6 +330,7 @@ def main() -> None:
         default=_DEFAULT_FAST_SEQUENTIAL_SEARCH_MAX_PLAYERS,
     )
     parser.add_argument("--bbp-executable", required=True)
+    parser.add_argument("--javafo-jar")
     args = parser.parse_args()
     if args.fast_sequential_search_max_players < 0:
         raise SystemExit("--fast-sequential-search-max-players must be >= 0")
@@ -291,6 +346,14 @@ def main() -> None:
         repeats=args.repeats,
         bbp_executable=args.bbp_executable,
     )
+    javafo_result: dict[str, Any] | None = None
+    if args.javafo_jar:
+        javafo_result = _time_javafo(
+            trf_path,
+            warmup=args.warmup,
+            repeats=args.repeats,
+            javafo_jar=args.javafo_jar,
+        )
     swisspairing_limit = (
         None if args.swisspairing_mode == "strict" else args.fast_sequential_search_max_players
     )
@@ -303,15 +366,23 @@ def main() -> None:
 
     pairings_equal_vs_py4swiss: bool | None = None
     pairings_equal_vs_bbp: bool | None = None
+    pairings_equal_vs_javafo: bool | None = None
     reference_pairings_equal: bool | None = None
+    reference_pairings_equal_vs_javafo: bool | None = None
     if py4swiss_result["ok"] and swisspairing_result["ok"]:
         pairings_equal_vs_py4swiss = (
             py4swiss_result["pairings"] == swisspairing_result["pairings"]
         )
     if bbp_result["ok"] and swisspairing_result["ok"]:
         pairings_equal_vs_bbp = bbp_result["pairings"] == swisspairing_result["pairings"]
+    if javafo_result is not None and javafo_result["ok"] and swisspairing_result["ok"]:
+        pairings_equal_vs_javafo = javafo_result["pairings"] == swisspairing_result["pairings"]
     if py4swiss_result["ok"] and bbp_result["ok"]:
         reference_pairings_equal = py4swiss_result["pairings"] == bbp_result["pairings"]
+    if javafo_result is not None and py4swiss_result["ok"] and javafo_result["ok"]:
+        reference_pairings_equal_vs_javafo = (
+            py4swiss_result["pairings"] == javafo_result["pairings"]
+        )
 
     payload = {
         "trf": portable_path_str(trf_path),
@@ -327,6 +398,11 @@ def main() -> None:
         "pairings_equal_vs_bbp": pairings_equal_vs_bbp,
         "reference_pairings_equal": reference_pairings_equal,
     }
+    if javafo_result is not None:
+        payload["javafo_jar"] = portable_path_str(args.javafo_jar)
+        payload["javafo"] = javafo_result
+        payload["pairings_equal_vs_javafo"] = pairings_equal_vs_javafo
+        payload["reference_pairings_equal_vs_javafo"] = reference_pairings_equal_vs_javafo
     print(json.dumps(payload, sort_keys=True))
 
 
