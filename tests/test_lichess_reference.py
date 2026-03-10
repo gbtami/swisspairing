@@ -121,6 +121,17 @@ def test_lichess_reference_bullet_increment_fast_matches_py4swiss_and_javafo() -
     assert payload["pairings_equal_vs_bbp"] is False
 
 
+def test_lichess_reference_weekly_20260214_fast_matches_py4swiss_and_javafo() -> None:
+    payload = _run_fixture(
+        "lichess_swiss_2026.02.14_cY3wR140_weekly-agca-prize-50-dollars.trf",
+        mode="fast",
+    )
+
+    assert payload["pairings_equal_vs_py4swiss"] is True
+    assert payload["pairings_equal_vs_javafo"] is True
+    assert payload["pairings_equal_vs_bbp"] is False
+
+
 def test_lichess_reference_bullet_increment_strict_matches_py4swiss_and_javafo() -> None:
     payload = _run_fixture("lichess_swiss_2026.03.03_7TYuxURK_bullet-increment.trf", mode="strict")
 

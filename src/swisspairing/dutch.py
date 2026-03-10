@@ -2118,6 +2118,17 @@ def _solve_without_bye_candidate(
         )
         if weighted_candidate is not None and weighted_candidate.unresolved:
             if len(weighted_candidate.unresolved) == 1:
+                if (
+                    len(context.mdp_ids) == 1
+                    and sequential_search_max_players < _SEQUENTIAL_SEARCH_MAX_PLAYERS
+                ):
+                    refined_single_mdp = _refine_weighted_single_mdp_odd_candidate(
+                        ordered_players,
+                        context=context,
+                        sequential_search_max_players=sequential_search_max_players,
+                    )
+                    if refined_single_mdp is not None:
+                        return refined_single_mdp
                 if context.mdp_ids and len(ordered_players) <= _ODD_DOWNFLOATER_SCAN_MAX_PLAYERS:
                     return _refine_weighted_heterogeneous_odd_candidate(
                         ordered_players,
@@ -2134,14 +2145,6 @@ def _solve_without_bye_candidate(
                         weighted_candidate=weighted_candidate,
                         sequential_search_max_players=sequential_search_max_players,
                     )
-                if len(context.mdp_ids) == 1:
-                    refined_single_mdp = _refine_weighted_single_mdp_odd_candidate(
-                        ordered_players,
-                        context=context,
-                        sequential_search_max_players=sequential_search_max_players,
-                    )
-                    if refined_single_mdp is not None:
-                        return refined_single_mdp
             return weighted_candidate
 
     generated: list[_CandidateInternal] = []
