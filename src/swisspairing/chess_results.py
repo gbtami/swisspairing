@@ -8,12 +8,15 @@ from typing import TYPE_CHECKING
 from xml.etree import ElementTree
 from zipfile import ZipFile
 
+from swisspairing.model import FloatKind
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
 _XLSX_NS = {"a": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 _HALF_POINT_GLYPH = "\u00bd"
 _DRAW_RESULT_TEXT = f"{_HALF_POINT_GLYPH} - {_HALF_POINT_GLYPH}"
+_PLAYED_RESULT_TOKENS = frozenset({"1", "=", "0"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +84,64 @@ class ChessResultsSnapshot:
     total_rounds: int
     first_round_color_white1: bool
     players: tuple[ChessResultsPlayerSnapshot, ...]
+
+
+def build_chess_results_float_history(
+    snapshot: ChessResultsSnapshot,
+) -> dict[int, tuple[FloatKind, ...]]:
+    """Derive per-player float history from a reconstructed Chess-Results snapshot."""
+
+    players_by_number = {player.player.starting_number: player for player in snapshot.players}
+    points_by_number = {number: 0 for number in players_by_number}
+    history_by_number: dict[int, list[FloatKind]] = {number: [] for number in players_by_number}
+    completed_rounds = snapshot.target_round_number - 1
+
+    for round_index in range(completed_rounds):
+        round_assignments = {number: FloatKind.NONE for number in players_by_number}
+
+        for number, player in players_by_number.items():
+            token = player.results[round_index]
+
+            if token.color == "w" and token.opponent_starting_number != 0:
+                opponent_number = token.opponent_starting_number
+                opponent = players_by_number[opponent_number]
+                opponent_token = opponent.results[round_index]
+
+                if (
+                    token.result in _PLAYED_RESULT_TOKENS
+                    and opponent_token.result in _PLAYED_RESULT_TOKENS
+                ):
+                    white_score = points_by_number[number]
+                    black_score = points_by_number[opponent_number]
+                    if white_score != black_score:
+                        higher_number, lower_number = (
+                            (number, opponent_number)
+                            if (-white_score, number) <= (-black_score, opponent_number)
+                            else (opponent_number, number)
+                        )
+                        round_assignments[higher_number] = FloatKind.DOWN
+                        round_assignments[lower_number] = FloatKind.UP
+                else:
+                    for assignee_number, assignee_token in (
+                        (number, token),
+                        (opponent_number, opponent_token),
+                    ):
+                        if assignee_token.result not in _PLAYED_RESULT_TOKENS and (
+                            _token_points_times_ten(assignee_token.result) > 0
+                        ):
+                            round_assignments[assignee_number] = FloatKind.DOWN
+                continue
+
+            if token.color == "-" and _token_points_times_ten(token.result) > 0:
+                round_assignments[number] = FloatKind.DOWN
+
+        for number, assignment in round_assignments.items():
+            history_by_number[number].append(assignment)
+            points_by_number[number] += _token_points_times_ten(
+                players_by_number[number].results[round_index].result
+            )
+
+    return {number: tuple(history) for number, history in history_by_number.items()}
 
 
 def load_chess_results_rows(path: Path) -> tuple[tuple[str, ...], ...]:

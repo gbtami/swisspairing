@@ -7,6 +7,14 @@ from typing import Literal
 
 import pytest
 
+from swisspairing.chess_results import (
+    ChessResultsPairingRecord,
+    ChessResultsPlayerRecord,
+    ChessResultsRoundRecord,
+    ChessResultsTournamentRecord,
+    build_chess_results_float_history,
+    build_chess_results_snapshot,
+)
 from swisspairing.dutch import BracketContext, pair_bracket
 from swisspairing.exceptions import PairingError
 from swisspairing.model import Color, FloatAssignment, FloatKind, PairingResult, PlayerState
@@ -288,6 +296,81 @@ def test_c0403_1_4_4_only_reports_defined_float_assignments() -> None:
     result = pair_bracket(players)
 
     assert result.float_assignments == ()
+
+
+def test_c0403_1_4_3_derives_historical_unplayed_score_rounds_as_downfloats() -> None:
+    tournament = ChessResultsTournamentRecord(
+        name="Sample Event",
+        last_update="Last update 2026-03-07",
+        players=(
+            ChessResultsPlayerRecord(1, "", "Player 1", "", "", 2500, ""),
+            ChessResultsPlayerRecord(2, "", "Player 2", "", "", 2400, ""),
+        ),
+        rounds=(
+            ChessResultsRoundRecord(
+                round_number=1,
+                label="Round 1 on 2026/03/01 at 12:00",
+                pairings=(
+                    ChessResultsPairingRecord(
+                        round_number=1,
+                        board_number=1,
+                        white_starting_number=1,
+                        white_name="Player 1",
+                        white_rating=2500,
+                        white_points_times_ten=0,
+                        result_text="1",
+                        black_points_times_ten=None,
+                        black_name="not paired",
+                        black_rating=None,
+                        black_starting_number=None,
+                        seat_kind="not_paired",
+                    ),
+                    ChessResultsPairingRecord(
+                        round_number=1,
+                        board_number=2,
+                        white_starting_number=2,
+                        white_name="Player 2",
+                        white_rating=2400,
+                        white_points_times_ten=0,
+                        result_text="0",
+                        black_points_times_ten=None,
+                        black_name="not paired",
+                        black_rating=None,
+                        black_starting_number=None,
+                        seat_kind="not_paired",
+                    ),
+                ),
+            ),
+            ChessResultsRoundRecord(
+                round_number=2,
+                label="Round 2 on 2026/03/01 at 17:00",
+                pairings=(
+                    ChessResultsPairingRecord(
+                        round_number=2,
+                        board_number=1,
+                        white_starting_number=1,
+                        white_name="Player 1",
+                        white_rating=2500,
+                        white_points_times_ten=10,
+                        result_text="1 - 0",
+                        black_points_times_ten=0,
+                        black_name="Player 2",
+                        black_rating=2400,
+                        black_starting_number=2,
+                        seat_kind="game",
+                    ),
+                ),
+            ),
+        ),
+        first_round_color_white1=True,
+    )
+
+    snapshot = build_chess_results_snapshot(tournament, target_round_number=2)
+
+    assert build_chess_results_float_history(snapshot) == {
+        1: (FloatKind.DOWN,),
+        2: (FloatKind.NONE,),
+    }
 
 
 def test_c0403_1_3_2_and_1_9_2_carry_mdps_into_the_next_scoregroup() -> None:
@@ -809,14 +892,16 @@ RULE_GROUPS = (
         ),
     ),
     RuleGroup(
-        status="partially_tested",
+        status="tested",
         reason=(
-            "Pairing results expose the PAB-downfloat part of this clause, but "
-            "the separate unplayed-score history still arrives through caller-"
-            "supplied state."
+            "Both the current-round PAB case and the historical unplayed-score "
+            "case are now directly covered."
         ),
         clauses=("C0403.1.4.3",),
-        tests=("test_c0403_1_4_3_reports_pairing_allocated_byes_as_downfloats",),
+        tests=(
+            "test_c0403_1_4_3_reports_pairing_allocated_byes_as_downfloats",
+            "test_c0403_1_4_3_derives_historical_unplayed_score_rounds_as_downfloats",
+        ),
     ),
     RuleGroup(
         status="tested",
@@ -881,16 +966,17 @@ RULE_GROUPS = (
         tests=("test_c0403_1_4_1_and_c6_downfloat_the_single_unavoidable_player",),
     ),
     RuleGroup(
-        status="partially_tested",
+        status="tested",
         reason=(
-            "The result type now exposes current-round float assignments, but "
-            "the parent article also includes the partially covered 1.4.3 case."
+            "Current-round float assignments and historical unplayed-score "
+            "floats are both directly covered."
         ),
         clauses=("C0403.1.4",),
         tests=(
             "test_c0403_1_4_1_and_c6_downfloat_the_single_unavoidable_player",
             "test_c0403_1_4_2_reports_opposite_floats_for_cross_score_games",
             "test_c0403_1_4_3_reports_pairing_allocated_byes_as_downfloats",
+            "test_c0403_1_4_3_derives_historical_unplayed_score_rounds_as_downfloats",
             "test_c0403_1_4_4_only_reports_defined_float_assignments",
         ),
     ),

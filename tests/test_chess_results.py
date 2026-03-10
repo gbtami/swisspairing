@@ -24,6 +24,7 @@ from swisspairing.chess_results import (
     ChessResultsPlayerRecord,
     ChessResultsRoundRecord,
     ChessResultsTournamentRecord,
+    build_chess_results_float_history,
     build_chess_results_snapshot,
     parse_chess_results_points,
     published_pairings_for_round,
@@ -369,6 +370,127 @@ def test_build_chess_results_snapshot_reconstructs_game_bye_and_not_paired() -> 
     assert tuple(
         (token.opponent_starting_number, token.color, token.result) for token in player_four.results
     ) == ((0, "-", "Z"),)
+
+
+def test_build_chess_results_float_history_covers_forfeit_and_non_game_downfloats() -> None:
+    tournament = ChessResultsTournamentRecord(
+        name="Sample Event",
+        last_update="Last update 2026-03-07",
+        players=(
+            _player(1, rating=2500),
+            _player(2, rating=2400),
+            _player(3, rating=2300),
+            _player(4, rating=2200),
+        ),
+        rounds=(
+            ChessResultsRoundRecord(
+                round_number=1,
+                label="Round 1 on 2026/03/01 at 12:00",
+                pairings=(
+                    ChessResultsPairingRecord(
+                        round_number=1,
+                        board_number=1,
+                        white_starting_number=1,
+                        white_name="Player 1",
+                        white_rating=2500,
+                        white_points_times_ten=0,
+                        result_text="+ - -",
+                        black_points_times_ten=0,
+                        black_name="Player 2",
+                        black_rating=2400,
+                        black_starting_number=2,
+                        seat_kind="game",
+                    ),
+                    ChessResultsPairingRecord(
+                        round_number=1,
+                        board_number=2,
+                        white_starting_number=3,
+                        white_name="Player 3",
+                        white_rating=2300,
+                        white_points_times_ten=0,
+                        result_text="1",
+                        black_points_times_ten=None,
+                        black_name="bye",
+                        black_rating=None,
+                        black_starting_number=None,
+                        seat_kind="bye",
+                    ),
+                    ChessResultsPairingRecord(
+                        round_number=1,
+                        board_number=3,
+                        white_starting_number=4,
+                        white_name="Player 4",
+                        white_rating=2200,
+                        white_points_times_ten=0,
+                        result_text="1",
+                        black_points_times_ten=None,
+                        black_name="not paired",
+                        black_rating=None,
+                        black_starting_number=None,
+                        seat_kind="not_paired",
+                    ),
+                ),
+            ),
+            ChessResultsRoundRecord(
+                round_number=2,
+                label="Round 2 on 2026/03/01 at 17:00",
+                pairings=(
+                    ChessResultsPairingRecord(
+                        round_number=2,
+                        board_number=1,
+                        white_starting_number=1,
+                        white_name="Player 1",
+                        white_rating=2500,
+                        white_points_times_ten=10,
+                        result_text="1 - 0",
+                        black_points_times_ten=10,
+                        black_name="Player 3",
+                        black_rating=2300,
+                        black_starting_number=3,
+                        seat_kind="game",
+                    ),
+                    ChessResultsPairingRecord(
+                        round_number=2,
+                        board_number=2,
+                        white_starting_number=2,
+                        white_name="Player 2",
+                        white_rating=2400,
+                        white_points_times_ten=0,
+                        result_text="0",
+                        black_points_times_ten=None,
+                        black_name="not paired",
+                        black_rating=None,
+                        black_starting_number=None,
+                        seat_kind="not_paired",
+                    ),
+                    ChessResultsPairingRecord(
+                        round_number=2,
+                        board_number=3,
+                        white_starting_number=4,
+                        white_name="Player 4",
+                        white_rating=2200,
+                        white_points_times_ten=10,
+                        result_text="0",
+                        black_points_times_ten=None,
+                        black_name="not paired",
+                        black_rating=None,
+                        black_starting_number=None,
+                        seat_kind="not_paired",
+                    ),
+                ),
+            ),
+        ),
+        first_round_color_white1=True,
+    )
+
+    snapshot = build_chess_results_snapshot(tournament, target_round_number=2)
+
+    assert build_chess_results_float_history(snapshot) == {
+        1: (FloatKind.DOWN,),
+        2: (FloatKind.NONE,),
+        3: (FloatKind.DOWN,),
+        4: (FloatKind.DOWN,),
+    }
 
 
 def test_checked_in_aeroflot_manifest_references_existing_trfs() -> None:
