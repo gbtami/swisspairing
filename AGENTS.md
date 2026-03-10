@@ -361,6 +361,11 @@ Current practical default:
   derived from the TRF instead of inherited from `py4swiss`. In all of those
   cases, `py4swiss` and the checked public JaVaFo release still agree with
   each other on a different pairing.
+- The public Lichess Swiss lineage is the `cyanfish/bbpPairings` fork
+  (`https://github.com/cyanfish/bbpPairings`); its README says the fork is for
+  use by Lichess on large Swiss tournaments. Treat Lichess fixture agreement as
+  BBP-lineage evidence, not as proof that live Lichess already matches the
+  latest upstream 2026 Dutch implementation.
 - On the checked golden catalog, the public JaVaFo release agrees on all
   pairable fixtures but does not reject the two impossible-fixture cases that
   `swisspairing`, `bbpPairings`, and `py4swiss` all reject.
