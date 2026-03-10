@@ -374,3 +374,58 @@ def test_pair_round_dutch_collapses_for_lower_score_bye_candidate() -> None:
         ("2", "3"),
         ("6", None),
     }
+
+
+def test_pair_round_dutch_pause_like_state_keeps_lowest_score_bye() -> None:
+    # Mid-event withdrawals are represented by omitting the paused player from the
+    # waiting set while keeping the completed-round opponent history intact.
+    players = (
+        PlayerState(
+            player_id="1",
+            pairing_no=1,
+            score=0,
+            opponents=frozenset({"4"}),
+            color_history=("white",),
+            is_topscorer_or_opponent=True,
+        ),
+        PlayerState(
+            player_id="2",
+            pairing_no=2,
+            score=10,
+            opponents=frozenset({"5"}),
+            color_history=("black",),
+        ),
+        PlayerState(
+            player_id="3",
+            pairing_no=3,
+            score=20,
+            opponents=frozenset({"6"}),
+            color_history=("white",),
+            is_top_scorer=True,
+            is_topscorer_or_opponent=True,
+        ),
+        PlayerState(
+            player_id="4",
+            pairing_no=4,
+            score=20,
+            opponents=frozenset({"1"}),
+            color_history=("black",),
+            is_top_scorer=True,
+            is_topscorer_or_opponent=True,
+        ),
+        PlayerState(
+            player_id="5",
+            pairing_no=5,
+            score=10,
+            opponents=frozenset({"2"}),
+            color_history=("white",),
+        ),
+    )
+
+    result = pair_round_dutch(players, sequential_search_max_players=6)
+
+    assert _normalized_pairs(result.pairings) == {
+        ("1", None),
+        ("2", "3"),
+        ("4", "5"),
+    }
