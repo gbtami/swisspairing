@@ -121,19 +121,15 @@ def test_lichess_reference_bullet_increment_fast_matches_py4swiss_and_javafo() -
     assert payload["pairings_equal_vs_bbp"] is False
 
 
-def test_lichess_reference_weekly_20260228_currently_raises_pairing_error() -> None:
+@pytest.mark.parametrize("mode", ["fast", "strict"])
+def test_lichess_reference_weekly_20260228_matches_py4swiss_and_javafo(mode: str) -> None:
     payload_fast = _run_fixture(
         "lichess_swiss_2026.02.28_KQYWuizM_weekly-agca-prize-50-dollars.trf",
-        mode="fast",
-    )
-    payload_strict = _run_fixture(
-        "lichess_swiss_2026.02.28_KQYWuizM_weekly-agca-prize-50-dollars.trf",
-        mode="strict",
+        mode=mode,
     )
 
-    fast = cast(dict[str, Any], payload_fast["swisspairing"])
-    strict = cast(dict[str, Any], payload_strict["swisspairing"])
-    assert fast["ok"] is False
-    assert fast["error"] == "PairingError"
-    assert strict["ok"] is False
-    assert strict["error"] == "PairingError"
+    swisspairing = cast(dict[str, Any], payload_fast["swisspairing"])
+    assert swisspairing["ok"] is True
+    assert payload_fast["pairings_equal_vs_py4swiss"] is True
+    assert payload_fast["pairings_equal_vs_javafo"] is True
+    assert payload_fast["pairings_equal_vs_bbp"] is False

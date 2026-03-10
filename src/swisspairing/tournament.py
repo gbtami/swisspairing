@@ -122,112 +122,136 @@ def _pair_round_dutch_greedy(
     *,
     sequential_search_max_players: int | None = None,
 ) -> tuple[Pairing, ...] | None:
-    """Pair one round without collapse backtracking (fast-path for large events)."""
+    """Pair one round without global collapse backtracking (fast-path for large events)."""
     all_pairings: list[Pairing] = []
     carried_mdps: tuple[PlayerState, ...] = ()
-    final_unpaired_ids: tuple[str, ...] = ()
+    index = 0
 
-    for index, residents in enumerate(scoregroups):
-        bracket_players = tuple(sorted((*carried_mdps, *residents), key=_player_rank_key))
-        mdp_ids = frozenset(player.player_id for player in carried_mdps)
-        is_last_bracket = index == len(scoregroups) - 1
+    while index < len(scoregroups):
+        solved = False
 
-        if is_last_bracket:
+        # Keep the large-event path greedy, but allow forward collapse when the
+        # immediate scoregroup boundary makes the next bracket unsatisfiable.
+        for collapse_size in range(1, len(scoregroups) - index + 1):
+            residents = tuple(
+                sorted(
+                    (
+                        player
+                        for group in scoregroups[index : index + collapse_size]
+                        for player in group
+                    ),
+                    key=_player_rank_key,
+                )
+            )
+            bracket_players = tuple(sorted((*carried_mdps, *residents), key=_player_rank_key))
+            mdp_ids = frozenset(player.player_id for player in carried_mdps)
+            is_last_bracket = index + collapse_size == len(scoregroups)
+
+            if is_last_bracket:
+                try:
+                    bracket_result = _pair_bracket_with_optional_limit(
+                        bracket_players,
+                        context=BracketContext(mdp_ids=mdp_ids),
+                        allow_bye=True,
+                        sequential_search_max_players=sequential_search_max_players,
+                    )
+                except PairingError:
+                    continue
+                if bracket_result.unpaired_ids:
+                    continue
+                all_pairings.extend(bracket_result.pairings)
+                return tuple(all_pairings)
+
+            next_residents = scoregroups[index + collapse_size]
+            next_is_last_bracket = index + collapse_size == len(scoregroups) - 1
+            next_bracket_cache: dict[tuple[PlayerState, ...], bool] = {}
+            next_bracket_key_cache: dict[tuple[PlayerState, ...], NextBracketKey] = {}
+
+            def next_bracket_validator(
+                downfloaters: tuple[PlayerState, ...],
+                *,
+                next_residents_snapshot: tuple[PlayerState, ...] = next_residents,
+                allow_bye_next: bool = next_is_last_bracket,
+                next_bracket_cache_snapshot: dict[
+                    tuple[PlayerState, ...], bool
+                ] = next_bracket_cache,
+                next_bracket_key_cache_snapshot: dict[
+                    tuple[PlayerState, ...], NextBracketKey
+                ] = next_bracket_key_cache,
+            ) -> bool:
+                ordered_downfloaters = tuple(sorted(downfloaters, key=_player_rank_key))
+                cached = next_bracket_cache_snapshot.get(ordered_downfloaters)
+                if cached is not None:
+                    return cached
+
+                next_players = tuple(
+                    sorted((*ordered_downfloaters, *next_residents_snapshot), key=_player_rank_key)
+                )
+                next_mdp_ids = frozenset(player.player_id for player in ordered_downfloaters)
+                try:
+                    next_result = _pair_bracket_with_optional_limit(
+                        next_players,
+                        context=BracketContext(mdp_ids=next_mdp_ids),
+                        allow_bye=allow_bye_next,
+                        sequential_search_max_players=sequential_search_max_players,
+                    )
+                except PairingError:
+                    next_bracket_cache_snapshot[ordered_downfloaters] = False
+                    return False
+                next_bracket_key_cache_snapshot[ordered_downfloaters] = _build_next_bracket_key(
+                    players=next_players,
+                    result=next_result,
+                    mdp_ids=next_mdp_ids,
+                )
+                next_bracket_cache_snapshot[ordered_downfloaters] = True
+                return True
+
+            def next_bracket_key(
+                downfloaters: tuple[PlayerState, ...],
+                *,
+                next_bracket_cache_snapshot: dict[
+                    tuple[PlayerState, ...], bool
+                ] = next_bracket_cache,
+                next_bracket_key_cache_snapshot: dict[
+                    tuple[PlayerState, ...], NextBracketKey
+                ] = next_bracket_key_cache,
+            ) -> NextBracketKey | None:
+                ordered_downfloaters = tuple(sorted(downfloaters, key=_player_rank_key))
+                cached_key = next_bracket_key_cache_snapshot.get(ordered_downfloaters)
+                if cached_key is not None:
+                    return cached_key
+                if not next_bracket_validator(ordered_downfloaters):
+                    return None
+                if not next_bracket_cache_snapshot.get(ordered_downfloaters, False):
+                    return None
+                return next_bracket_key_cache_snapshot.get(ordered_downfloaters)
+
             try:
                 bracket_result = _pair_bracket_with_optional_limit(
                     bracket_players,
-                    context=BracketContext(mdp_ids=mdp_ids),
-                    allow_bye=True,
+                    context=BracketContext(
+                        mdp_ids=mdp_ids,
+                        next_bracket_validator=next_bracket_validator,
+                        next_bracket_key=next_bracket_key,
+                    ),
+                    allow_bye=False,
                     sequential_search_max_players=sequential_search_max_players,
                 )
             except PairingError:
-                return None
-            all_pairings.extend(bracket_result.pairings)
-            final_unpaired_ids = bracket_result.unpaired_ids
-            continue
+                continue
 
-        next_residents = scoregroups[index + 1]
-        next_is_last_bracket = index + 1 == len(scoregroups) - 1
-        next_bracket_cache: dict[tuple[PlayerState, ...], bool] = {}
-        next_bracket_key_cache: dict[tuple[PlayerState, ...], NextBracketKey] = {}
-
-        def next_bracket_validator(
-            downfloaters: tuple[PlayerState, ...],
-            *,
-            next_residents_snapshot: tuple[PlayerState, ...] = next_residents,
-            allow_bye_next: bool = next_is_last_bracket,
-            next_bracket_cache_snapshot: dict[tuple[PlayerState, ...], bool] = next_bracket_cache,
-            next_bracket_key_cache_snapshot: dict[
-                tuple[PlayerState, ...], NextBracketKey
-            ] = next_bracket_key_cache,
-        ) -> bool:
-            ordered_downfloaters = tuple(sorted(downfloaters, key=_player_rank_key))
-            cached = next_bracket_cache_snapshot.get(ordered_downfloaters)
-            if cached is not None:
-                return cached
-
-            next_players = tuple(
-                sorted((*ordered_downfloaters, *next_residents_snapshot), key=_player_rank_key)
+            all_pairings.extend(
+                pairing for pairing in bracket_result.pairings if pairing.black_id is not None
             )
-            next_mdp_ids = frozenset(player.player_id for player in ordered_downfloaters)
-            try:
-                next_result = _pair_bracket_with_optional_limit(
-                    next_players,
-                    context=BracketContext(mdp_ids=next_mdp_ids),
-                    allow_bye=allow_bye_next,
-                    sequential_search_max_players=sequential_search_max_players,
-                )
-            except PairingError:
-                next_bracket_cache_snapshot[ordered_downfloaters] = False
-                return False
-            next_bracket_key_cache_snapshot[ordered_downfloaters] = _build_next_bracket_key(
-                players=next_players,
-                result=next_result,
-                mdp_ids=next_mdp_ids,
-            )
-            next_bracket_cache_snapshot[ordered_downfloaters] = True
-            return True
+            by_id = {player.player_id: player for player in bracket_players}
+            carried_mdps = tuple(by_id[player_id] for player_id in bracket_result.unpaired_ids)
+            index += collapse_size
+            solved = True
+            break
 
-        def next_bracket_key(
-            downfloaters: tuple[PlayerState, ...],
-            *,
-            next_bracket_cache_snapshot: dict[tuple[PlayerState, ...], bool] = next_bracket_cache,
-            next_bracket_key_cache_snapshot: dict[
-                tuple[PlayerState, ...], NextBracketKey
-            ] = next_bracket_key_cache,
-        ) -> NextBracketKey | None:
-            ordered_downfloaters = tuple(sorted(downfloaters, key=_player_rank_key))
-            cached_key = next_bracket_key_cache_snapshot.get(ordered_downfloaters)
-            if cached_key is not None:
-                return cached_key
-            if not next_bracket_validator(ordered_downfloaters):
-                return None
-            if not next_bracket_cache_snapshot.get(ordered_downfloaters, False):
-                return None
-            return next_bracket_key_cache_snapshot.get(ordered_downfloaters)
-
-        try:
-            bracket_result = _pair_bracket_with_optional_limit(
-                bracket_players,
-                context=BracketContext(
-                    mdp_ids=mdp_ids,
-                    next_bracket_validator=next_bracket_validator,
-                    next_bracket_key=next_bracket_key,
-                ),
-                allow_bye=False,
-                sequential_search_max_players=sequential_search_max_players,
-            )
-        except PairingError:
+        if not solved:
             return None
 
-        all_pairings.extend(
-            pairing for pairing in bracket_result.pairings if pairing.black_id is not None
-        )
-        by_id = {player.player_id: player for player in bracket_players}
-        carried_mdps = tuple(by_id[player_id] for player_id in bracket_result.unpaired_ids)
-
-    if final_unpaired_ids:
-        return None
     return tuple(all_pairings)
 
 

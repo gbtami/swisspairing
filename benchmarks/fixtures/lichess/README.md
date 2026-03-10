@@ -19,8 +19,8 @@ events.
     differs; `bbpPairings` differs.
 - `lichess_swiss_2026.02.28_KQYWuizM_weekly-agca-prize-50-dollars.trf`
   - Source URL: `https://lichess.org/swiss/KQYWuizM`
-  - 2026-03-07 local comparison: `py4swiss` and `JaVaFo` agree;
-    `swisspairing` raises `PairingError`; `bbpPairings` differs.
+  - 2026-03-10 local comparison: `swisspairing`, `py4swiss`, and `JaVaFo`
+    agree; `bbpPairings` differs.
 - `lichess_swiss_2026.03.03_7TYuxURK_bullet-increment.trf`
   - Source URL: `https://lichess.org/swiss/7TYuxURK`
   - 2026-03-07 local comparison: `swisspairing`, `py4swiss`, and `JaVaFo`
