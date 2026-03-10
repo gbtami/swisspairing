@@ -72,6 +72,19 @@ def _solution_bye_key(
     return (0, 0)
 
 
+def _lowest_possible_bye_key(players: tuple[PlayerState, ...]) -> tuple[int, int]:
+    if len(players) % 2 == 0:
+        return (0, 0)
+    eligible_players = tuple(player for player in players if not player.had_full_point_bye)
+    if not eligible_players:
+        return (10**9, 10**9)
+    lowest_score = min(player.score for player in eligible_players)
+    lowest_unplayed_games = min(
+        player.unplayed_games for player in eligible_players if player.score == lowest_score
+    )
+    return (lowest_score, lowest_unplayed_games)
+
+
 def _flatten_future_game_counts(key: NextBracketKey | None) -> tuple[int, ...]:
     if key is None:
         return ()
@@ -321,6 +334,16 @@ def pair_round_dutch(
 
         best_solution: _RoundTailSolution | None = None
         best_key: tuple[object, ...] | None = None
+        all_remaining_players = tuple(
+            sorted(
+                (player for group in remaining_groups for player in group),
+                key=_player_rank_key,
+            )
+        )
+        subproblem_players = tuple(
+            sorted((*carried_mdps, *all_remaining_players), key=_player_rank_key)
+        )
+        best_possible_bye_key = _lowest_possible_bye_key(subproblem_players)
 
         for collapse_size in range(1, len(remaining_groups) + 1):
             residents = tuple(
@@ -361,6 +384,8 @@ def pair_round_dutch(
                 if best_key is None or candidate_solution.solution_key < best_key:
                     best_key = candidate_solution.solution_key
                     best_solution = candidate_solution
+                if best_key[:2] == best_possible_bye_key and best_key[2] == 1:
+                    break
                 continue
 
             next_bracket_key_cache: dict[tuple[PlayerState, ...], NextBracketKey | None] = {}
@@ -492,6 +517,8 @@ def pair_round_dutch(
             if best_key is None or candidate_solution.solution_key < best_key:
                 best_key = candidate_solution.solution_key
                 best_solution = candidate_solution
+            if best_key[:2] == best_possible_bye_key and best_key[2] == 1:
+                break
 
         return best_solution
 
