@@ -45,6 +45,8 @@ jar from:
   benchmark cases.
 - `export_chess_results_trf_snapshots.py`: reconstruct TRF snapshots from
   Chess-Results starting-list plus pairings/results XLSX exports.
+- `import_chess_results_event.py`: fetch complete Chess-Results event exports
+  directly from a tournament page URL, then convert them into TRF snapshots.
 - `simulate_swiss_batches.py`: generate synthetic Swiss TRF snapshot batches
   with seeded random outcomes.
 - `run_recurring_baselines.py`: run fixed-size synthetic baseline profiles and
@@ -144,6 +146,18 @@ Chess-Results exports are paginated by default. For larger events, use the
 site's `Show complete list` view or export with `zeilen=99999`; otherwise the
 XLSX files may stop after the first 150 rows and the exporter will reject the
 incomplete input.
+
+Fetch and convert directly from a Chess-Results event URL:
+
+```bash
+uv run python benchmarks/import_chess_results_event.py \
+  --url https://s1.chess-results.com/tnr1307079.aspx \
+  --output-dir /tmp/chess_results_trf
+```
+
+The importer forces the English event page, discovers the available board
+pairing rounds, downloads the complete `zeilen=99999` XLSX exports, and then
+reuses the same snapshot exporter as above.
 
 The repo now includes checked-in real-world OTB corpora reconstructed from
 Chess-Results:
