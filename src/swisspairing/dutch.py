@@ -1587,6 +1587,77 @@ def _refine_weighted_single_mdp_odd_candidate(
     return best_candidate
 
 
+@cache
+def _refine_weighted_single_mdp_remainder_candidate(
+    players: Sequence[PlayerState],
+    *,
+    context: BracketContext,
+    weighted_candidate: _CandidateInternal,
+    sequential_search_max_players: int,
+) -> _CandidateInternal:
+    """Re-solve the weighted one-MDP remainder once before broader refinement.
+
+    The weighted heterogeneous fallback often picks the correct MDP partner but
+    can still miss the best resident downfloater in the homogeneous remainder.
+    Re-solving only that remainder is much cheaper than scanning every partner
+    and is enough to recover medium-size one-MDP cases like Graz round 4.
+    """
+    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    if len(context.mdp_ids) != 1 or len(weighted_candidate.unresolved) != 1:
+        return weighted_candidate
+
+    mdp = next((player for player in ordered_players if player.player_id in context.mdp_ids), None)
+    if mdp is None:
+        return weighted_candidate
+
+    mdp_partner: PlayerState | None = None
+    for player_a, player_b in weighted_candidate.pairings:
+        mdp_pair = _mdp_and_opponent(player_a, player_b, context=context)
+        if mdp_pair is None or mdp_pair[0].player_id != mdp.player_id:
+            continue
+        mdp_partner = mdp_pair[1]
+        break
+
+    if mdp_partner is None:
+        return weighted_candidate
+
+    residents = tuple(player for player in ordered_players if player.player_id != mdp.player_id)
+    refinement_search_limit = min(
+        sequential_search_max_players,
+        _SINGLE_MDP_ODD_REFINEMENT_SEARCH_MAX_PLAYERS,
+    )
+    remainder_players = tuple(
+        player for player in residents if player.player_id != mdp_partner.player_id
+    )
+    remainder_candidate = _solve_without_bye_candidate(
+        remainder_players,
+        context=BracketContext(initial_color=context.initial_color),
+        sequential_search_max_players=refinement_search_limit,
+    )
+    sequence_no = next(
+        index for index, player in enumerate(residents) if player.player_id == mdp_partner.player_id
+    )
+    refined_candidate = _CandidateInternal(
+        pairings=tuple(
+            sorted(
+                (*remainder_candidate.pairings, (mdp, mdp_partner)),
+                key=_candidate_pair_sort_key,
+            )
+        ),
+        unresolved=remainder_candidate.unresolved,
+        bye_player=None,
+        sequence_no=sequence_no,
+    )
+    if _candidate_quality_key(
+        candidate=refined_candidate, context=context
+    ) < _candidate_quality_key(
+        candidate=weighted_candidate,
+        context=context,
+    ):
+        return refined_candidate
+    return weighted_candidate
+
+
 def _select_large_final_bye_candidate_via_weighted_steps(
     players: Sequence[PlayerState],
     *,
@@ -2332,6 +2403,12 @@ def _solve_without_bye_candidate_uncached(
             refined_weighted_candidate = weighted_candidate
             if len(weighted_candidate.unresolved) == 1:
                 if len(context.mdp_ids) == 1:
+                    refined_weighted_candidate = _refine_weighted_single_mdp_remainder_candidate(
+                        ordered_players,
+                        context=context,
+                        weighted_candidate=refined_weighted_candidate,
+                        sequential_search_max_players=sequential_search_max_players,
+                    )
                     refined_single_mdp = _refine_weighted_single_mdp_odd_candidate(
                         ordered_players,
                         context=context,
