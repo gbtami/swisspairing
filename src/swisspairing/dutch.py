@@ -273,6 +273,7 @@ _ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES = 20_000
 _ODD_FINAL_BYE_SCAN_MAX_PLAYERS = 20
 _ODD_HOMOGENEOUS_REFINEMENT_SCAN_MAX_PLAYERS = 34
 _SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS = 24
+_SINGLE_MDP_ODD_FAST_PATH_MAX_PLAYERS = 9
 
 
 @cache
@@ -2118,9 +2119,9 @@ def _solve_without_bye_candidate(
         )
         if weighted_candidate is not None and weighted_candidate.unresolved:
             if len(weighted_candidate.unresolved) == 1:
-                if (
-                    len(context.mdp_ids) == 1
-                    and sequential_search_max_players < _SEQUENTIAL_SEARCH_MAX_PLAYERS
+                if len(context.mdp_ids) == 1 and (
+                    sequential_search_max_players < _SEQUENTIAL_SEARCH_MAX_PLAYERS
+                    or len(ordered_players) <= _SINGLE_MDP_ODD_FAST_PATH_MAX_PLAYERS
                 ):
                     refined_single_mdp = _refine_weighted_single_mdp_odd_candidate(
                         ordered_players,
