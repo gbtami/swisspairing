@@ -9,14 +9,16 @@ description = "FIDE Swiss (Dutch) pairing package based on rustworkx"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Tamas Bajusz" }]
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 keywords = ["chess", "fide", "swiss", "pairing", "dutch-system"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Games/Entertainment :: Board Games",
     "Topic :: Software Development :: Libraries",
     "Typing :: Typed",
