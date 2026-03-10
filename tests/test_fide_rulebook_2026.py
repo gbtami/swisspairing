@@ -579,13 +579,6 @@ def test_c0403_articles_3_2_2_and_4_4_start_from_the_first_pairable_mdp_set() ->
     assert _normalized_pairs(result) == {("m1", "r1"), ("m2", "r2")}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "The wider-difference absolute-preference tie-break from C.04.3 5.2.2 "
-        "is not implemented yet."
-    ),
-)
 def test_c0403_5_2_2_grants_the_wider_absolute_preference_for_topscorers() -> None:
     players = (
         _player(
@@ -610,10 +603,29 @@ def test_c0403_5_2_2_grants_the_wider_absolute_preference_for_topscorers() -> No
     assert result.pairings[0].black_id == "wider"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="The C.04.3 5.2.4 higher-ranked-player preference tie-break is not implemented yet.",
-)
+def test_c0403_5_2_3_alternates_from_the_most_recent_opposite_colors() -> None:
+    players = (
+        _player(
+            player_id="first",
+            pairing_no=1,
+            score=3,
+            color_history=("white", "black", "black", "white"),
+        ),
+        _player(
+            player_id="second",
+            pairing_no=2,
+            score=3,
+            color_history=("black", "white", "black", "white"),
+        ),
+    )
+
+    result = pair_bracket(players)
+
+    assert len(result.pairings) == 1
+    assert result.pairings[0].white_id == "first"
+    assert result.pairings[0].black_id == "second"
+
+
 def test_c0403_5_2_4_prefers_the_higher_ranked_players_preference_when_other_steps_tie() -> None:
     players = (
         _player(player_id="higher", pairing_no=1, score=3, color_history=("black", "white")),
@@ -957,30 +969,39 @@ RULE_GROUPS = (
         status="not_represented",
         reason=(
             "The public pairing API has no initial-colour input yet, so these "
-            "tie-breaks cannot be executed end-to-end."
+            "initial-colour-dependent tie-breaks cannot be executed end-to-end."
         ),
-        clauses=("C0403.5.1", "C0403.5.2.3", "C0403.5.2.5"),
+        clauses=("C0403.5.1", "C0403.5.2.5"),
     ),
     RuleGroup(
         status="partially_tested",
         reason=(
-            "Color allocation is covered for compatible preferences, "
-            "stronger-preference wins, and known gaps are pinned with xfail "
-            "tests."
+            "Color allocation is largely covered, but the full article is still "
+            "only partially represented because C.04.3 5.2.5 depends on the "
+            "missing initial-colour input."
         ),
-        clauses=("C0403.5.2", "C0403.5.2.1", "C0403.5.2.2"),
+        clauses=("C0403.5.2",),
         tests=(
             "test_c0403_5_2_1_grants_both_compatible_color_preferences",
-            "test_c0403_c12_and_c13_prefer_fulfilling_the_stronger_color_preference",
             "test_c0403_c10_and_c11_keep_a_topscorer_on_their_absolute_color",
+            "test_c0403_c12_and_c13_prefer_fulfilling_the_stronger_color_preference",
             "test_c0403_5_2_2_grants_the_wider_absolute_preference_for_topscorers",
+            "test_c0403_5_2_3_alternates_from_the_most_recent_opposite_colors",
+            "test_c0403_5_2_4_prefers_the_higher_ranked_players_preference_when_other_steps_tie",
         ),
     ),
     RuleGroup(
-        status="xfail",
-        reason="This clause is solver-observable and now captured as a known TDD gap.",
-        clauses=("C0403.5.2.4",),
+        status="tested",
+        reason=(
+            "The implemented color-order path now covers the represented article-5.2 tie-breaks."
+        ),
+        clauses=("C0403.5.2.1", "C0403.5.2.2", "C0403.5.2.3", "C0403.5.2.4"),
         tests=(
+            "test_c0403_5_2_1_grants_both_compatible_color_preferences",
+            "test_c0403_c10_and_c11_keep_a_topscorer_on_their_absolute_color",
+            "test_c0403_c12_and_c13_prefer_fulfilling_the_stronger_color_preference",
+            "test_c0403_5_2_2_grants_the_wider_absolute_preference_for_topscorers",
+            "test_c0403_5_2_3_alternates_from_the_most_recent_opposite_colors",
             "test_c0403_5_2_4_prefers_the_higher_ranked_players_preference_when_other_steps_tie",
         ),
     ),

@@ -53,8 +53,46 @@ def test_pair_color_quality_counts_absolute_preference_as_strong() -> None:
 
     white, black = _choose_color_order(strong_white, absolute_white)
 
-    assert (white.player_id, black.player_id) == ("s1", "a1")
+    assert (white.player_id, black.player_id) == ("a1", "s1")
     assert _pair_color_quality(white=white, black=black) == (0, 0, 1, 1)
+
+
+def test_choose_color_order_uses_article_5_2_3_alternation() -> None:
+    first = _player(
+        player_id="p1",
+        pairing_no=1,
+        score=3,
+        color_history=("white", "black", "black", "white"),
+    )
+    second = _player(
+        player_id="p2",
+        pairing_no=2,
+        score=3,
+        color_history=("black", "white", "black", "white"),
+    )
+
+    white, black = _choose_color_order(first, second)
+
+    assert (white.player_id, black.player_id) == ("p1", "p2")
+
+
+def test_choose_color_order_uses_article_5_2_4_higher_ranked_preference() -> None:
+    higher = _player(
+        player_id="higher",
+        pairing_no=1,
+        score=3,
+        color_history=("black", "white"),
+    )
+    lower = _player(
+        player_id="lower",
+        pairing_no=2,
+        score=3,
+        color_history=("white", "black", "black", "white"),
+    )
+
+    white, black = _choose_color_order(higher, lower)
+
+    assert (white.player_id, black.player_id) == ("lower", "higher")
 
 
 def test_homogeneous_article_order_key_prefers_zero_exchange_candidate() -> None:

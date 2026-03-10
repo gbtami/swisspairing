@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, cast
 
 from swisspairing._matching import compute_maximum_weight_matching
 from swisspairing.exceptions import PairingError
-from swisspairing.model import FloatKind, Pairing, PairingResult, PlayerState
+from swisspairing.model import Color, FloatKind, Pairing, PairingResult, PlayerState
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Sequence
@@ -186,17 +186,126 @@ def _pair_color_quality(
     return c10, c11, c12, c13
 
 
+def _preference_strength(player: PlayerState) -> int:
+    if player.absolute_color_preference is not None:
+        return 3
+    if player.strong_color_preference is not None:
+        return 2
+    if player.mild_color_preference is not None:
+        return 1
+    return 0
+
+
+def _preference_is_granted(player: PlayerState, assigned_color: Color) -> bool:
+    preference = player.color_preference
+    return preference is None or preference == assigned_color
+
+
+def _missed_preference_strengths(
+    *,
+    white: PlayerState,
+    black: PlayerState,
+) -> tuple[int, ...]:
+    missed_strengths: list[int] = []
+    if not _preference_is_granted(white, "white"):
+        missed_strengths.append(_preference_strength(white))
+    if not _preference_is_granted(black, "black"):
+        missed_strengths.append(_preference_strength(black))
+    return tuple(sorted(missed_strengths, reverse=True))
+
+
+def _granted_absolute_color_difference(
+    *,
+    white: PlayerState,
+    black: PlayerState,
+) -> int:
+    if not (
+        white.is_top_scorer
+        and black.is_top_scorer
+        and white.absolute_color_preference is not None
+        and black.absolute_color_preference is not None
+    ):
+        return 0
+
+    granted_differences: list[int] = []
+    if white.absolute_color_preference == "white":
+        granted_differences.append(abs(white.color_difference))
+    if black.absolute_color_preference == "black":
+        granted_differences.append(abs(black.color_difference))
+    if not granted_differences:
+        return 0
+    return max(granted_differences)
+
+
+def _alternating_assignment(
+    player_a: PlayerState,
+    player_b: PlayerState,
+) -> tuple[Color, Color] | None:
+    for color_a, color_b in zip(
+        reversed(player_a.color_history),
+        reversed(player_b.color_history),
+        strict=False,
+    ):
+        if color_a == color_b:
+            continue
+        next_color_a: Color = "black" if color_a == "white" else "white"
+        next_color_b: Color = "black" if color_b == "white" else "white"
+        return next_color_a, next_color_b
+    return None
+
+
+def _higher_rank_preference_missed(
+    *,
+    white: PlayerState,
+    black: PlayerState,
+) -> int:
+    higher_ranked, assigned_color = (
+        (white, "white") if _player_rank_key(white) <= _player_rank_key(black) else (black, "black")
+    )
+    preference = higher_ranked.color_preference
+    if preference is None:
+        return 0
+    return int(preference != assigned_color)
+
+
+def _color_allocation_key(
+    *,
+    white: PlayerState,
+    black: PlayerState,
+) -> tuple[int, tuple[int, ...], int, int, int]:
+    both_preferences_granted = int(
+        not (_preference_is_granted(white, "white") and _preference_is_granted(black, "black"))
+    )
+    missed_strengths = _missed_preference_strengths(white=white, black=black)
+    wider_absolute_difference = -_granted_absolute_color_difference(white=white, black=black)
+
+    alternating_assignment = _alternating_assignment(white, black)
+    alternation_missed = 0
+    if alternating_assignment is not None:
+        alternation_missed = int(alternating_assignment != ("white", "black"))
+
+    higher_rank_preference_missed = _higher_rank_preference_missed(white=white, black=black)
+
+    return (
+        both_preferences_granted,
+        missed_strengths,
+        wider_absolute_difference,
+        alternation_missed,
+        higher_rank_preference_missed,
+    )
+
+
 def _choose_color_order(
     player_a: PlayerState, player_b: PlayerState
 ) -> tuple[PlayerState, PlayerState]:
-    """Pick white/black order deterministically with [C10]-[C13] awareness."""
+    """Pick white/black order following C.04.3 article 5.2 tie-breaks."""
     first_key = (
-        *_pair_color_quality(white=player_a, black=player_b),
+        *_color_allocation_key(white=player_a, black=player_b),
         _player_rank_key(player_a),
         _player_rank_key(player_b),
     )
     second_key = (
-        *_pair_color_quality(white=player_b, black=player_a),
+        *_color_allocation_key(white=player_b, black=player_a),
         _player_rank_key(player_b),
         _player_rank_key(player_a),
     )
