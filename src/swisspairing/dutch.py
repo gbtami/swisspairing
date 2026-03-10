@@ -68,6 +68,7 @@ class BracketContext:
 
     Fields:
     - `mdp_ids`: moved-down players (MDPs) entering this bracket.
+    - `initial_color`: TRF-configured article 5.2.5 first-round color.
     - `next_bracket_validator`: optional callback for [C8]. If provided,
       downfloaters are passed in ranking order. The callback should return
       `True` when the next-bracket [C1]-[C7] outlook is acceptable.
@@ -78,6 +79,7 @@ class BracketContext:
     """
 
     mdp_ids: frozenset[str] = field(default_factory=lambda: frozenset[str]())
+    initial_color: Color = "white"
     next_bracket_validator: NextBracketValidator | None = None
     next_bracket_key: NextBracketKeyFn | None = None
 
@@ -103,6 +105,23 @@ class _CandidateInternal:
 def _player_rank_key(player: PlayerState) -> tuple[int, int]:
     """Ranking order per C.04.3 section 1.2 (score desc, TPN asc)."""
     return (-player.score, player.pairing_no)
+
+
+def _context_with_initial_color(
+    context: BracketContext | None,
+    *,
+    initial_color: Color,
+) -> BracketContext:
+    if context is None:
+        return BracketContext(initial_color=initial_color)
+    if context.initial_color == initial_color:
+        return context
+    return BracketContext(
+        mdp_ids=context.mdp_ids,
+        initial_color=initial_color,
+        next_bracket_validator=context.next_bracket_validator,
+        next_bracket_key=context.next_bracket_key,
+    )
 
 
 def _is_legal_pair(
@@ -375,7 +394,11 @@ def _edge_penalty_components(
     context: BracketContext,
 ) -> tuple[int, int, int, int, int, int, int, int, int, int]:
     """Return local penalty components mapped to [C10]-[C13], [C15], [C17]-[C21]."""
-    white, black = _choose_color_order(player_a, player_b)
+    white, black = _choose_color_order(
+        player_a,
+        player_b,
+        initial_color=context.initial_color,
+    )
     c10, c11, c12, c13 = _pair_color_quality(white=white, black=black)
 
     c15 = 0
@@ -416,7 +439,7 @@ _ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES = 20_000
 _ODD_FINAL_BYE_SCAN_MAX_PLAYERS = 20
 _ODD_HOMOGENEOUS_REFINEMENT_SCAN_MAX_PLAYERS = 34
 _SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS = 24
-_SINGLE_MDP_ODD_FAST_PATH_MAX_PLAYERS = 9
+_SINGLE_MDP_ODD_REFINEMENT_SEARCH_MAX_PLAYERS = 6
 
 
 @cache
@@ -557,6 +580,7 @@ def _homogeneous_pair_penalty(
     player_b: PlayerState,
     *,
     split_size: int,
+    initial_color: Color,
 ) -> int:
     """Pack [C10]-[C13] exactly for one homogeneous split edge.
 
@@ -565,7 +589,11 @@ def _homogeneous_pair_penalty(
     packing with radix `2 * split_size + 1` preserves that lexicographic order
     for the total matching while staying within ordinary machine-sized ints.
     """
-    white, black = _choose_color_order(player_a, player_b)
+    white, black = _choose_color_order(
+        player_a,
+        player_b,
+        initial_color=initial_color,
+    )
     c10, c11, c12, c13 = _pair_color_quality(white=white, black=black)
     radix = (2 * split_size) + 1
     return (((c10 * radix) + c11) * radix + c12) * radix + c13
@@ -675,6 +703,8 @@ class _HomogeneousMatchingState:
 
 def _build_homogeneous_matching_state(
     players: Sequence[PlayerState],
+    *,
+    initial_color: Color,
 ) -> _HomogeneousMatchingState | None:
     ordered_players = tuple(sorted(players, key=_player_rank_key))
     split_size = len(ordered_players) // 2
@@ -683,7 +713,12 @@ def _build_homogeneous_matching_state(
         if not _is_legal_pair(left, right):
             continue
         edge_penalties[_normalized_edge_key(left.player_id, right.player_id)] = (
-            _homogeneous_pair_penalty(left, right, split_size=split_size)
+            _homogeneous_pair_penalty(
+                left,
+                right,
+                split_size=split_size,
+                initial_color=initial_color,
+            )
         )
     return _build_weighted_matching_state(
         ordered_players,
@@ -1186,11 +1221,12 @@ def _iter_homogeneous_candidates(
 @cache
 def _solve_even_players_via_sequence_cached(
     players: tuple[PlayerState, ...],
+    initial_color: Color,
 ) -> _EvenPairingInternal | None:
     """Solve by exact homogeneous candidate sequence for small brackets."""
     best_candidate = _select_best_candidate(
         _iter_homogeneous_candidates(players),
-        context=BracketContext(),
+        context=BracketContext(initial_color=initial_color),
     )
     if best_candidate is None:
         return None
@@ -1205,7 +1241,10 @@ def _solve_even_players_via_sequence(
     *,
     context: BracketContext,
 ) -> _EvenPairingInternal | None:
-    return _solve_even_players_via_sequence_cached(tuple(sorted(players, key=_player_rank_key)))
+    return _solve_even_players_via_sequence_cached(
+        tuple(sorted(players, key=_player_rank_key)),
+        context.initial_color,
+    )
 
 
 def _matching_to_candidate(
@@ -1242,9 +1281,11 @@ def _matching_to_candidate(
 
 def _solve_homogeneous_even_players_via_bipartite_fallback(
     players: Sequence[PlayerState],
+    *,
+    initial_color: Color,
 ) -> _EvenPairingInternal | None:
     """Approximate large homogeneous brackets with py4swiss-style D.1/D.2 steps."""
-    state = _build_homogeneous_matching_state(players)
+    state = _build_homogeneous_matching_state(players, initial_color=initial_color)
     if state is None:
         return None
 
@@ -1357,7 +1398,10 @@ def _solve_without_bye_candidate_via_weighted_steps(
         _apply_homogeneous_remainder_steps(state, remainder)
         return state.to_candidate()
 
-    state = _build_homogeneous_matching_state(ordered_players)
+    state = _build_homogeneous_matching_state(
+        ordered_players,
+        initial_color=context.initial_color,
+    )
     if state is None:
         return None
     _apply_homogeneous_remainder_steps(state, state.players)
@@ -1508,6 +1552,10 @@ def _refine_weighted_single_mdp_odd_candidate(
     residents = tuple(player for player in ordered_players if player.player_id != mdp.player_id)
     best_candidate: _CandidateInternal | None = None
     best_key: tuple[object, ...] | None = None
+    refinement_search_limit = min(
+        sequential_search_max_players,
+        _SINGLE_MDP_ODD_REFINEMENT_SEARCH_MAX_PLAYERS,
+    )
 
     for sequence_no, resident in enumerate(residents):
         if not _is_legal_pair(mdp, resident, context=context):
@@ -1517,8 +1565,8 @@ def _refine_weighted_single_mdp_odd_candidate(
         )
         remainder_candidate = _solve_without_bye_candidate(
             remainder_players,
-            context=BracketContext(),
-            sequential_search_max_players=sequential_search_max_players,
+            context=BracketContext(initial_color=context.initial_color),
+            sequential_search_max_players=refinement_search_limit,
         )
         candidate = _CandidateInternal(
             pairings=tuple(
@@ -1624,7 +1672,10 @@ def _solve_even_players(
         if fallback_result is not None and not fallback_result.unresolved:
             return fallback_result
     else:
-        fallback_result = _solve_homogeneous_even_players_via_bipartite_fallback(players)
+        fallback_result = _solve_homogeneous_even_players_via_bipartite_fallback(
+            players,
+            initial_color=context.initial_color,
+        )
         if fallback_result is not None and not fallback_result.unresolved:
             return fallback_result
 
@@ -1702,7 +1753,10 @@ def _solve_even_players(
                 ):
                     return fallback_result
     else:
-        fallback_result = _solve_homogeneous_even_players_via_bipartite_fallback(players)
+        fallback_result = _solve_homogeneous_even_players_via_bipartite_fallback(
+            players,
+            initial_color=context.initial_color,
+        )
         if fallback_result is not None:
             fallback_pairs = len(fallback_result.pairings)
             unrestricted_pairs = len(unrestricted_result.pairings)
@@ -1723,10 +1777,10 @@ def _solve_even_players(
                 )
                 if _candidate_quality_key(
                     candidate=fallback_candidate,
-                    context=BracketContext(),
+                    context=BracketContext(initial_color=context.initial_color),
                 ) <= _candidate_quality_key(
                     candidate=unrestricted_candidate,
-                    context=BracketContext(),
+                    context=BracketContext(initial_color=context.initial_color),
                 ):
                     return fallback_result
 
@@ -1744,6 +1798,7 @@ def _candidate_downfloaters(candidate: _CandidateInternal) -> tuple[PlayerState,
 def _candidate_local_quality_key(
     candidate: _CandidateInternal,
     mdp_ids: frozenset[str],
+    initial_color: Color,
 ) -> tuple[
     tuple[PlayerState, ...],
     int,
@@ -1764,8 +1819,11 @@ def _candidate_local_quality_key(
     tuple[int, ...],
     int,
 ]:
-    context = BracketContext(mdp_ids=mdp_ids)
-    oriented_pairs = tuple(_choose_color_order(left, right) for left, right in candidate.pairings)
+    context = BracketContext(mdp_ids=mdp_ids, initial_color=initial_color)
+    oriented_pairs = tuple(
+        _choose_color_order(left, right, initial_color=initial_color)
+        for left, right in candidate.pairings
+    )
     downfloaters = _candidate_downfloaters(candidate)
 
     c5 = candidate.bye_player.score if candidate.bye_player is not None else 0
@@ -1939,7 +1997,7 @@ def _candidate_quality_key(
         c20,
         c21,
         sequence_no,
-    ) = _candidate_local_quality_key(candidate, context.mdp_ids)
+    ) = _candidate_local_quality_key(candidate, context.mdp_ids, context.initial_color)
     c8 = _next_bracket_c1_to_c7_violation(downfloaters=downfloaters, context=context)
     c8_key = _next_bracket_key(downfloaters=downfloaters, context=context)
 
@@ -1997,7 +2055,10 @@ def pairing_result_next_bracket_local_key(
     )
     local_key = _candidate_quality_key(
         candidate=candidate,
-        context=BracketContext(mdp_ids=context.mdp_ids),
+        context=BracketContext(
+            mdp_ids=context.mdp_ids,
+            initial_color=context.initial_color,
+        ),
     )
     return NextBracketLocalKey(
         c5=local_key[0],
@@ -2107,11 +2168,12 @@ def _iter_pairable_mdp_sets(
 def _solve_even_players_via_heterogeneous_sequence_cached(
     players: tuple[PlayerState, ...],
     mdp_ids: frozenset[str],
+    initial_color: Color,
 ) -> _EvenPairingInternal | None:
     """Solve small heterogeneous brackets by article 3.7 candidate sequence."""
     best_candidate = _select_best_candidate(
-        _iter_heterogeneous_candidates_cached(players, mdp_ids),
-        context=BracketContext(mdp_ids=mdp_ids),
+        _iter_heterogeneous_candidates_cached(players, mdp_ids, initial_color),
+        context=BracketContext(mdp_ids=mdp_ids, initial_color=initial_color),
     )
     if best_candidate is None:
         return None
@@ -2129,6 +2191,7 @@ def _solve_even_players_via_heterogeneous_sequence(
     return _solve_even_players_via_heterogeneous_sequence_cached(
         tuple(sorted(players, key=_player_rank_key)),
         context.mdp_ids,
+        context.initial_color,
     )
 
 
@@ -2136,6 +2199,7 @@ def _solve_even_players_via_heterogeneous_sequence(
 def _iter_heterogeneous_candidates_cached(
     players: tuple[PlayerState, ...],
     mdp_ids: frozenset[str],
+    initial_color: Color,
 ) -> tuple[_CandidateInternal, ...]:
     """Generate heterogeneous candidates in article 3.7 order.
 
@@ -2145,7 +2209,7 @@ def _iter_heterogeneous_candidates_cached(
     - for each, iterate all remainder candidates (article 3.7.1 / 3.6)
     """
     ordered_players = players
-    context = BracketContext(mdp_ids=mdp_ids)
+    context = BracketContext(mdp_ids=mdp_ids, initial_color=initial_color)
     mdps, residents = _split_mdps_and_residents(ordered_players, context=context)
     if not mdps or not residents:
         return ()
@@ -2199,7 +2263,11 @@ def _iter_heterogeneous_candidates(
     context: BracketContext,
 ) -> tuple[_CandidateInternal, ...]:
     ordered_players = tuple(sorted(players, key=_player_rank_key))
-    return _iter_heterogeneous_candidates_cached(ordered_players, context.mdp_ids)
+    return _iter_heterogeneous_candidates_cached(
+        ordered_players,
+        context.mdp_ids,
+        context.initial_color,
+    )
 
 
 def _solve_without_bye_candidate_uncached(
@@ -2262,10 +2330,7 @@ def _solve_without_bye_candidate_uncached(
         )
         if weighted_candidate is not None and weighted_candidate.unresolved:
             if len(weighted_candidate.unresolved) == 1:
-                if len(context.mdp_ids) == 1 and (
-                    sequential_search_max_players < _SEQUENTIAL_SEARCH_MAX_PLAYERS
-                    or len(ordered_players) <= _SINGLE_MDP_ODD_FAST_PATH_MAX_PLAYERS
-                ):
+                if len(context.mdp_ids) == 1:
                     refined_single_mdp = _refine_weighted_single_mdp_odd_candidate(
                         ordered_players,
                         context=context,
@@ -2301,6 +2366,7 @@ def _solve_without_bye_candidate_uncached(
         if downfloater.player_id in context.mdp_ids:
             adjusted_context = BracketContext(
                 mdp_ids=context.mdp_ids - {downfloater.player_id},
+                initial_color=context.initial_color,
                 next_bracket_validator=context.next_bracket_validator,
                 next_bracket_key=context.next_bracket_key,
             )
@@ -2355,10 +2421,11 @@ def _solve_without_bye_candidate_cached(
     players: tuple[PlayerState, ...],
     mdp_ids: frozenset[str],
     sequential_search_max_players: int,
+    initial_color: Color,
 ) -> _CandidateInternal:
     return _solve_without_bye_candidate_uncached(
         players,
-        context=BracketContext(mdp_ids=mdp_ids),
+        context=BracketContext(mdp_ids=mdp_ids, initial_color=initial_color),
         sequential_search_max_players=sequential_search_max_players,
     )
 
@@ -2375,6 +2442,7 @@ def _solve_without_bye_candidate(
             ordered_players,
             context.mdp_ids,
             sequential_search_max_players,
+            context.initial_color,
         )
     return _solve_without_bye_candidate_uncached(
         ordered_players,
@@ -2464,7 +2532,7 @@ def pair_bracket(
     if len(players) == 0:
         return PairingResult(pairings=(), unpaired_ids=(), float_assignments=())
 
-    local_context = context or BracketContext()
+    local_context = _context_with_initial_color(context, initial_color=initial_color)
     ordered_players = tuple(sorted(players, key=_player_rank_key))
     by_id = {player.player_id: player for player in ordered_players}
 

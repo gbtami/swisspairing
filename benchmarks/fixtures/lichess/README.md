@@ -15,8 +15,8 @@ events.
 
 - `lichess_swiss_2026.02.14_cY3wR140_weekly-agca-prize-50-dollars.trf`
   - Source URL: `https://lichess.org/swiss/cY3wR140`
-  - 2026-03-10 local comparison: `swisspairing` fast, `py4swiss`, and
-    `JaVaFo` agree; `swisspairing` strict and `bbpPairings` differ.
+  - 2026-03-10 local comparison: `swisspairing`, `py4swiss`, and `JaVaFo`
+    agree in both fast and strict; `bbpPairings` differs.
 - `lichess_swiss_2026.02.28_KQYWuizM_weekly-agca-prize-50-dollars.trf`
   - Source URL: `https://lichess.org/swiss/KQYWuizM`
   - 2026-03-10 local comparison: `swisspairing`, `py4swiss`, and `JaVaFo`

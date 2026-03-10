@@ -101,13 +101,14 @@ def _build_next_bracket_key(
     players: tuple[PlayerState, ...],
     result: PairingResult,
     mdp_ids: frozenset[str],
+    initial_color: Color,
     future_key: NextBracketKey | None = None,
 ) -> NextBracketKey:
     return NextBracketKey(
         local=pairing_result_next_bracket_local_key(
             players=players,
             result=result,
-            context=BracketContext(mdp_ids=mdp_ids),
+            context=BracketContext(mdp_ids=mdp_ids, initial_color=initial_color),
         ),
         future_game_counts=_flatten_future_game_counts(future_key),
     )
@@ -185,7 +186,7 @@ def _pair_round_dutch_greedy(
                 try:
                     bracket_result = _pair_bracket_with_optional_limit(
                         bracket_players,
-                        context=BracketContext(mdp_ids=mdp_ids),
+                        context=BracketContext(mdp_ids=mdp_ids, initial_color=initial_color),
                         allow_bye=True,
                         sequential_search_max_players=sequential_search_max_players,
                         initial_color=initial_color,
@@ -226,7 +227,10 @@ def _pair_round_dutch_greedy(
                 try:
                     next_result = _pair_bracket_with_optional_limit(
                         next_players,
-                        context=BracketContext(mdp_ids=next_mdp_ids),
+                        context=BracketContext(
+                            mdp_ids=next_mdp_ids,
+                            initial_color=initial_color,
+                        ),
                         allow_bye=allow_bye_next,
                         sequential_search_max_players=sequential_search_max_players,
                         initial_color=initial_color,
@@ -238,6 +242,7 @@ def _pair_round_dutch_greedy(
                     players=next_players,
                     result=next_result,
                     mdp_ids=next_mdp_ids,
+                    initial_color=initial_color,
                 )
                 next_bracket_cache_snapshot[ordered_downfloaters] = True
                 return True
@@ -267,6 +272,7 @@ def _pair_round_dutch_greedy(
                     bracket_players,
                     context=BracketContext(
                         mdp_ids=mdp_ids,
+                        initial_color=initial_color,
                         next_bracket_validator=next_bracket_validator,
                         next_bracket_key=next_bracket_key,
                     ),
@@ -385,7 +391,7 @@ def pair_round_dutch(
                 try:
                     bracket_result = _pair_bracket_with_optional_limit(
                         bracket_players,
-                        context=BracketContext(mdp_ids=mdp_ids),
+                        context=BracketContext(mdp_ids=mdp_ids, initial_color=initial_color),
                         allow_bye=True,
                         sequential_search_max_players=sequential_search_max_players,
                         initial_color=initial_color,
@@ -397,7 +403,7 @@ def pair_round_dutch(
                 local_key = pairing_result_next_bracket_local_key(
                     players=bracket_players,
                     result=bracket_result,
-                    context=BracketContext(mdp_ids=mdp_ids),
+                    context=BracketContext(mdp_ids=mdp_ids, initial_color=initial_color),
                 )
                 bye_key = _solution_bye_key(players=bracket_players, result=bracket_result)
                 candidate_solution = _RoundTailSolution(
@@ -446,7 +452,10 @@ def pair_round_dutch(
                     try:
                         next_result = _pair_bracket_with_optional_limit(
                             next_players,
-                            context=BracketContext(mdp_ids=next_mdp_ids),
+                            context=BracketContext(
+                                mdp_ids=next_mdp_ids,
+                                initial_color=initial_color,
+                            ),
                             allow_bye=True,
                             sequential_search_max_players=sequential_search_max_players,
                             initial_color=initial_color,
@@ -458,6 +467,7 @@ def pair_round_dutch(
                         players=next_players,
                         result=next_result,
                         mdp_ids=next_mdp_ids,
+                        initial_color=initial_color,
                     )
                     next_bracket_key_cache_snapshot[ordered_downfloaters] = next_key
                     return next_key
@@ -476,6 +486,7 @@ def pair_round_dutch(
                         next_players,
                         context=BracketContext(
                             mdp_ids=next_mdp_ids,
+                            initial_color=initial_color,
                             next_bracket_validator=next_next_validator,
                         ),
                         allow_bye=False,
@@ -489,6 +500,7 @@ def pair_round_dutch(
                     players=next_players,
                     result=next_result,
                     mdp_ids=next_mdp_ids,
+                    initial_color=initial_color,
                 )
                 next_bracket_key_cache_snapshot[ordered_downfloaters] = next_key
                 return next_key
@@ -498,6 +510,7 @@ def pair_round_dutch(
                     bracket_players,
                     context=BracketContext(
                         mdp_ids=mdp_ids,
+                        initial_color=initial_color,
                         next_bracket_validator=next_bracket_validator,
                         next_bracket_key=next_bracket_key,
                     ),
@@ -526,7 +539,7 @@ def pair_round_dutch(
             local_key = pairing_result_next_bracket_local_key(
                 players=bracket_players,
                 result=bracket_result,
-                context=BracketContext(mdp_ids=mdp_ids),
+                context=BracketContext(mdp_ids=mdp_ids, initial_color=initial_color),
             )
             candidate_solution = _RoundTailSolution(
                 pairings=(*current_pairings, *tail_solution.pairings),
