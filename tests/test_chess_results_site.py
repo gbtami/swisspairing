@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from email.message import Message
+from typing import cast
 from urllib.parse import parse_qsl, urlsplit
+from urllib.request import Request
 
 import pytest
 
@@ -8,6 +11,8 @@ from swisspairing.chess_results_site import (
     ChessResultsEventPage,
     build_chess_results_import_plan,
     canonicalize_chess_results_event_url,
+    fetch_chess_results_page_html,
+    load_chess_results_import_plan,
     parse_chess_results_event_page,
 )
 
@@ -82,6 +87,146 @@ def test_parse_chess_results_event_page_falls_back_to_single_cell_name() -> None
     )
 
     assert page.tournament_name == "Fallback Event Name"
+
+
+def test_fetch_chess_results_page_html_posts_show_tournament_details_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    initial_html = """
+    <html><body>
+      <form method="post" action="./tnr123.aspx?lan=1&amp;turdet=YES&amp;flag=30" id="form1">
+        <input type="hidden" name="__VIEWSTATE" value="/wEP" />
+        <input type="hidden" name="__VIEWSTATEGENERATOR" value="ABC123" />
+        <input type="hidden" name="__EVENTVALIDATION" value="/wEd" />
+        <input
+          type="submit"
+          value="Show tournament details"
+          id="cb_alleDetails"
+          name="cb_alleDetails"
+        />
+      </form>
+    </body></html>
+    """
+    detailed_html = """
+    <html><body>
+      <h2>Sample Swiss Event</h2>
+      <table>
+        <tr><td>Number of rounds</td><td>7</td></tr>
+        <tr><td>Tournament type</td><td>Swiss-System</td></tr>
+        <tr>
+          <td>Board Pairings</td>
+          <td>
+            <a href="/tnr123.aspx?lan=1&amp;art=2&amp;rd=1&amp;turdet=YES&amp;flag=30">Rd.1</a>
+          </td>
+        </tr>
+      </table>
+    </body></html>
+    """
+    calls: list[tuple[str, bytes | None]] = []
+
+    class _Response:
+        def __init__(self, html: str) -> None:
+            self._payload = html.encode("utf-8")
+            self.headers = Message()
+            self.headers["Content-Type"] = "text/html; charset=utf-8"
+
+        def read(self) -> bytes:
+            return self._payload
+
+        def __enter__(self) -> _Response:
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+            return None
+
+    def fake_urlopen(request: Request, timeout: float) -> _Response:
+        assert timeout == 30.0
+        full_url = request.full_url
+        data = cast(bytes | None, request.data)
+        calls.append((full_url, data))
+        return _Response(initial_html if len(calls) == 1 else detailed_html)
+
+    monkeypatch.setattr("swisspairing.chess_results_site.urlopen", fake_urlopen)
+
+    html = fetch_chess_results_page_html(
+        "https://s3.chess-results.com/tnr123.aspx?lan=1",
+        timeout_seconds=30.0,
+    )
+
+    assert html == detailed_html
+    assert [url for url, _ in calls] == [
+        "https://s3.chess-results.com/tnr123.aspx?lan=1&turdet=YES&flag=30",
+        "https://s3.chess-results.com/tnr123.aspx?lan=1&turdet=YES&flag=30",
+    ]
+    assert calls[0][1] is None
+    assert calls[1][1] is not None
+    posted = calls[1][1].decode("utf-8")
+    assert "cb_alleDetails=Show+tournament+details" in posted
+    assert "__VIEWSTATE=%2FwEP" in posted
+    assert "__EVENTVALIDATION=%2FwEd" in posted
+
+
+def test_load_chess_results_import_plan_handles_show_tournament_details_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    initial_html = """
+    <html><body>
+      <form method="post" action="./tnr123.aspx?lan=1&amp;turdet=YES&amp;flag=30" id="form1">
+        <input type="hidden" name="__VIEWSTATE" value="/wEP" />
+        <input
+          type="submit"
+          value="Show tournament details"
+          id="cb_alleDetails"
+          name="cb_alleDetails"
+        />
+      </form>
+    </body></html>
+    """
+    detailed_html = """
+    <html><body>
+      <h2>Sample Swiss Event</h2>
+      <table>
+        <tr><td>Number of rounds</td><td>5</td></tr>
+        <tr><td>Tournament type</td><td>Swiss-System</td></tr>
+        <tr>
+          <td>Board Pairings</td>
+          <td>
+            <a href="/tnr123.aspx?lan=1&amp;art=2&amp;rd=1&amp;turdet=YES&amp;flag=30">Rd.1</a>
+            <a href="/tnr123.aspx?lan=1&amp;art=2&amp;rd=2&amp;turdet=YES&amp;flag=30">Rd.2</a>
+          </td>
+        </tr>
+      </table>
+    </body></html>
+    """
+
+    class _Response:
+        def __init__(self, html: str) -> None:
+            self._payload = html.encode("utf-8")
+            self.headers = Message()
+            self.headers["Content-Type"] = "text/html; charset=utf-8"
+
+        def read(self) -> bytes:
+            return self._payload
+
+        def __enter__(self) -> _Response:
+            return self
+
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+            return None
+
+    responses = iter((_Response(initial_html), _Response(detailed_html)))
+
+    def fake_urlopen(_: Request, timeout: float) -> _Response:
+        assert timeout == 30.0
+        return next(responses)
+
+    monkeypatch.setattr("swisspairing.chess_results_site.urlopen", fake_urlopen)
+
+    plan = load_chess_results_import_plan("https://s3.chess-results.com/tnr123.aspx")
+
+    assert plan.tournament_name == "Sample Swiss Event"
+    assert plan.declared_round_count == 5
+    assert plan.round_numbers == (1, 2)
 
 
 def test_build_chess_results_import_plan_builds_complete_download_urls() -> None:

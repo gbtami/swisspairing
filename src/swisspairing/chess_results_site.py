@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -82,11 +84,14 @@ def fetch_chess_results_page_html(
     timeout_seconds: float = 30.0,
 ) -> str:
     canonical_url = canonicalize_chess_results_event_url(event_url)
-    request = Request(canonical_url, headers={"User-Agent": "swisspairing/0.1"})
-    with urlopen(request, timeout=timeout_seconds) as response:
-        payload = response.read()
-        charset = response.headers.get_content_charset() or "utf-8"
-    return payload.decode(charset, errors="replace")
+    html = _fetch_html(canonical_url, timeout_seconds=timeout_seconds)
+    if not _requires_details_postback(html):
+        return html
+    return _submit_show_tournament_details(
+        event_url=canonical_url,
+        initial_html=html,
+        timeout_seconds=timeout_seconds,
+    )
 
 
 def parse_chess_results_event_page(
@@ -214,6 +219,57 @@ def _download_to_path(url: str, path: Path, *, timeout_seconds: float) -> None:
     with urlopen(request, timeout=timeout_seconds) as response:
         payload = response.read()
     path.write_bytes(payload)
+
+
+def _fetch_html(
+    url: str,
+    *,
+    timeout_seconds: float,
+    data: bytes | None = None,
+) -> str:
+    request = Request(url, data=data, headers={"User-Agent": "swisspairing/0.1"})
+    with urlopen(request, timeout=timeout_seconds) as response:
+        payload = response.read()
+        charset = response.headers.get_content_charset() or "utf-8"
+    return payload.decode(charset, errors="replace")
+
+
+def _requires_details_postback(html: str) -> bool:
+    return 'name="cb_alleDetails"' in html or 'id="cb_alleDetails"' in html
+
+
+def _submit_show_tournament_details(
+    *,
+    event_url: str,
+    initial_html: str,
+    timeout_seconds: float,
+) -> str:
+    post_url = _extract_form_action(initial_html, base_url=event_url) or event_url
+    form_fields = _extract_hidden_form_fields(initial_html)
+    form_fields["cb_alleDetails"] = "Show tournament details"
+    return _fetch_html(
+        post_url,
+        timeout_seconds=timeout_seconds,
+        data=urlencode(form_fields).encode("utf-8"),
+    )
+
+
+def _extract_form_action(html: str, *, base_url: str) -> str | None:
+    match = re.search(r'<form[^>]+action="([^"]+)"', html, flags=re.IGNORECASE)
+    if match is None:
+        return None
+    return urljoin(base_url, unescape(match.group(1)))
+
+
+def _extract_hidden_form_fields(html: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for name, value in re.findall(
+        r'<input[^>]+type="hidden"[^>]+name="([^"]+)"[^>]+value="([^"]*)"',
+        html,
+        flags=re.IGNORECASE,
+    ):
+        fields[name] = unescape(value)
+    return fields
 
 
 def _with_query(url: str, params: dict[str, str]) -> str:

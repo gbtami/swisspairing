@@ -1,0 +1,278 @@
+001    1      Pranesh, M                        2627                             4.5   14  0000 - H   140 b -   192 b 1   143 w 1   234 w 1    59 b 1
+001    2      Pranav, Anand                     2606                             4.5   15   138 w 1    74 b 1    46 w =    49 b =    58 w 1    55 b =
+001    3      Socko, Bartosz                    2580                             5.0    2   139 b 1    75 w 1    50 b =   112 w 1    27 b 1    11 w =
+001    4      Raja, Rithvik R                   2535                             4.5   16   140 w =   149 b 1    69 w =    82 b 1    59 w =    71 b 1
+001    5      Klimkowski, Jan                   2532                             4.5   17   141 b 1    79 w =   136 b =    83 w 1    61 b =    65 w 1
+001    6      Chasin, Nico                      2523                             4.0   27   167 w 1    76 b 1    47 w 1    25 b =    11 b =    40 w 0
+001    7      Lalit, Babu M R                   2511                             5.5    1   142 w 1    78 b =    84 w 1    46 b 1    25 w 1    14 b 1
+001    8      Deuer, Marius                     2502                             4.0   28   143 b =   156 w 1    66 b =    88 w 1   122 b =    61 w =
+001    9      Dotzer, Lukas                     2502                             3.0  112   144 w 1    80 b 0   229 w 1    86 b 0   148 w 1    94 b 0
+001   10      Shengelia, David                  2487                             5.0    3   145 b 1    81 w 1    56 b =    48 w 1    29 b 1    21 w =
+001   11      Travadon, Loic                    2483                             5.0    4   146 w 1    82 b 1    58 w 1    72 b 1     6 w =     3 b =
+001   12      Ben Ari, Yannay                   2467                             4.5   18   147 b 1    83 w 1  0000 - H    50 w =    65 b =    73 b 1
+001   13      Yaniv, Yuval                      2467                             4.0   29   148 w 1    85 b =    78 w 1    51 b 0   102 w =   105 b 1
+001   14      Zverev, Lev                       2453                             4.0   30   150 b 1    88 w 1    60 b =    56 w =    68 b 1     7 w 0
+001   15      Diermair, Andreas                 2447                             4.0   31   151 w 1    87 b =    85 w 1    61 b =    72 w 1    49 b 0
+001   16      Balint, Peter                     2444                             4.0   32   152 b 0   193 w 1   145 b 1    91 w =   103 b 1    75 w =
+001   17      Tisaj, Domen                      2436                             3.0  113   153 w 1    89 b =    86 w =    87 b 0   149 w 1   102 b 0
+001   18      Shahil, Dey                       2435                             3.5   72   154 b 1    98 w 0   151 b 1    92 w =   104 b 0   156 w 1
+001   19      Hamitevici, Vladimir              2433                             4.0   33   155 w 1    91 b =    87 w =    89 b 0   159 w 1   109 b 1
+001   20      Kushagra, Mohan                   2432                             4.0   34   156 b =   143 w 1    79 b 1    60 w 1    38 b =    44 w 0
+001   21      Dehtiarov, Roman                  2430                             5.0    5   157 w 1    95 b =    89 w 1    97 b 1    51 w 1    10 b =
+001   22      Gschnitzer, Adrian                2429                             5.0    6   158 b 1   100 w 1    70 b =    98 w 1    40 b =   122 w 1
+001   23      Durak, Can                        2416                             3.5   73   159 w 1   101 b 0   157 w =   149 b =   155 w =   153 b 1
+001   24      Sowinski, Pawel                   2413                             5.0    7   160 b 1   102 w +    61 w =    70 w 1    44 b =   101 b 1
+001   25      Waldhausen Gordon, Frederick      2410                             4.5   19   161 w 1   105 b 1    65 w 1     6 w =     7 b 0    80 b 1
+001   26      Czernek, Tymon                    2403                             4.5   20   162 b 1   106 w =    91 b =    94 w 1    75 b =    76 w 1
+001   27      Radzimski, Antoni                 2400                             4.5   21   163 w =   168 b 1    95 w 1    71 b 1     3 w 0   127 b 1
+001   28      Stein, Robert                     2400                             4.0   35   164 b 1   110 w 1    72 b 0   104 w =   111 b 1    98 w =
+001   29      Suder, Jakub                      2400                             4.0   36   165 w 1   107 b 1    71 w =    73 b 1    10 w 0    95 b =
+001   30      Roebers, Eline                    2398                             4.5   22   232 b 1   112 w 0   154 b =   156 w 1   113 b 1   104 w 1
+001   31      Borrmann, Laurenz                 2397                             3.5   74   166 b 1   114 w 1    98 b =   122 w 0   115 b =   110 w =
+001   32      Brilej, Jaka                      2397                             4.0   37   168 w =   163 b =   161 w 1   103 b =   121 w 1   135 b =
+001   33      Terkiewicz, Bruno                 2393                             3.5   75   213 b 1   116 w =   104 b =   114 w 1    76 b =   112 w 0
+001   34      Jirasek, Pavel                    2392                             4.0   38   169 w 1   111 b 1    73 w =    80 b =    86 w 0   114 b 1
+001   35      Sherman, Raem                     2388                             5.0    8   170 b 1   118 w =   106 b 1   136 w =    77 b 1   132 w 1
+001   36      Marn, Jan                         2386                             5.0    9   171 w 1   113 b 1    80 w =   101 b =    87 w 1    86 b 1
+001   37      Bettalli, Francesco               2384                             4.0   39   172 b 1   120 w 1   112 b 0   118 w 1   132 b 0   115 w 1
+001   38      Dahl, Christoph                   2378                             5.0   10   173 w 1   115 b 1   101 w =   128 b 1    20 w =   107 b 1
+001   39      Nunez Gregoire, Daniel            2377                             4.0   40   174 b =   176 w 1   116 b 1   152 w =   112 b =   130 w =
+001   40      Martins, Bruno Andre Leite        2376                             5.0   11   175 w 1   121 b 1   122 w =   129 b 1    22 w =     6 b 1
+001   41      Balabayeva, Xeniya                2376                             3.0  114   176 b =   174 w 1   118 b =   120 w =   116 b 0   160 w =
+001   42      Vantika, Agrawal                  2375                             4.5   23   177 w 1   122 b 0   163 w 1   105 b 1    80 w =   205 b 1
+001   43      Lima, Darcy                       2374                             3.5   76   178 b =   184 w =   162 b =   154 w =   151 b 1   120 w =
+001   44      Ambartsumian, Tyhran              2364                             5.0   12   179 w =   197 b 1   125 w 1   137 b 1    24 w =    20 b 1
+001   45      Nurman, Alua                      2363                             4.5   24   180 b 1   124 w =   128 w 0   153 b 1   123 w 1   213 b 1
+001   46      Smith, Bryan                      2361                             4.0   41   181 w 1   123 b 1     2 b =     7 w 0   120 b =   124 w 1
+001   47      Perets, Dmytro                    2357                             3.0  115   182 b 1   126 w 1     6 b 0   130 w =   125 b =   136 w 0
+001   48      Savitha, Shri B                   2356                             3.5   77   183 w 1   129 b =   135 w 1    10 b 0   127 w 0   155 b 1
+001   49      Oktem, Ege Tuna                   2356                             5.0   13   184 b =   178 w 1   124 b 1     2 w =   136 b 1    15 w 1
+001   50      Moksh, Amit Doshi                 2354                             4.0   42   185 w 1   131 b 1     3 w =    12 b =   101 w 0   118 b 1
+001   51      Ilkhomi, Jaloliddin               2353                             4.0   43   186 b 1   132 w =   140 b 1    13 w 1    21 b 0   116 w =
+001   52      Rohit, S                          2352                             3.0  116   187 w 1   135 b =   129 w 0   157 b 0   274 b 1   169 w =
+001   53      Vingris, Mikelis                  2349                             2.5  165   188 b 1   136 w 0   169 b =   160 w 1  0000 - Z  0000 - Z
+001   54      Makridis, Dimitrios               2348                             3.5   78   189 w 1   152 b =   137 w 0   159 b =   161 w =   165 b 1
+001   55      Zielonka, Adam                    2348                             4.5   25   190 b 1   228 w =   132 b =   126 w 1   152 b 1     2 w =
+001   56      Stickler, Florentin               2346                             4.0   44   191 w 1   202 b 1    10 w =    14 b =   107 w 0   125 w 1
+001   57      Hercegovac, Neven                 2336                             4.0   45   192 b =   194 w 1   228 b =   132 w 0   154 b 1   126 w 1
+001   58      Atoyan, Alberto                   2335                             3.5   79   193 w 1   211 b 1    11 b 0   134 w 1     2 b 0   137 w =
+001   59      Krawczyk, Flawian                 2334                             3.5   80   194 b =   192 w 1   239 b =   173 w 1     4 b =     1 w 0
+001   60      Hasanov, Zaur                     2329                             4.0   46   195 w 1   225 b 1    14 w =    20 b 0   128 w =   129 b 1
+001   61      Silva, Pedro Gil Ferreira         2329                             4.0   47   196 b 1   233 w 1    24 b =    15 w =     5 w =     8 b =
+001   62      Novosel, Lovro                    2326                             3.0  117   197 w =   179 b 1   152 w 0   162 b 1   129 w =   128 b 0
+001   63      Trbojevic, Mladen                 2321                             3.0  118   198 b =   220 w =   170 b 1   228 w =   130 b 0   172 w =
+001   64      Rudolf, Michal                    2317                             3.0  119   199 w 1   229 b =   231 w =   107 b 0   165 w =   161 b =
+001   65      Piekielny, Pawel                  2316                             3.5   81   200 b 1   235 w 1    25 b 0   239 w 1    12 w =     5 b 0
+001   66      Utsab, Chatterjee                 2313                             3.5   82   201 w 1   231 b =     8 w =   121 b =   135 w 0   168 b 1
+001   67      Aakash, G                         2312                             0.0  274   202 b -  0000 - Z  0000 - Z  0000 - Z  0000 - Z  0000 - Z
+001   68      Dumbelovic, Novak                 2312                             4.0   48   203 w =   227 b =   171 w 1   131 b 1    14 w 0   140 b 1
+001   69      Oberhofer, Cédric                 2311                             3.5   83   204 b 1   239 w =     4 b =   263 w =   137 b =   141 w =
+001   70      Dyachuk, Artem                    2310                             4.0   49   205 w 1   245 b 1    22 w =    24 b 0   140 w =   131 b 1
+001   71      Perossa, Nicolas                  2309                             3.5   84   206 b 1   253 w 1    29 b =    27 w 0   169 b 1     4 w 0
+001   72      Leitgeb, Julian                   2305                             3.5   85   207 w 1   270 b 1    28 w 1    11 w 0    15 b 0   144 b =
+001   73      Mattenberger, Matthias            2302                             3.5   86   208 b 1   263 w 1    34 b =    29 w 0   228 b 1    12 w 0
+001   74      Chittka, Julius                   2301                             3.5   87   273 w 1     2 w 0   173 b 0   193 b 1   171 w 1   152 b =
+001   75      Diachek, Andrii                   2301                             4.0   50   209 w 1     3 b 0   177 w 1   191 b 1    26 w =    16 b =
+001   76      Bizhigitov, Zhangir               2300                             3.5   88   210 b 1     6 w 0   180 b 1   274 w 1    33 w =    26 b 0
+001   77      Gallasch, Jonas                   2299                             4.0   51   211 w 0   195 b 1   181 w 1   231 b 1    35 w 0   157 b 1
+001   78      Ohler, Julius                     2298                             3.5   89   212 b 1     7 w =    13 b 0   169 w 0   198 b 1   178 w 1
+001   79      Warchol, Kamil                    2298                             3.5   90   214 w 1     5 b =    20 w 0   165 b =   177 w 1   158 b =
+001   80      Skrbec, Leon                      2295                             3.5   91   215 b 1     9 w 1    36 b =    34 w =    42 b =    25 w 0
+001   81      Schneider, Jana                   2291                             4.0   52   216 w 1    10 b 0   183 w 1   234 b 0   179 w 1   191 b 1
+001   82      Filindash, Nikita                 2289                             2.5  166   217 b 1    11 w 0   184 b 1     4 w 0   158 b 0   239 w =
+001   83      Golis, Wiktor                     2288                             4.0   53   219 w 1    12 b 0   187 w 1     5 b 0   181 w 1   195 b 1
+001   84      Hovakimyan, Vache                 2287                             4.0   54   220 b =   198 w 1     7 b 0   172 w =   166 b 1   173 w 1
+001   85      Safarov, Deniel                   2287                             4.0   55   221 w 1    13 w =    15 b 0   168 b 1   157 w =   234 b 1
+001   86      Lymar, Vladislav                  2287                             4.0   56   275 b =   255 w 1    17 b =     9 w 1    34 b 1    36 w 0
+001   87      Nurgaliyeva, Zarina               2286                             3.0  120   222 b 1    15 w =    19 b =    17 w 1    36 b 0   261 w 0
+001   88      Wendl, Philipp                    2285                             3.0  121   223 w 1    14 b 0   189 w 1     8 b 0   191 w 0   185 b 1
+001   89      Dovgaliuk, Oleksandr              2284                             4.0   57   224 b 1    17 w =    21 b 0    19 w 1   261 b =   240 w 1
+001   90      Colev, Ivor                       2284                             3.0  122   225 w 0   199 b 1   191 w 0   195 b 0   266 b 1   188 w 1
+001   91      Orujov, Farid                     2282                             3.5   92   226 b 1    19 w =    26 w =    16 b =   205 w 0   187 b 1
+001   92      Aarav, Sarbalia                   2281                             3.5   93   227 w =   203 b =   202 w 1    18 b =   213 w 0   201 b 1
+001   93      Wallis, Christopher               2277                             2.5  167   228 b 0   196 w =   194 b 0   224 w 1   201 b 0   233 w 1
+001   94      Suska, Szymon                     2277                             4.0   58   229 w 0   201 b 1   203 w 1    26 b 0   189 w 1     9 w 1
+001   95      Ribeiro, Gustavo                  2276                             4.0   59   230 b 1    21 w =    27 b 0   176 w 1   263 b 1    29 w =
+001   96      Lima, Stefan Moisei Vieira        2274                             3.5   94   231 w 0   205 b 0   275 b 1   190 w 1   172 b =   196 w 1
+001   97      Dukic, Zachary                    2273                             3.0  123   233 b 0   200 w 1   188 b 1    21 w 0   173 b 0   190 w 1
+001   98      Stamatiou, Rodolfos               2273                             4.0   60   234 w 1    18 b 1    31 w =    22 b 0   229 w 1    28 b =
+001   99      Golenia, Wojciech                 2272                             2.0  209   235 b 0   204 w =   196 b 0   232 w 0   271 b 1   250 w =
+001  100      Stenner, Patrick                  2271                             3.0  124   236 w 1    22 b 0   205 w =   209 b =   195 w 0   189 b 1
+001  101      Kozlovic, Jernej                  2268                             4.0   61   237 b 1    23 w 1    38 b =    36 w =    50 b 1    24 w 0
+001  102      Dinesh, Rajan M                   2267                             4.0   62   238 w 1    24 b -   208 b =   178 w 1    13 b =    17 w 1
+001  103      Botea, David-Alexandru            2266                             3.0  125   239 b 0   206 w 1   211 b 1    32 w =    16 w 0   216 b =
+001  104      Gut, Raphael                      2266                             3.5   95   240 w =   244 b 1    33 w =    28 b =    18 w 1    30 b 0
+001  105      Coenen, Michael                   2263                             3.0  126   241 b 1    25 w 0   220 b 1    42 w 0   182 b 1    13 w 0
+001  106      Bauer, Thomas                     2263                             2.5  168   242 w 1    26 b =    35 w 0   205 b 0   208 w 0   269 b 1
+001  107      Noy, Eyal                         2261                             4.0   63   243 b 1    29 w 0   225 b 1    64 w 1    56 b 1    38 w 0
+001  108      Kalogridakis, Georgios            2260                             1.5  246   244 w =   266 b =   227 w =   213 b 0   216 w 0  0000 - Z
+001  109      Beliman, Alexandro                2258                             3.0  127   245 b 0   207 w 1   226 b =   182 w =   184 b 1    19 w 0
+001  110      Liskiewicz, Jakub                 2251                             3.5   96   246 w 1    28 b 0   234 w 0   203 b 1   209 w 1    31 b =
+001  111      Bazilius, Augustinas              2249                             3.0  128   247 b 1    34 w 0   233 b =   194 w 1    28 w 0   229 b =
+001  112      Paikens, Reinis                   2246                             4.5   26   248 w 1    30 b 1    37 w 1     3 b 0    39 w =    33 b 1
+001  113      Valdats, Reinis                   2245                             3.5   97   249 b 1    36 w 0   235 b =   196 w 1    30 w 0   270 b 1
+001  114      Sandhoefner, Florian              2244                             3.0  129   250 w 1    31 b 0   238 w 1    33 b 0   219 w 1    34 w 0
+001  115      Veress, Armand                    2242                             3.0  130   251 b 1    38 w 0   240 b =   208 w 1    31 w =    37 b 0
+001  116      Ammar, Sedrani                    2239                             4.0   64   252 w 1    33 b =    39 w 0   227 b 1    41 w 1    51 b =
+001  117      Ochedzan, Filip                   2237                             2.0  210   253 b 0   208 w 0   222 b 0   259 w 1   210 b 0   220 b 1
+001  118      Lyakh, Vasiliy                    2235                             3.0  131   254 w 1    35 b =    41 w =    37 b 0   231 w +    50 w 0
+001  119      Lecki, Leonard                    2233                             3.5   98   255 b =   261 w =   245 w =   229 b 0   218 b 1   226 w 1
+001  120      Federer, Colin                    2232                             3.5   99   256 w 1    37 b 0   248 w 1    41 b =    46 w =    43 b =
+001  121      Saminskij, Jan                    2232                             3.5  100   257 b 1    40 w 0   250 b 1    66 w =    32 b 0   228 w 1
+001  122      Mohylnyi, Stepan                  2231                             4.0   65   258 w 1    42 w 1    40 b =    31 b 1     8 w =    22 b 0
+001  123      Ilko-Toth, Andras                 2230                             3.5  101   259 b 1    46 w 0   253 b =   226 w 1    45 b 0   235 w 1
+001  124      Charvi, A                         2229                             3.0  132   260 w 1    45 b =    49 w 0   270 b =   244 w 1    46 b 0
+001  125      Mandalinic, David                 2224                             3.0  133   261 b =   269 w 1    44 b 0   233 w 1    47 w =    56 b 0
+001  126      Gruenwald, Simon                  2221                             3.0  134   262 w 1    47 b 0   266 w 1    55 b 0   256 w 1    57 b 0
+001  127      Rozycki, Bartlomiej               2221                             3.5  102   263 b 0   209 w =   198 b 1   235 w 1    48 b 1    27 w 0
+001  128      Gut, Lionel                       2219                             4.0   66   264 w 1  0000 - H    45 b 1    38 w 0    60 b =    62 w 1
+001  129      Kubik, Rafal                      2213                             3.0  135   265 b 1    48 w =    52 b 1    40 w 0    62 b =    60 w 0
+001  130      Advik, Amit Agrawal               2212                             4.0   67   266 w =   240 b =   268 w 1    47 b =    63 w 1    39 b =
+001  131      Cwiek, Ryszard                    2211                             3.0  136   267 b 1    50 w 0   256 b 1    68 w 0   215 b 1    70 w 0
+001  132      Gov, Guy                          2210                             4.0   68   268 w 1    51 b =    55 w =    57 b 1    37 w 1    35 b 0
+001  133      Csernyik, Mark                    2204                             3.5  103   269 b =   274 w =   261 b =   240 w =   239 b =   263 w 1
+001  134      Zakharchyn, Andriian              2202                             3.0  137   270 w 0   214 b 1   273 w 1    58 b 0   262 w =   236 b =
+001  135      Golenia, Jan                      2199                             4.0   69   271 b 1    52 w =    48 b 0   245 w 1    66 b 1    32 w =
+001  136      Nakonechnyi, Oleksii              2194                             4.0   70   272 w 1    53 b 1     5 w =    35 b =    49 w 0    47 b 1
+001  137      Kukushkin, Ivan                   2193                             3.5  104   274 b =   275 w 1    54 b 1    44 w 0    69 w =    58 b =
+001  138      Panda, Barnabas                   2193                             1.5  247     2 b 0   210 w 1   263 b 0   261 w 0   211 b 0   221 w =
+001  139      Campos, Maria Jose                2192                             3.5  105     3 w 0   216 b =   185 w =   207 b 1   270 w =   262 b 1
+001  140      Moskalets, Sofiia                 2192                             3.0  138     4 b =     1 w +    51 w 0   253 w 1    70 b =    68 w 0
+001  141      Mizzi, Jack                       2191                             3.5  106     5 w 0   219 b 1   270 w =   244 b =   268 w 1    69 b =
+001  142      Turel, Tugrul                     2190                             2.5  169     7 b 0   212 w 1   274 b 0   202 w 1   240 b 0   192 w =
+001  143      Meszaros, Casey Ryan              2188                             2.5  170     8 w =    20 b 0   197 w 1     1 b 0   223 w 1  0000 - Z
+001  144      Arjun, C Krishnamachari           2181                             3.5  107     9 b 0   213 w =   204 b =   210 w 1   247 b 1    72 w =
+001  145      Tetepoulidis, Ioannis             2180                             1.5  248    10 w 0   221 b 1    16 w 0   219 b 0   206 w 0   222 b =
+001  146      Berikkyzy, Alanna                 2179                             2.5  171    11 b 0   215 w =   209 b 0   243 w 1   226 b 0   258 w 1
+001  147      Shpanko, Nadiia                   2178                             2.5  172    12 w 0   223 b =   213 w 0   273 b =   207 w 1   206 b =
+001  148      Grochol, Kamil                    2176                             3.0  139    13 b 0   217 w =   215 b =   204 w 1     9 b 0   194 w 1
+001  149      Schnell, Simon                    2175                             2.0  211  0000 - H     4 w 0   217 b 1    23 w =    17 b 0   210 w 0
+001  150      Maier, Tobias                     2168                             2.5  173    14 w 0   234 b 0   219 w 0   237 b 1   212 w 1   209 b =
+001  151      Dushatov, Timur                   2167                             3.0  140    15 b 0   222 w 1    18 w 0   238 b 1    43 w 0   219 b 1
+001  152      Sivanandan, Bodhana               2163                             3.5  108    16 w 1    54 w =    62 b 1    39 b =    55 w 0    74 w =
+001  153      Praveen, K B                      2158                             2.5  174    17 b 0   224 w =   232 b 1    45 w 0   233 b 1    23 w 0
+001  154      Vaidyanathan, Kannan              2153                             3.0  141    18 w 0   236 b 1    30 w =    43 b =    57 w 0   244 b 1
+001  155      Guretchii, Kirill                 2153                             2.5  175    19 b 0   226 w 0   230 b 1   211 w 1    23 b =    48 w 0
+001  156      Mamikonyan, Artem T               2153                             2.5  176    20 w =     8 b 0   216 w 1    30 b 0   227 w 1    18 b 0
+001  157      Naveen, Kumar P                   2150                             3.0  142    21 b 0   230 w 1    23 b =    52 w 1    85 b =    77 w 0
+001  158      Praczukowski, Stanislaw           2150                             3.5  109    22 w 0   238 b 0   221 w 1   246 b 1    82 w 1    79 w =
+001  159      Mnatsakanyan, Aren                2148                             3.0  143    23 b 0   232 w =   224 b 1    54 w =    19 b 0   211 w 1
+001  160      Stefanovic, Bosko                 2146                             3.0  144    24 w 0   242 b =   223 w 1    53 b 0   232 w 1    41 b =
+001  161      Krasniewski, Maciej               2143                             3.0  145    25 b 0   237 w 1    32 b 0   212 w 1    54 b =    64 w =
+001  162      Gradalski, Olaf                   2142                             2.5  177    26 w 0   246 b 1    43 w =    62 w 0   235 b 0   223 b 1
+001  163      Hofegger, Jakob                   2142                             2.0  212    27 b =    32 w =    42 b 0   215 w 0   214 b 1   225 w 0
+001  164      Koval, Jakub                      2142                             2.5  178    28 w 0   248 b 0   236 w =   223 b 0   230 w 1   227 b 1
+001  165      Pal, Rohan                        2141                             2.5  179    29 b 0   241 w =   243 b 1    79 w =    64 b =    54 w 0
+001  166      Shuqja, Klean                     2136                             2.0  213    31 w 0   250 b 0   237 w 1   248 b 1    84 w 0   251 b 0
+001  167      Maglioni, Leonardo                2135                             3.0  146     6 b 0   243 w =   241 b =   218 w =   245 b =   215 w 1
+001  168      Tumur-Ochir, Duluu                2132                             2.5  180    32 b =    27 w 0   255 b 1    85 w 0   250 b 1    66 w 0
+001  169      Witczak, Borys                    2131                             3.0  147    34 b 0   247 w 1    53 w =    78 b 1    71 w 0    52 b =
+001  170      Durana, Jonas                     2129                             3.0  148    35 w 0   252 b 1    63 w 0   256 b 0   220 w 1   254 b 1
+001  171      Modric, Milos                     2128                             2.5  181    36 b 0   249 w 1    68 b 0   220 w 1    74 b 0   231 w =
+001  172      Volcov, Igor                      2125                             3.0  149    37 w 0   254 b =   242 w 1    84 b =    96 w =    63 b =
+001  173      Zhang, Junyi                      2122                             3.0  150    38 b 0   251 w 1    74 w 1    59 b 0    97 w 1    84 b 0
+001  174      Katona, Ferenc                    2122                             0.5  270    39 w =    41 b 0   244 w 0   236 b 0   242 w 0   272 b 0
+001  175      Nagare, Akhilesh                  2120                             2.5  182    40 b 0   256 w 0   247 b 0   249 b 1   222 w 1   241 w =
+001  176      Ragavan, Samarth Rajesh           2119                             2.5  183    41 w =    39 b 0   254 w 1    95 b 0   236 w 0   232 b 1
+001  177      Belin, Anton                      2118                             2.5  184    42 b 0   257 w 1    75 b 0   222 w 1    79 b 0   245 w =
+001  178      Malaric, Marko                    2117                             2.5  185    43 w =    49 b 0   260 w 1   102 b 0   253 w 1    78 b 0
+001  179      Torosyan, Volodya                 2116                             2.5  186    44 b =    62 w 0   264 b =   225 w 1    81 b 0   247 w =
+001  180      Adamovics, Aleksejs               2116                             3.0  151    45 w 0   258 b 1    76 w 0   262 b 0   238 w 1   256 b 1
+001  181      Tesar, Jakub                      2113                             2.5  187    46 b 0   259 w 1    77 b 0   241 w 1    83 b 0   255 w =
+001  182      Kanana, Ziad                      2113                             2.0  214    47 w 0   260 b =   269 w 1   109 b =   105 w 0   264 b 0
+001  183      Zagorac, Lara                     2112                             3.0  152    48 b 0   262 w 1    81 b 0   247 w 0   221 b 1   274 w 1
+001  184      Cichon, Bartlomiej                2112                             2.5  188    49 w =    43 b =    82 w 0   264 b 1   109 w 0   268 b =
+001  185      Moreto Quintana, Alex             2111                             2.0  215    50 b 0   264 w =   139 b =   250 w =   255 b =    88 w 0
+001  186      Tashkinova, Sofiia                2110                             2.0  216    51 w 0   268 b 0   246 w 0   251 b 0   265 w 1   238 b 1
+001  187      Kucharska, Honorata               2108                             2.5  189    52 b 0   265 w 1    83 b 0   266 w =   258 b 1    91 w 0
+001  188      Zawisza, Alan                     2107                             2.0  217    53 w 0   272 b 1    97 w 0   268 b 0   246 w 1    90 b 0
+001  189      Rajbharath, Harjith               2106                             2.0  218    54 b 0   267 w 1    88 b 0   271 w 1    94 b 0   100 w 0
+001  190      Wegerer, Fred  Ing.               2105                             2.0  219    55 w 0   273 b 0   249 w 1    96 b 0   248 w 1    97 b 0
+001  191      Sala, Giulia                      2103                             3.0  153    56 b 0   271 w 1    90 b 1    75 w 0    88 b 1    81 w 0
+001  192      Iwan, Patryk                      2103                             2.5  190    57 w =    59 b 0     1 w 0   242 b 1   254 w =   142 b =
+001  193      Matosec, Thomas                   2103                             2.0  220    58 b 0    16 b 0   251 w 1    74 w 0   225 b 0   224 w 1
+001  194      Simunkovic, Bartol                2103                             2.0  221    59 w =    57 b 0    93 w 1   111 b 0   269 w =   148 b 0
+001  195      Angelovski, Emanuel               2102                             3.0  154    60 b 0    77 w 0   257 b 1    90 w 1   100 b 1    83 w 0
+001  196      Morais, Miguel Almeida            2102                             2.5  191    61 w 0    93 b =    99 w 1   113 b 0   273 w 1    96 b 0
+001  197      Vedant, Yogesh Kale               2101                             2.5  192    62 b =    44 w 0   143 b 0   255 w 0   259 b 1   275 w 1
+001  198      Loukopoulos, Panagiotis-Athanasi  2100                             2.0  222    63 w =    84 b 0   127 w 0   252 b 1    78 w 0   242 b =
+001  199      Kiraly, Lilla Virag               2099                             1.5  249    64 b 0    90 w 0   259 b =   258 w 0   275 b 0   252 w 1
+001  200      Leitner, Gerald  DI.              2097                             2.0  223    65 w 0    97 b 0   252 w =   254 b 0   260 w 1   253 b =
+001  201      Paprocki, Jaroslaw                2097                             2.5  193    66 b 0    94 w 0  0000 - H   260 b 1    93 w 1    92 w 0
+001  202      Steinwidder, Jonathan             2096                             1.0  260    67 w +    56 w 0    92 b 0   142 b 0   251 w 0   246 b 0
+001  203      Krkyasharyan, Sona                2095                             2.0  224    68 b =    92 w =    94 b 0   110 w 0   241 b 0   243 w 1
+001  204      Chen, Chicheng Leon               2094                             2.0  225    69 w 0    99 b =   144 w =   148 b 0   264 w 0   248 b 1
+001  205      Vanek, Tomas                      2092                             3.5  110    70 b 0    96 w 1   100 b =   106 w 1    91 b 1    42 w 0
+001  206      Maklakova, Naomi                  2092                             2.5  194    71 w 0   103 b 0   262 b 0   257 w 1   145 b 1   147 w =
+001  207      Palamarchuk, Andriy               2087                             2.0  226    72 b 0   109 b 0   265 w 1   139 w 0   147 b 0   249 b 1
+001  208      Hitka, Dominik                    2082                             2.5  195    73 w 0   117 b 1   102 w =   115 b 0   106 b 1  0000 - Z
+001  209      Knitl, Anton                      2082                             2.5  196    75 b 0   127 b =   146 w 1   100 w =   110 b 0   150 w =
+001  210      Pasti, Zsombor                    2081                             3.0  155    76 w 0   138 b 0   267 w 1   144 b 0   117 w 1   149 b 1
+001  211      Deschler, Arne                    2080                             2.0  227    77 b 1    58 w 0   103 w 0   155 b 0   138 w 1   159 b 0
+001  212      Braeutigam, Katerina              2078                             2.0  228    78 w 0   142 b 0   272 w 1   161 b 0   150 b 0   271 w 1
+001  213      Kenzheyev, Serik                  2078                             3.5  111    33 w 0   144 b =   147 b 1   108 w 1    92 b 1    45 w 0
+001  214      Panko, Radoslav                   2077                             2.0  229    79 b 0   134 w 0   271 b 0   265 b 1   163 w 0   267 w 1
+001  215      Bratko, Alexander                 2075                             2.0  230    80 w 0   146 b =   148 w =   163 b 1   131 w 0   167 b 0
+001  216      Rzap, Filip                       2075                             3.0  156    81 b 0   139 w =   156 b 0   275 w 1   108 b 1   103 w =
+001  217      Papai, Mate                       2074                             2.0  231    82 w 0   148 b =   149 w 0   269 b 0   252 w 1   266 b =
+001  218      Schnell, Sebastian Narayana       2073                             2.0  232  0000 - U  0000 - Z  0000 - Z   167 b =   119 w 0   273 b =
+001  219      Beisteiner, Joachim               2072                             2.0  233    83 b 0   141 w 0   150 b 1   145 w 1   114 b 0   151 w 0
+001  220      Aryan, Goyal                      2071                             1.0  261    84 w =    63 b =   105 w 0   171 b 0   170 b 0   117 w 0
+001  221      Martinovic, David                 2069                             1.5  250    85 b 0   145 w 0   158 b 0   267 b 1   183 w 0   138 b =
+001  222      Arya, G Mallar                    2066                             1.5  251    87 w 0   151 b 0   117 w 1   177 b 0   175 b 0   145 w =
+001  223      Panko, Eduard                     2066                             1.5  252    88 b 0   147 w =   160 b 0   164 w 1   143 b 0   162 w 0
+001  224      Hafner, Robert                    2059                             1.0  262    89 w 0   153 b =   159 w 0    93 b 0   272 w =   193 b 0
+001  225      Posluszny, Tomasz                 2057                             3.0  157    90 b 1    60 w 0   107 w 0   179 b 0   193 w 1   163 b 1
+001  226      Salsa, Nicola                     2057                             2.5  197    91 w 0   155 b 1   109 w =   123 b 0   146 w 1   119 b 0
+001  227      Wolak, Maciej                     2054                             1.5  253    92 b =    68 w =   108 b =   116 w 0   156 b 0   164 w 0
+001  228      Stepinski, Piotr                  2052                             2.5  198    93 w 1    55 b =    57 w =    63 b =    73 w 0   121 b 0
+001  229      Zaiarski, Stepan                  2048                             3.0  158    94 b 1    64 w =     9 b 0   119 w 1    98 b 0   111 w =
+001  230      Lazars, Krisjanis                 2047                             1.5  254    95 w 0   157 b 0   155 w 0   272 b =   164 b 0   259 w 1
+001  231      Shen, Tingrui                     2047                             2.5  199    96 b 1    66 w =    64 b =    77 w 0   118 b -   171 b =
+001  232      Bauer, Laura Sophie               2043                             1.5  255    30 w 0   159 b =   153 w 0    99 b 1   160 b 0   176 w 0
+001  233      Groessing, Daniel-Yosuke          2042                             1.5  256    97 w 1    61 b 0   111 w =   125 b 0   153 w 0    93 b 0
+001  234      Swara, Lakshmi S Nair             2041                             3.0  159    98 b 0   150 w 1   110 b 1    81 w 1     1 b 0    85 w 0
+001  235      Cilo, Selimhan                    2041                             2.5  200    99 w 1    65 b 0   113 w =   127 b 0   162 w 1   123 b 0
+001  236      Koppe, Connor                     2039                             3.0  160   100 b 0   154 w 0   164 b =   174 w 1   176 b 1   134 w =
+001  237      Reisenhofer, Maximilian           2028                             1.5  257   101 w 0   161 b 0   166 b 0   150 w 0   243 b =   260 w 1
+001  238      Radikovic, Anamarija              2025                             1.0  263   102 b 0   158 w 1   114 b 0   151 w 0   180 b 0   186 w 0
+001  239      Rutkowski, Feliks                 2023                             3.0  161   103 w 1    69 b =    59 w =    65 b 0   133 w =    82 b =
+001  240      Rusiecki, Katarzyna               2021                             3.0  162   104 b =   130 w =   115 w =   133 b =   142 w 1    89 b 0
+001  241      Fikh, Anthony                     2014                             2.5  201   105 w 0   165 b =   167 w =   181 b 0   203 w 1   175 b =
+001  242      Cichon, Jakub                     2013                             2.0  234   106 b 0   160 w =   172 b 0   192 w 0   174 b 1   198 w =
+001  243      Leonov, Leonid                    2013                             1.0  264   107 w 0   167 b =   165 w 0   146 b 0   237 w =   203 b 0
+001  244      Sinitsyn, Anton                   2013                             2.0  235   108 b =   104 w 0   174 b 1   141 w =   124 b 0   154 w 0
+001  245      Stanescu, Christian               2011                             2.5  202   109 w 1    70 w 0   119 b =   135 b 0   167 w =   177 b =
+001  246      Klings, Peter                     2009                             2.0  236   110 b 0   162 w 0   186 b 1   158 w 0   188 b 0   202 w 1
+001  247      Drishtee, Ghosh                   2007                             2.5  203   111 w 0   169 b 0   175 w 1   183 b 1   144 w 0   179 b =
+001  248      Benesch-Rainer, Julian            2005                             1.0  265   112 b 0   164 w 1   120 b 0   166 w 0   190 b 0   204 w 0
+001  249      Wolfmaier, Johannes Joshua        2005                             1.0  266   113 w 0   171 b 0   190 b 0   175 w 0   257 b 1   207 w 0
+001  250      Wichmann, Adrian                  2004                             2.0  237   114 b 0   166 w 1   121 w 0   185 b =   168 w 0    99 b =
+001  251      Kodric, Gasper                    2001                             3.0  163   115 w 0   173 b 0   193 b 0   186 w 1   202 b 1   166 w 1
+001  252      Stadler, Andreas                  1995                             0.5  271   116 b 0   170 w 0   200 b =   198 w 0   217 b 0   199 b 0
+001  253      Natoli, Alessia                   1990                             2.0  238   117 w 1    71 b 0   123 w =   140 b 0   178 b 0   200 w =
+001  254      Wolak, Jan                        1990                             2.0  239   118 b 0   172 w =   176 b 0   200 w 1   192 b =   170 w 0
+001  255      Golsta, Madara                    1986                             2.5  204   119 w =    86 b 0   168 w 0   197 b 1   185 w =   181 b =
+001  256      Szalko, Maciej                    1986                             2.0  240   120 b 0   175 b 1   131 w 0   170 w 1   126 b 0   180 w 0
+001  257      Leszczewicz, Karol                1985                             0.0  275   121 w 0   177 b 0   195 w 0   206 b 0   249 w 0   265 b 0
+001  258      Kubik, Gerhard                    1984                             1.5  258   122 b 0   180 w 0  0000 - H   199 b 1   187 w 0   146 b 0
+001  259      Dimitrijevic, Andjela             1981                             0.5  272   123 w 0   181 b 0   199 w =   117 b 0   197 w 0   230 b 0
+001  260      Neuschild, Marius                 1976                             0.5  273   124 b 0   182 w =   178 b 0   201 w 0   200 b 0   237 b 0
+001  261      Sniedziewski, Emil                1973                             4.0   71   125 w =   119 b =   133 w =   138 b 1    89 w =    87 b 1
+001  262      Jansone, Melanija Luize           1970                             2.5  205   126 b 0   183 b 0   206 w 1   180 w 1   134 b =   139 w 0
+001  263      Gomes, Estevao Moreira            1968                             2.5  206   127 w 1    73 b 0   138 w 1    69 b =    95 w 0   133 b 0
+001  264      Yunusov, Mukhammad                1968                             3.0  164   128 b 0   185 b =   179 w =   184 w 0   204 b 1   182 w 1
+001  265      Martirosyan, Tigran               1962                             1.0  267   129 w 0   187 b 0   207 b 0   214 w 0   186 b 0   257 w 1
+001  266      Isakhanyan, Avik                  1961                             2.0  241   130 b =   108 w =   126 b 0   187 b =    90 w 0   217 w =
+001  267      Schmied, Eva Maria                1961                             1.0  268   131 w 0   189 b 0   210 b 0   221 w 0  0000 - U   214 b 0
+001  268      Trubini, Timon                    1957                             2.5  207   132 b 0   186 w 1   130 b 0   188 w 1   141 b 0   184 w =
+001  269      Hu, Junyan                        1956                             2.0  242   133 w =   125 b 0   182 b 0   217 w 1   194 b =   106 w 0
+001  270      Maghakyan, Hayk                   1956                             2.5  208   134 b 1    72 w 0   141 b =   124 w =   139 b =   113 w 0
+001  271      Markovic, Kosta                   1955                             1.0  269   135 w 0   191 b 0   214 w 1   189 b 0    99 w 0   212 b 0
+001  272      Krogulski, Maksymilian            1953                             2.0  243   136 b 0   188 w 0   212 b 0   230 w =   224 b =   174 w 1
+001  273      Delle Rose, Giovanni              1952                             2.0  244    74 b 0   190 w 1   134 b 0   147 w =   196 b 0   218 w =
+001  274      Silva, Lourenco Santa Clara       1952                             2.0  245   137 w =   133 b =   142 w 1    76 b 0    52 w 0   183 b 0
+001  275      Avelino, Camila Biscaya           1951                             1.5  259    86 w =   137 b 0    96 w 0   216 b 0   199 w 1   197 b 0
+XXR 7
+XXS WW=1.0 BW=1.0 WD=0.5 BD=0.5 WL=0.0 BL=0.0 ZPB=0.0 HPB=0.5 FPB=1.0 PAB=1.0 FW=1.0 FL=0.0
+XXC white1

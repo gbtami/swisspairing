@@ -207,6 +207,10 @@ def _budapest_states_for_round(round_number: int) -> tuple[PlayerState, ...]:
     )
 
 
+def _graz_manifest_path() -> Path:
+    return _chess_results_manifest_path("international_chessopen_graz_2026_a")
+
+
 def _player(
     starting_number: int,
     *,
@@ -693,6 +697,19 @@ def test_checked_in_aeroflot_manifest_references_existing_trfs() -> None:
     rounds = payload["rounds"]
     assert len(rounds) == 9
     assert payload["first_round_color"] == "black1"
+
+    for round_entry in rounds:
+        trf_path = manifest_path.parent / round_entry["trf"]
+        assert trf_path.exists()
+
+
+def test_checked_in_graz_manifest_references_existing_trfs() -> None:
+    manifest_path = _graz_manifest_path()
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    rounds = payload["rounds"]
+    assert len(rounds) == 9
+    assert payload["first_round_color"] == "white1"
 
     for round_entry in rounds:
         trf_path = manifest_path.parent / round_entry["trf"]

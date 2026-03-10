@@ -88,6 +88,8 @@ Key fixture directories:
   Real-world OTB corpus from Prague International Chess Festival 2026 D.
 - `benchmarks/fixtures/chess_results/budapest_spring_festival_2026_group_a_2200`
   Real-world OTB corpus from Budapest Spring Festival 2026 Group A.
+- `benchmarks/fixtures/chess_results/international_chessopen_graz_2026_a`
+  Real-world OTB corpus from International Chessopen Graz 2026 A.
 - `benchmarks/fixtures/lichess`
   Normalized TRF16 fixtures exported from Lichess Swiss events.
 
@@ -251,6 +253,8 @@ uv run python benchmarks/import_chess_results_event.py \
 What the importer does:
 
 - forces the English event page and normalized query shape
+- auto-submits the old-event `Show tournament details` postback gate when
+  Chess-Results hides the full metadata behind it
 - verifies that the event looks like a supported individual Swiss event
 - detects the declared round count and available board-pairing rounds
 - downloads the complete `zeilen=99999` XLSX exports
@@ -296,7 +300,8 @@ benchmarks/import_lichess_fixtures.sh
 - The checked-in real-world Chess-Results corpora are:
   `benchmarks/fixtures/chess_results/aeroflot_open_2026`,
   `benchmarks/fixtures/chess_results/prague_international_chess_festival_2026_d`,
-  and `benchmarks/fixtures/chess_results/budapest_spring_festival_2026_group_a_2200`.
+  `benchmarks/fixtures/chess_results/budapest_spring_festival_2026_group_a_2200`,
+  and `benchmarks/fixtures/chess_results/international_chessopen_graz_2026_a`.
 - Aeroflot rounds 1-3 published-pairing regressions are already fixed and
   covered in `tests/test_chess_results.py`.
 - Aeroflot round 5 is the main real-world BBP-backed Dutch regression and is
@@ -304,6 +309,10 @@ benchmarks/import_lichess_fixtures.sh
 - On the checked Budapest corpus, round 5 currently matches `py4swiss` +
   `JaVaFo` against a `bbpPairings` alternative, while round 7 exposes a
   fast-mode-only `swisspairing` divergence that disappears in strict mode.
+- On the checked Graz corpus, `swisspairing` currently disagrees with
+  `bbpPairings`, `py4swiss`, and `JaVaFo` in rounds 4, 5, and 9 in both
+  `fast` and `strict`, while round 1 is a large runtime tail even though all
+  engines agree on the pairing.
 - Aeroflot 2026 regulations say the pairings were managed by `Swiss Manager`;
   later published-pairing differences where `swisspairing`, `bbpPairings`,
   and `py4swiss` all agree with each other should therefore not be treated as
@@ -344,6 +353,9 @@ Current practical default:
 - On the checked public JaVaFo release, Aeroflot round 5 aligns with the
   `py4swiss` side rather than the BBP/2026 side. Treat that as Swiss-Manager
   lineage evidence, not as stronger normative evidence than FIDE + BBP.
+- International Chessopen Graz 2026 A adds three new consensus-engine
+  `swisspairing` divergences in rounds 4, 5, and 9; all checked external
+  references agree with each other there.
 - On the checked golden catalog, the public JaVaFo release agrees on all
   pairable fixtures but does not reject the two impossible-fixture cases that
   `swisspairing`, `bbpPairings`, and `py4swiss` all reject.
