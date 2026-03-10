@@ -19,10 +19,20 @@ from swisspairing.exceptions import PairingError
 from swisspairing.model import Pairing, PairingResult, PlayerState
 
 _COLLAPSE_SEARCH_MAX_PLAYERS = 80
+_FAST_COLLAPSE_SEARCH_MAX_PLAYERS = 40
 
 
 def _player_rank_key(player: PlayerState) -> tuple[int, int]:
     return (-player.score, player.pairing_no)
+
+
+def _collapse_search_max_players(
+    *,
+    sequential_search_max_players: int | None,
+) -> int:
+    if sequential_search_max_players is None:
+        return _COLLAPSE_SEARCH_MAX_PLAYERS
+    return min(_COLLAPSE_SEARCH_MAX_PLAYERS, _FAST_COLLAPSE_SEARCH_MAX_PLAYERS)
 
 
 @dataclass(frozen=True, slots=True)
@@ -271,6 +281,9 @@ def pair_round_dutch(
     Tuning:
     - `sequential_search_max_players` overrides the bracket-level exact-search
       size cap used by `pair_bracket`; `None` keeps the default.
+    - When a cap is active, round-level collapse backtracking also uses a lower
+      player-count ceiling so fast mode can hand medium-size events to the
+      greedy pipeline sooner.
     """
     if not players:
         return PairingResult(pairings=(), unpaired_ids=())
@@ -280,7 +293,9 @@ def pair_round_dutch(
 
     # Collapse backtracking improves parity in rare edge cases, but its search
     # space can grow quickly. For larger tournaments, keep a bounded fast path.
-    if len(ordered_players) > _COLLAPSE_SEARCH_MAX_PLAYERS:
+    if len(ordered_players) > _collapse_search_max_players(
+        sequential_search_max_players=sequential_search_max_players
+    ):
         pairings = _pair_round_dutch_greedy(
             scoregroups,
             sequential_search_max_players=sequential_search_max_players,
