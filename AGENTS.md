@@ -49,7 +49,10 @@ Current validation expectation:
 
 Important open items:
 
-- pychess integration is still pending
+- pychess integration is in progress on `pychess-variants` `master`: the
+  backend switch, `SWISSPAIRING_SRC` source fallback, native snapshot bridge,
+  and initial dual-backend soak tests are in place, but production rollout and
+  default-backend flip are still pending
 - checked 2026-specific BBP coverage is still thin; we need more frozen Dutch
   fixtures beyond the current `dutch_2025_C5` / `dutch_2025_C9` set plus the
   checked real-world OTB corpora

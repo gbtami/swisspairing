@@ -193,20 +193,23 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - The checked Lichess corpus also moved to the `bbpPairings` side once float
     history was derived from the TRF instead of inherited from `py4swiss`;
     `py4swiss` and `JaVaFo` still agree with each other there.
-  - External pychess integration checkpoint completed on
-    `pychess-variants` branch `feature/swiss-py4swiss-integration`
-    (commit `7cdedf470460891e30a25321742098153b921063`):
-    backend selection via `SWISS_PAIRING_BACKEND`, Swiss TRF export endpoint
-    (`/games/export/tournament/{tournamentId}/trf`), Swiss summary TRF download
-    link in the client, and matching backend/API tests.
+  - External pychess integration checkpoint was merged forward onto
+    `pychess-variants` `master`. The current integration now includes backend
+    selection via `SWISS_PAIRING_BACKEND`, `SWISSPAIRING_SRC` source fallback
+    for the not-yet-packaged `swisspairing` repo, the Swiss TRF export endpoint
+    (`/games/export/tournament/{tournamentId}/trf`), the Swiss summary TRF
+    download link in the client, native `swisspairing` snapshot construction,
+    TRF-aligned float-history derivation, and initial dual-backend soak tests
+    covering direct multi-round parity plus full 5-round Swiss tournament flow.
   - Extended unit-test coverage for criteria and sequence behavior.
 - Next:
   - Extend the real-world OTB corpus beyond the current
     Aeroflot/Prague/Budapest/Graz set. After switching the harness to
     TRF-derived float history, no checked real-world TRF corpus currently
     shows an unexplained `swisspairing` vs `bbpPairings` disagreement.
-  - Upstream and deploy the pychess integration checkpoint, then run staged
-    dual-backend soak checks before any default-backend flip.
+  - Continue pychess soak coverage beyond the current backend-parity and
+    full-flow checkpoints, then deploy behind the existing backend switch
+    before any default-backend flip.
 
 ## Non-Goals (for stage 1)
 
