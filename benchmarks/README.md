@@ -140,7 +140,12 @@ If the round exports live next to the starting list with the standard
 the exporter auto-discovers them. The output directory contains one TRF per
 published round plus a `published_pairings.json` manifest.
 
-The repo now includes one checked-in real-world OTB corpus reconstructed from
+Chess-Results exports are paginated by default. For larger events, use the
+site's `Show complete list` view or export with `zeilen=99999`; otherwise the
+XLSX files may stop after the first 150 rows and the exporter will reject the
+incomplete input.
+
+The repo now includes checked-in real-world OTB corpora reconstructed from
 Chess-Results:
 
 ```bash

@@ -24,9 +24,11 @@ from swisspairing.chess_results import (
     ChessResultsPlayerRecord,
     ChessResultsRoundRecord,
     ChessResultsTournamentRecord,
+    _validate_round_player_numbers,
     build_chess_results_float_history,
     build_chess_results_snapshot,
     parse_chess_results_points,
+    parse_chess_results_round,
     published_pairings_for_round,
 )
 from swisspairing.dutch import BracketContext, pair_bracket
@@ -189,6 +191,155 @@ def test_parse_chess_results_points_handles_half_points() -> None:
     assert parse_chess_results_points("1") == 10
     assert parse_chess_results_points("2\u00bd") == 25
     assert parse_chess_results_points("\u00bd") == 5
+
+
+def test_parse_chess_results_round_handles_legacy_compact_layout() -> None:
+    round_record = parse_chess_results_round(
+        (
+            ("Round 2 on 2026/03/01 at 17:00",),
+            (
+                "Bo.",
+                "No.",
+                "",
+                "",
+                "White",
+                "Rtg",
+                "Pts.",
+                "Result ",
+                "Pts.",
+                "",
+                "Black",
+                "Rtg",
+                "",
+                "No.",
+            ),
+            (
+                "1",
+                "7",
+                "            ",
+                "GM",
+                "Alpha, A",
+                "2500",
+                "1",
+                "\u00bd - \u00bd",
+                "1",
+                "IM",
+                "Beta, B",
+                "2400",
+                "            ",
+                "19",
+            ),
+        )
+    )
+
+    assert round_record.round_number == 2
+    assert round_record.pairings == (
+        ChessResultsPairingRecord(
+            round_number=2,
+            board_number=1,
+            white_starting_number=7,
+            white_name="Alpha, A",
+            white_rating=2500,
+            white_points_times_ten=10,
+            result_text="\u00bd - \u00bd",
+            black_points_times_ten=10,
+            black_name="Beta, B",
+            black_rating=2400,
+            black_starting_number=19,
+            seat_kind="game",
+        ),
+    )
+
+
+def test_parse_chess_results_round_handles_prague_federation_layout() -> None:
+    round_record = parse_chess_results_round(
+        (
+            ("Round 1 on 2026/02/26 at 15.00",),
+            (
+                "Bo.",
+                "No.",
+                "",
+                "",
+                "White",
+                "FED",
+                "Rtg",
+                "Pts.",
+                "Result ",
+                "Pts.",
+                "",
+                "Black",
+                "FED",
+                "Rtg",
+                "",
+                "No.",
+            ),
+            (
+                "1",
+                "1",
+                "            ",
+                "GM",
+                "Moroni, Luca Jr",
+                "ITA",
+                "2563",
+                "0",
+                "1 - 0",
+                "0",
+                "CM",
+                "Gokturk, Murat Kutay",
+                "TUR",
+                "2047",
+                "            ",
+                "177",
+            ),
+        )
+    )
+
+    assert round_record.round_number == 1
+    assert round_record.pairings == (
+        ChessResultsPairingRecord(
+            round_number=1,
+            board_number=1,
+            white_starting_number=1,
+            white_name="Moroni, Luca Jr",
+            white_rating=2563,
+            white_points_times_ten=0,
+            result_text="1 - 0",
+            black_points_times_ten=0,
+            black_name="Gokturk, Murat Kutay",
+            black_rating=2047,
+            black_starting_number=177,
+            seat_kind="game",
+        ),
+    )
+
+
+def test_validate_round_player_numbers_rejects_paginated_starting_list_inputs() -> None:
+    players = (_player(1, rating=2500), _player(2, rating=2400))
+    rounds = (
+        ChessResultsRoundRecord(
+            round_number=1,
+            label="Round 1 on 2026/03/01 at 12:00",
+            pairings=(
+                ChessResultsPairingRecord(
+                    round_number=1,
+                    board_number=1,
+                    white_starting_number=1,
+                    white_name="Player 1",
+                    white_rating=2500,
+                    white_points_times_ten=0,
+                    result_text="1 - 0",
+                    black_points_times_ten=0,
+                    black_name="Player 3",
+                    black_rating=2300,
+                    black_starting_number=3,
+                    seat_kind="game",
+                ),
+            ),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="Show complete list|zeilen=99999"):
+        _validate_round_player_numbers(players=players, rounds=rounds)
 
 
 def test_published_pairings_for_round_normalizes_games_and_byes() -> None:

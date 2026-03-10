@@ -181,6 +181,34 @@ def parse_chess_results_points(text: str) -> int:
     return int(round(float(normalized) * 10))
 
 
+@dataclass(frozen=True, slots=True)
+class _ChessResultsRoundColumns:
+    board_number: int
+    white_starting_number: int
+    white_name: int
+    white_rating: int
+    white_points_times_ten: int
+    result_text: int
+    black_points_times_ten: int
+    black_name: int
+    black_rating: int
+    black_starting_number: int
+
+
+_DEFAULT_ROUND_COLUMNS = _ChessResultsRoundColumns(
+    board_number=0,
+    white_starting_number=1,
+    white_name=4,
+    white_rating=5,
+    white_points_times_ten=6,
+    result_text=7,
+    black_points_times_ten=8,
+    black_name=10,
+    black_rating=11,
+    black_starting_number=13,
+)
+
+
 def parse_chess_results_starting_list(
     rows: Sequence[Sequence[str]],
 ) -> tuple[ChessResultsPlayerRecord, ...]:
@@ -207,6 +235,7 @@ def parse_chess_results_round(
     rows: Sequence[Sequence[str]],
 ) -> ChessResultsRoundRecord:
     """Parse one Chess-Results pairings/results export."""
+    columns = _detect_round_columns(rows)
     label = next(
         (
             row[0].strip()
@@ -221,28 +250,50 @@ def parse_chess_results_round(
 
     parsed: list[ChessResultsPairingRecord] = []
     for row in rows:
-        if not row or not row[0].strip().isdigit():
+        if (
+            not row
+            or len(row) <= columns.board_number
+            or not row[columns.board_number].strip().isdigit()
+        ):
             continue
-        black_name = row[10].strip() if len(row) > 10 else ""
+        black_name = row[columns.black_name].strip() if len(row) > columns.black_name else ""
         seat_kind = _seat_kind(black_name)
         black_starting_number = (
-            int(row[13].strip()) if len(row) > 13 and row[13].strip().isdigit() else None
+            int(row[columns.black_starting_number].strip())
+            if len(row) > columns.black_starting_number
+            and row[columns.black_starting_number].strip().isdigit()
+            else None
         )
         parsed.append(
             ChessResultsPairingRecord(
                 round_number=round_number,
-                board_number=int(row[0].strip()),
-                white_starting_number=int(row[1].strip()),
-                white_name=row[4].strip() if len(row) > 4 else "",
-                white_rating=int(row[5].strip() or 0) if len(row) > 5 else 0,
-                white_points_times_ten=parse_chess_results_points(row[6] if len(row) > 6 else ""),
-                result_text=_normalize_result_text(row[7] if len(row) > 7 else ""),
+                board_number=int(row[columns.board_number].strip()),
+                white_starting_number=int(row[columns.white_starting_number].strip()),
+                white_name=row[columns.white_name].strip() if len(row) > columns.white_name else "",
+                white_rating=(
+                    int(row[columns.white_rating].strip() or 0)
+                    if len(row) > columns.white_rating
+                    else 0
+                ),
+                white_points_times_ten=parse_chess_results_points(
+                    row[columns.white_points_times_ten]
+                    if len(row) > columns.white_points_times_ten
+                    else ""
+                ),
+                result_text=_normalize_result_text(
+                    row[columns.result_text] if len(row) > columns.result_text else ""
+                ),
                 black_points_times_ten=(
-                    parse_chess_results_points(row[8]) if len(row) > 8 and row[8].strip() else None
+                    parse_chess_results_points(row[columns.black_points_times_ten])
+                    if len(row) > columns.black_points_times_ten
+                    and row[columns.black_points_times_ten].strip()
+                    else None
                 ),
                 black_name=black_name or None,
                 black_rating=(
-                    int(row[11].strip() or 0) if len(row) > 11 and row[11].strip() else None
+                    int(row[columns.black_rating].strip() or 0)
+                    if len(row) > columns.black_rating and row[columns.black_rating].strip()
+                    else None
                 ),
                 black_starting_number=black_starting_number,
                 seat_kind=seat_kind,
@@ -265,6 +316,7 @@ def load_chess_results_tournament(
     rounds = tuple(parse_chess_results_round(load_chess_results_rows(path)) for path in round_paths)
     if not rounds:
         raise ValueError("at least one round export is required")
+    _validate_round_player_numbers(players=players, rounds=rounds)
 
     name = next((row[0].strip() for row in starting_rows if row and row[0].strip()), "")
     if len(starting_rows) > 1 and starting_rows[1] and starting_rows[1][0].strip():
@@ -460,6 +512,89 @@ def _seat_kind(black_name: str) -> str:
 
 def _normalize_result_text(text: str) -> str:
     return " ".join(text.strip().split())
+
+
+def _validate_round_player_numbers(
+    *,
+    players: Sequence[ChessResultsPlayerRecord],
+    rounds: Sequence[ChessResultsRoundRecord],
+) -> None:
+    known_numbers = {player.starting_number for player in players}
+    referenced_numbers = {
+        number
+        for round_record in rounds
+        for pairing in round_record.pairings
+        for number in (pairing.white_starting_number, pairing.black_starting_number)
+        if number is not None
+    }
+    missing_numbers = sorted(referenced_numbers - known_numbers)
+    if not missing_numbers:
+        return
+
+    sample = ", ".join(str(number) for number in missing_numbers[:8])
+    if len(missing_numbers) > 8:
+        sample = f"{sample}, ..."
+    raise ValueError(
+        "starting list is missing player numbers that appear in the round exports "
+        f"({sample}). Chess-Results XLSX downloads are often paginated; use "
+        "'Show complete list' or re-download with 'zeilen=99999' before exporting."
+    )
+
+
+def _detect_round_columns(rows: Sequence[Sequence[str]]) -> _ChessResultsRoundColumns:
+    header_row = next(
+        (
+            row
+            for row in rows
+            if row
+            and any(_normalize_header(cell) == "white" for cell in row)
+            and any(_normalize_header(cell) == "black" for cell in row)
+            and any(_normalize_header(cell) == "result" for cell in row)
+        ),
+        None,
+    )
+    if header_row is None:
+        return _DEFAULT_ROUND_COLUMNS
+
+    board_number = _find_header_index(header_row, "bo")
+    white_name = _find_header_index(header_row, "white")
+    black_name = _find_header_index(header_row, "black")
+    result_text = _find_header_index(header_row, "result")
+
+    no_indexes = tuple(
+        index for index, cell in enumerate(header_row) if _normalize_header(cell) == "no"
+    )
+    rating_indexes = tuple(
+        index for index, cell in enumerate(header_row) if _normalize_header(cell) == "rtg"
+    )
+    points_indexes = tuple(
+        index for index, cell in enumerate(header_row) if _normalize_header(cell) == "pts"
+    )
+
+    return _ChessResultsRoundColumns(
+        board_number=board_number,
+        white_starting_number=next(
+            index for index in no_indexes if board_number < index < white_name
+        ),
+        white_name=white_name,
+        white_rating=next(index for index in rating_indexes if white_name < index < result_text),
+        white_points_times_ten=next(index for index in points_indexes if index < result_text),
+        result_text=result_text,
+        black_points_times_ten=next(index for index in points_indexes if index > result_text),
+        black_name=black_name,
+        black_rating=next(index for index in rating_indexes if index > black_name),
+        black_starting_number=next(index for index in no_indexes if index > black_name),
+    )
+
+
+def _find_header_index(row: Sequence[str], normalized_label: str) -> int:
+    return next(
+        index for index, cell in enumerate(row) if _normalize_header(cell) == normalized_label
+    )
+
+
+def _normalize_header(text: str) -> str:
+    return "".join(character.lower() for character in text.strip() if character.isalnum())
 
 
 def _infer_first_round_color_white1(round_record: ChessResultsRoundRecord) -> bool:
