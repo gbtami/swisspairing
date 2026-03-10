@@ -9,7 +9,8 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
-from urllib.request import Request, urlopen
+
+import requests
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -20,6 +21,7 @@ _DEFAULT_QUERY = {
     "turdet": "YES",
     "flag": "30",
 }
+_USER_AGENT = "swisspairing/0.1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,14 +86,16 @@ def fetch_chess_results_page_html(
     timeout_seconds: float = 30.0,
 ) -> str:
     canonical_url = canonicalize_chess_results_event_url(event_url)
-    html = _fetch_html(canonical_url, timeout_seconds=timeout_seconds)
-    if not _requires_details_postback(html):
-        return html
-    return _submit_show_tournament_details(
-        event_url=canonical_url,
-        initial_html=html,
-        timeout_seconds=timeout_seconds,
-    )
+    with _new_session() as session:
+        html = _fetch_html(canonical_url, timeout_seconds=timeout_seconds, session=session)
+        if not _requires_details_postback(html):
+            return html
+        return _submit_show_tournament_details(
+            event_url=canonical_url,
+            initial_html=html,
+            timeout_seconds=timeout_seconds,
+            session=session,
+        )
 
 
 def parse_chess_results_event_page(
@@ -199,14 +203,25 @@ def download_chess_results_import_plan(
 ) -> ChessResultsDownloadedEvent:
     download_dir.mkdir(parents=True, exist_ok=True)
 
-    starting_list_path = download_dir / plan.starting_list.filename
-    _download_to_path(plan.starting_list.url, starting_list_path, timeout_seconds=timeout_seconds)
+    with _new_session() as session:
+        starting_list_path = download_dir / plan.starting_list.filename
+        _download_to_path(
+            plan.starting_list.url,
+            starting_list_path,
+            timeout_seconds=timeout_seconds,
+            session=session,
+        )
 
-    round_paths: list[Path] = []
-    for target in plan.round_exports:
-        path = download_dir / target.filename
-        _download_to_path(target.url, path, timeout_seconds=timeout_seconds)
-        round_paths.append(path)
+        round_paths: list[Path] = []
+        for target in plan.round_exports:
+            path = download_dir / target.filename
+            _download_to_path(
+                target.url,
+                path,
+                timeout_seconds=timeout_seconds,
+                session=session,
+            )
+            round_paths.append(path)
 
     return ChessResultsDownloadedEvent(
         starting_list_path=starting_list_path,
@@ -214,24 +229,43 @@ def download_chess_results_import_plan(
     )
 
 
-def _download_to_path(url: str, path: Path, *, timeout_seconds: float) -> None:
-    request = Request(url, headers={"User-Agent": "swisspairing/0.1"})
-    with urlopen(request, timeout=timeout_seconds) as response:
-        payload = response.read()
-    path.write_bytes(payload)
+def _new_session() -> requests.Session:
+    session = requests.Session()
+    session.headers.update({"User-Agent": _USER_AGENT})
+    return session
+
+
+def _download_to_path(
+    url: str,
+    path: Path,
+    *,
+    timeout_seconds: float,
+    session: requests.Session,
+) -> None:
+    response = session.get(url, timeout=timeout_seconds)
+    response.raise_for_status()
+    path.write_bytes(response.content)
 
 
 def _fetch_html(
     url: str,
     *,
     timeout_seconds: float,
-    data: bytes | None = None,
+    session: requests.Session,
+    data: dict[str, str] | None = None,
 ) -> str:
-    request = Request(url, data=data, headers={"User-Agent": "swisspairing/0.1"})
-    with urlopen(request, timeout=timeout_seconds) as response:
-        payload = response.read()
-        charset = response.headers.get_content_charset() or "utf-8"
-    return payload.decode(charset, errors="replace")
+    response = (
+        session.post(url, data=data, timeout=timeout_seconds)
+        if data
+        else session.get(
+            url,
+            timeout=timeout_seconds,
+        )
+    )
+    response.raise_for_status()
+    if response.encoding is None:
+        response.encoding = "utf-8"
+    return response.text
 
 
 def _requires_details_postback(html: str) -> bool:
@@ -243,6 +277,7 @@ def _submit_show_tournament_details(
     event_url: str,
     initial_html: str,
     timeout_seconds: float,
+    session: requests.Session,
 ) -> str:
     post_url = _extract_form_action(initial_html, base_url=event_url) or event_url
     form_fields = _extract_hidden_form_fields(initial_html)
@@ -250,7 +285,8 @@ def _submit_show_tournament_details(
     return _fetch_html(
         post_url,
         timeout_seconds=timeout_seconds,
-        data=urlencode(form_fields).encode("utf-8"),
+        session=session,
+        data=form_fields,
     )
 
 

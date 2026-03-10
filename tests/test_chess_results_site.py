@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from email.message import Message
-from typing import cast
 from urllib.parse import parse_qsl, urlsplit
-from urllib.request import Request
 
 import pytest
 
@@ -122,31 +119,35 @@ def test_fetch_chess_results_page_html_posts_show_tournament_details_gate(
       </table>
     </body></html>
     """
-    calls: list[tuple[str, bytes | None]] = []
+    calls: list[tuple[str, str, dict[str, str] | None]] = []
 
     class _Response:
         def __init__(self, html: str) -> None:
-            self._payload = html.encode("utf-8")
-            self.headers = Message()
-            self.headers["Content-Type"] = "text/html; charset=utf-8"
+            self.text = html
+            self.content = html.encode("utf-8")
+            self.encoding = "utf-8"
 
-        def read(self) -> bytes:
-            return self._payload
+        def raise_for_status(self) -> None:
+            return None
 
-        def __enter__(self) -> _Response:
+    class _Session:
+        def __enter__(self) -> _Session:
             return self
 
         def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
             return None
 
-    def fake_urlopen(request: Request, timeout: float) -> _Response:
-        assert timeout == 30.0
-        full_url = request.full_url
-        data = cast(bytes | None, request.data)
-        calls.append((full_url, data))
-        return _Response(initial_html if len(calls) == 1 else detailed_html)
+        def get(self, url: str, *, timeout: float) -> _Response:
+            assert timeout == 30.0
+            calls.append(("GET", url, None))
+            return _Response(initial_html)
 
-    monkeypatch.setattr("swisspairing.chess_results_site.urlopen", fake_urlopen)
+        def post(self, url: str, *, data: dict[str, str], timeout: float) -> _Response:
+            assert timeout == 30.0
+            calls.append(("POST", url, data))
+            return _Response(detailed_html)
+
+    monkeypatch.setattr("swisspairing.chess_results_site._new_session", lambda: _Session())
 
     html = fetch_chess_results_page_html(
         "https://s3.chess-results.com/tnr123.aspx?lan=1",
@@ -154,16 +155,17 @@ def test_fetch_chess_results_page_html_posts_show_tournament_details_gate(
     )
 
     assert html == detailed_html
-    assert [url for url, _ in calls] == [
-        "https://s3.chess-results.com/tnr123.aspx?lan=1&turdet=YES&flag=30",
-        "https://s3.chess-results.com/tnr123.aspx?lan=1&turdet=YES&flag=30",
+    assert [(method, url) for method, url, _ in calls] == [
+        ("GET", "https://s3.chess-results.com/tnr123.aspx?lan=1&turdet=YES&flag=30"),
+        ("POST", "https://s3.chess-results.com/tnr123.aspx?lan=1&turdet=YES&flag=30"),
     ]
-    assert calls[0][1] is None
-    assert calls[1][1] is not None
-    posted = calls[1][1].decode("utf-8")
-    assert "cb_alleDetails=Show+tournament+details" in posted
-    assert "__VIEWSTATE=%2FwEP" in posted
-    assert "__EVENTVALIDATION=%2FwEd" in posted
+    assert calls[0][2] is None
+    assert calls[1][2] == {
+        "__EVENTVALIDATION": "/wEd",
+        "__VIEWSTATE": "/wEP",
+        "__VIEWSTATEGENERATOR": "ABC123",
+        "cb_alleDetails": "Show tournament details",
+    }
 
 
 def test_load_chess_results_import_plan_handles_show_tournament_details_gate(
@@ -201,26 +203,35 @@ def test_load_chess_results_import_plan_handles_show_tournament_details_gate(
 
     class _Response:
         def __init__(self, html: str) -> None:
-            self._payload = html.encode("utf-8")
-            self.headers = Message()
-            self.headers["Content-Type"] = "text/html; charset=utf-8"
+            self.text = html
+            self.content = html.encode("utf-8")
+            self.encoding = "utf-8"
 
-        def read(self) -> bytes:
-            return self._payload
+        def raise_for_status(self) -> None:
+            return None
 
-        def __enter__(self) -> _Response:
+    class _Session:
+        def __init__(self) -> None:
+            self._responses = iter((_Response(initial_html), _Response(detailed_html)))
+
+        def __enter__(self) -> _Session:
             return self
 
         def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
             return None
 
-    responses = iter((_Response(initial_html), _Response(detailed_html)))
+        def get(self, url: str, *, timeout: float) -> _Response:
+            assert url == "https://s3.chess-results.com/tnr123.aspx?lan=1&turdet=YES&flag=30"
+            assert timeout == 30.0
+            return next(self._responses)
 
-    def fake_urlopen(_: Request, timeout: float) -> _Response:
-        assert timeout == 30.0
-        return next(responses)
+        def post(self, url: str, *, data: dict[str, str], timeout: float) -> _Response:
+            assert url == "https://s3.chess-results.com/tnr123.aspx?lan=1&turdet=YES&flag=30"
+            assert timeout == 30.0
+            assert data["cb_alleDetails"] == "Show tournament details"
+            return next(self._responses)
 
-    monkeypatch.setattr("swisspairing.chess_results_site.urlopen", fake_urlopen)
+    monkeypatch.setattr("swisspairing.chess_results_site._new_session", lambda: _Session())
 
     plan = load_chess_results_import_plan("https://s3.chess-results.com/tnr123.aspx")
 
