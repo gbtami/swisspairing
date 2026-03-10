@@ -2616,6 +2616,74 @@ def build_float_assignments(
     )
 
 
+def _is_trivial_initial_homogeneous_bracket(
+    players: tuple[PlayerState, ...],
+    *,
+    context: BracketContext,
+) -> bool:
+    """Return whether the bracket is an unconstrained round-1-style bracket."""
+    if context.mdp_ids:
+        return False
+    if not players:
+        return False
+    score = players[0].score
+    for player in players:
+        if player.score != score:
+            return False
+        if player.opponents or player.forbidden_opponents or player.color_history:
+            return False
+        if player.unplayed_games != 0:
+            return False
+        if player.had_full_point_bye or player.had_full_point_unplayed_round:
+            return False
+        if any(float_kind is not FloatKind.NONE for float_kind in player.float_history):
+            return False
+    return True
+
+
+def _pair_trivial_initial_homogeneous_bracket(
+    players: tuple[PlayerState, ...],
+    *,
+    allow_bye: bool,
+    initial_color: Color,
+) -> PairingResult:
+    """Pair the first legal S1/S2 candidate directly for an unconstrained bracket."""
+    by_id = {player.player_id: player for player in players}
+    pairable_players = players
+    all_pairings: list[Pairing] = []
+    unresolved_ids: tuple[str, ...] = ()
+
+    if len(players) % 2 != 0:
+        bye_player = players[-1]
+        if allow_bye:
+            if bye_player.is_pairing_allocated_bye_ineligible:
+                raise PairingError("no legal bye candidate available under C2 constraints")
+            all_pairings.append(Pairing(white_id=bye_player.player_id, black_id=None))
+        else:
+            unresolved_ids = (bye_player.player_id,)
+        pairable_players = tuple(
+            player for player in players if player.player_id != bye_player.player_id
+        )
+
+    split_size = len(pairable_players) // 2
+    s1 = pairable_players[:split_size]
+    s2 = pairable_players[split_size:]
+    for left, right in zip(s1, s2, strict=True):
+        white, black = _choose_color_order(left, right, initial_color=initial_color)
+        all_pairings.append(Pairing(white_id=white.player_id, black_id=black.player_id))
+
+    sorted_pairings = _sort_for_publication(tuple(all_pairings), by_id)
+    return PairingResult(
+        pairings=sorted_pairings,
+        unpaired_ids=unresolved_ids,
+        float_assignments=build_float_assignments(
+            players,
+            pairings=sorted_pairings,
+            unpaired_ids=unresolved_ids,
+        ),
+    )
+
+
 def pair_bracket(
     players: Sequence[PlayerState],
     *,
@@ -2635,6 +2703,13 @@ def pair_bracket(
 
     local_context = _context_with_initial_color(context, initial_color=initial_color)
     ordered_players = tuple(sorted(players, key=_player_rank_key))
+    if _is_trivial_initial_homogeneous_bracket(ordered_players, context=local_context):
+        return _pair_trivial_initial_homogeneous_bracket(
+            ordered_players,
+            allow_bye=allow_bye,
+            initial_color=initial_color,
+        )
+
     by_id = {player.player_id: player for player in ordered_players}
 
     if not allow_bye:

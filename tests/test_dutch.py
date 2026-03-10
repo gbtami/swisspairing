@@ -397,11 +397,89 @@ def test_pair_bracket_weighted_fallback_uses_odd_sequence_order_after_c9_rejects
     assert ("p4", None) in pairs
 
 
-def test_pair_bracket_large_weighted_final_bye_avoids_scanning_every_legal_bye(
+def test_pair_bracket_initial_homogeneous_odd_uses_direct_s1_s2_pairing() -> None:
+    players = tuple(
+        _player(player_id=f"p{index}", pairing_no=index, score=0) for index in range(1, 6)
+    )
+
+    result = pair_bracket(players)
+
+    assert _normalized_pairs(result.pairings) == {
+        ("p1", "p3"),
+        ("p2", "p4"),
+        ("p5", None),
+    }
+    assert result.unpaired_ids == ()
+
+
+def test_pair_bracket_initial_homogeneous_odd_without_bye_downfloats_last_player() -> None:
+    players = tuple(
+        _player(player_id=f"p{index}", pairing_no=index, score=0) for index in range(1, 6)
+    )
+
+    result = pair_bracket(players, allow_bye=False)
+
+    assert _normalized_pairs(result.pairings) == {
+        ("p1", "p3"),
+        ("p2", "p4"),
+    }
+    assert result.unpaired_ids == ("p5",)
+
+
+def test_pair_bracket_initial_homogeneous_allows_empty_float_history_markers() -> None:
+    players = tuple(
+        _player(
+            player_id=f"p{index}",
+            pairing_no=index,
+            score=0,
+            float_history=(FloatKind.NONE, FloatKind.NONE),
+        )
+        for index in range(1, 6)
+    )
+
+    result = pair_bracket(players)
+
+    assert _normalized_pairs(result.pairings) == {
+        ("p1", "p3"),
+        ("p2", "p4"),
+        ("p5", None),
+    }
+    assert result.unpaired_ids == ()
+
+
+def test_pair_bracket_initial_homogeneous_large_odd_bypasses_weighted_bye_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     players = tuple(
         _player(player_id=f"p{index}", pairing_no=index, score=0) for index in range(1, 22)
+    )
+
+    def fail_weighted_bye(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("weighted large-bye path should not run for trivial round-1 brackets")
+
+    monkeypatch.setattr(
+        dutch,
+        "_select_large_final_bye_candidate_via_weighted_steps",
+        fail_weighted_bye,
+    )
+
+    result = pair_bracket(players, sequential_search_max_players=0)
+
+    assert ("p21", None) in _to_pairs(result.pairings)
+    assert result.unpaired_ids == ()
+
+
+def test_pair_bracket_large_weighted_final_bye_avoids_scanning_every_legal_bye(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    players = tuple(
+        _player(
+            player_id=f"p{index}",
+            pairing_no=index,
+            score=0,
+            float_history=(FloatKind.UP,) if index == 1 else (),
+        )
+        for index in range(1, 22)
     )
 
     call_count = 0
