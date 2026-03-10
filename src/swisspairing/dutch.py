@@ -2059,14 +2059,14 @@ def _iter_heterogeneous_candidates(
     return _iter_heterogeneous_candidates_cached(ordered_players, context.mdp_ids)
 
 
-def _solve_without_bye_candidate(
-    players: Sequence[PlayerState],
+def _solve_without_bye_candidate_uncached(
+    players: tuple[PlayerState, ...],
     *,
     context: BracketContext,
-    sequential_search_max_players: int = _SEQUENTIAL_SEARCH_MAX_PLAYERS,
+    sequential_search_max_players: int,
 ) -> _CandidateInternal:
     """Return best candidate for a bracket that cannot assign a pairing bye."""
-    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    ordered_players = players
     if not ordered_players:
         return _CandidateInternal(pairings=(), unresolved=(), bye_player=None, sequence_no=0)
 
@@ -2205,6 +2205,39 @@ def _solve_without_bye_candidate(
     if best_candidate is None:
         raise PairingError("internal failure selecting downfloater candidate")
     return best_candidate
+
+
+@cache
+def _solve_without_bye_candidate_cached(
+    players: tuple[PlayerState, ...],
+    mdp_ids: frozenset[str],
+    sequential_search_max_players: int,
+) -> _CandidateInternal:
+    return _solve_without_bye_candidate_uncached(
+        players,
+        context=BracketContext(mdp_ids=mdp_ids),
+        sequential_search_max_players=sequential_search_max_players,
+    )
+
+
+def _solve_without_bye_candidate(
+    players: Sequence[PlayerState],
+    *,
+    context: BracketContext,
+    sequential_search_max_players: int = _SEQUENTIAL_SEARCH_MAX_PLAYERS,
+) -> _CandidateInternal:
+    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    if context.next_bracket_validator is None and context.next_bracket_key is None:
+        return _solve_without_bye_candidate_cached(
+            ordered_players,
+            context.mdp_ids,
+            sequential_search_max_players,
+        )
+    return _solve_without_bye_candidate_uncached(
+        ordered_players,
+        context=context,
+        sequential_search_max_players=sequential_search_max_players,
+    )
 
 
 def _sort_for_publication(
