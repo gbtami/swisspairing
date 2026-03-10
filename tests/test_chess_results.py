@@ -15,6 +15,7 @@ from py4swiss.trf import TrfParser
 from swisspairing.benchmarking import (
     build_pythonpath_env,
     build_trf_had_full_point_unplayed_round_by_player_id,
+    build_trf_initial_color,
     build_trf_unplayed_games_by_player_id,
     discover_bbp_executable,
     py4swiss_runtime_probe,
@@ -31,9 +32,14 @@ from swisspairing.chess_results import (
     parse_chess_results_round,
     published_pairings_for_round,
 )
-from swisspairing.dutch import BracketContext, pair_bracket
+from swisspairing.dutch import BracketContext, NextBracketKey, pair_bracket
+from swisspairing.exceptions import PairingError
 from swisspairing.model import FloatKind, PlayerState
-from swisspairing.tournament import _group_residents_by_score
+from swisspairing.tournament import (
+    _build_next_bracket_key,
+    _group_residents_by_score,
+    _pair_bracket_with_optional_limit,
+)
 
 RUNNER_PATH = (
     Path(__file__).resolve().parents[1] / "benchmarks" / "reference_compare_case_runner.py"
@@ -101,32 +107,38 @@ def _normalize_manifest_pairings(
     return tuple(normalized)
 
 
-def _aeroflot_manifest_path() -> Path:
+def _chess_results_manifest_path(event_slug: str) -> Path:
     return (
         Path(__file__).resolve().parents[1]
         / "benchmarks"
         / "fixtures"
         / "chess_results"
-        / "aeroflot_open_2026"
+        / event_slug
         / "published_pairings.json"
     )
 
 
-def _load_aeroflot_manifest() -> dict[str, Any]:
-    return cast(dict[str, Any], json.loads(_aeroflot_manifest_path().read_text(encoding="utf-8")))
+def _load_chess_results_manifest(event_slug: str) -> dict[str, Any]:
+    return cast(
+        dict[str, Any],
+        json.loads(_chess_results_manifest_path(event_slug).read_text(encoding="utf-8")),
+    )
 
 
-def _aeroflot_round_entry(round_number: int) -> dict[str, Any]:
-    payload = _load_aeroflot_manifest()
+def _chess_results_round_entry(event_slug: str, round_number: int) -> dict[str, Any]:
+    payload = _load_chess_results_manifest(event_slug)
     return cast(
         dict[str, Any],
         next(item for item in payload["rounds"] if item["round_number"] == round_number),
     )
 
 
-def _aeroflot_states_for_round(round_number: int) -> tuple[PlayerState, ...]:
-    manifest_path = _aeroflot_manifest_path()
-    round_entry = _aeroflot_round_entry(round_number)
+def _chess_results_states_for_round(
+    event_slug: str,
+    round_number: int,
+) -> tuple[PlayerState, ...]:
+    manifest_path = _chess_results_manifest_path(event_slug)
+    round_entry = _chess_results_round_entry(event_slug, round_number)
     trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
     py4swiss_players = get_player_infos_from_trf(trf)
     top_ids = {player.id for player in py4swiss_players if player.top_scorer}
@@ -167,6 +179,32 @@ def _aeroflot_states_for_round(round_number: int) -> tuple[PlayerState, ...]:
         for player in py4swiss_players
     )
     return tuple(sorted(states, key=lambda player: (-player.score, player.pairing_no)))
+
+
+def _aeroflot_manifest_path() -> Path:
+    return _chess_results_manifest_path("aeroflot_open_2026")
+
+
+def _aeroflot_round_entry(round_number: int) -> dict[str, Any]:
+    return _chess_results_round_entry("aeroflot_open_2026", round_number)
+
+
+def _aeroflot_states_for_round(round_number: int) -> tuple[PlayerState, ...]:
+    return _chess_results_states_for_round("aeroflot_open_2026", round_number)
+
+
+def _budapest_manifest_path() -> Path:
+    return _chess_results_manifest_path("budapest_spring_festival_2026_group_a_2200")
+
+
+def _budapest_round_entry(round_number: int) -> dict[str, Any]:
+    return _chess_results_round_entry("budapest_spring_festival_2026_group_a_2200", round_number)
+
+
+def _budapest_states_for_round(round_number: int) -> tuple[PlayerState, ...]:
+    return _chess_results_states_for_round(
+        "budapest_spring_festival_2026_group_a_2200", round_number
+    )
 
 
 def _player(
@@ -783,4 +821,115 @@ def test_aeroflot_fast_round_5_matches_bbp_reference() -> None:
 
     compare = _run_reference_compare(manifest_path.parent / round_entry["trf"])
 
+    assert compare["pairings_equal_vs_bbp"] is True
+
+
+@pytest.mark.skipif(
+    not _has_py4swiss_runtime(),
+    reason="active Python interpreter unavailable for Budapest bracket checks",
+)
+def test_budapest_round_7_score_15_bracket_uses_exact_heterogeneous_refinement() -> None:
+    manifest_path = _budapest_manifest_path()
+    round_entry = _budapest_round_entry(7)
+    trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
+    initial_color = build_trf_initial_color(trf)
+    scoregroups = _group_residents_by_score(_budapest_states_for_round(7))
+
+    mdp = next(player for player in scoregroups[6] if player.pairing_no == 94)
+    bracket_players = tuple(
+        sorted(
+            (mdp, *scoregroups[7]),
+            key=lambda player: (-player.score, player.pairing_no),
+        )
+    )
+    next_residents = scoregroups[8]
+    next_bracket_cache: dict[tuple[PlayerState, ...], bool] = {}
+    next_bracket_key_cache: dict[tuple[PlayerState, ...], NextBracketKey] = {}
+
+    def next_bracket_validator(downfloaters: tuple[PlayerState, ...]) -> bool:
+        ordered_downfloaters = tuple(
+            sorted(downfloaters, key=lambda player: (-player.score, player.pairing_no))
+        )
+        cached = next_bracket_cache.get(ordered_downfloaters)
+        if cached is not None:
+            return cached
+
+        next_players = tuple(
+            sorted(
+                (*ordered_downfloaters, *next_residents),
+                key=lambda player: (-player.score, player.pairing_no),
+            )
+        )
+        next_mdp_ids = frozenset(player.player_id for player in ordered_downfloaters)
+        try:
+            next_result = _pair_bracket_with_optional_limit(
+                next_players,
+                context=BracketContext(mdp_ids=next_mdp_ids, initial_color=initial_color),
+                allow_bye=False,
+                sequential_search_max_players=6,
+                initial_color=initial_color,
+            )
+        except PairingError:
+            next_bracket_cache[ordered_downfloaters] = False
+            return False
+
+        next_bracket_key_cache[ordered_downfloaters] = _build_next_bracket_key(
+            players=next_players,
+            result=next_result,
+            mdp_ids=next_mdp_ids,
+            initial_color=initial_color,
+        )
+        next_bracket_cache[ordered_downfloaters] = True
+        return True
+
+    def next_bracket_key(downfloaters: tuple[PlayerState, ...]) -> NextBracketKey | None:
+        ordered_downfloaters = tuple(
+            sorted(downfloaters, key=lambda player: (-player.score, player.pairing_no))
+        )
+        cached = next_bracket_key_cache.get(ordered_downfloaters)
+        if cached is not None:
+            return cached
+        if not next_bracket_validator(ordered_downfloaters):
+            return None
+        return next_bracket_key_cache.get(ordered_downfloaters)
+
+    result = pair_bracket(
+        bracket_players,
+        context=BracketContext(
+            mdp_ids=frozenset({mdp.player_id}),
+            initial_color=initial_color,
+            next_bracket_validator=next_bracket_validator,
+            next_bracket_key=next_bracket_key,
+        ),
+        allow_bye=False,
+        sequential_search_max_players=6,
+        initial_color=initial_color,
+    )
+
+    paired_ids = {
+        frozenset({pairing.white_id, pairing.black_id})
+        for pairing in result.pairings
+        if pairing.black_id is not None
+    }
+
+    assert result.unpaired_ids == ("83",)
+    assert frozenset({"94", "71"}) in paired_ids
+    assert frozenset({"76", "102"}) in paired_ids
+    assert frozenset({"89", "95"}) in paired_ids
+
+
+@pytest.mark.skipif(
+    not (_has_py4swiss_runtime() and _has_bbp_executable()),
+    reason=(
+        "active Python interpreter or bbpPairings runtime unavailable for Budapest reference checks"
+    ),
+)
+def test_budapest_fast_round_7_matches_engine_consensus() -> None:
+    manifest_path = _budapest_manifest_path()
+    round_entry = _budapest_round_entry(7)
+
+    compare = _run_reference_compare(manifest_path.parent / cast(str, round_entry["trf"]))
+
+    assert compare["reference_pairings_equal"] is True
+    assert compare["pairings_equal_vs_py4swiss"] is True
     assert compare["pairings_equal_vs_bbp"] is True
