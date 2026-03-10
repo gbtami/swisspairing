@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from swisspairing.exceptions import PairingError
-from swisspairing.model import FloatKind, Pairing, PlayerState
+from swisspairing.model import FloatAssignment, FloatKind, Pairing, PlayerState
 from swisspairing.tournament import pair_round_dutch, pair_round_dutch_fast
 
 
@@ -112,6 +112,22 @@ def test_pair_round_dutch_respects_c2_for_previous_full_point_unplayed_round() -
 
     assert len(bye_pairings) == 1
     assert bye_pairings[0].white_id != "p1"
+
+
+def test_pair_round_dutch_reports_float_assignments_for_cross_score_pairs_and_byes() -> None:
+    players = (
+        _player(player_id="p1", pairing_no=1, score=3),
+        _player(player_id="p2", pairing_no=2, score=2),
+        _player(player_id="p3", pairing_no=3, score=1),
+    )
+
+    result = pair_round_dutch(players)
+
+    assert result.float_assignments == (
+        FloatAssignment(player_id="p1", kind=FloatKind.DOWN),
+        FloatAssignment(player_id="p2", kind=FloatKind.UP),
+        FloatAssignment(player_id="p3", kind=FloatKind.DOWN),
+    )
 
 
 def test_pair_round_dutch_uses_c8_lookahead_for_next_bracket_viability() -> None:

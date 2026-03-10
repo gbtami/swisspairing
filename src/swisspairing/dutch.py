@@ -14,7 +14,14 @@ from typing import TYPE_CHECKING, cast
 
 from swisspairing._matching import compute_maximum_weight_matching
 from swisspairing.exceptions import PairingError
-from swisspairing.model import Color, FloatKind, Pairing, PairingResult, PlayerState
+from swisspairing.model import (
+    Color,
+    FloatAssignment,
+    FloatKind,
+    Pairing,
+    PairingResult,
+    PlayerState,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Sequence
@@ -2397,6 +2404,49 @@ def _sort_for_publication(
     return tuple(sorted(pairings, key=key))
 
 
+def build_float_assignments(
+    players: Sequence[PlayerState],
+    *,
+    pairings: tuple[Pairing, ...],
+    unpaired_ids: tuple[str, ...],
+) -> tuple[FloatAssignment, ...]:
+    by_id = {player.player_id: player for player in players}
+    assignments: dict[str, FloatKind] = {}
+
+    def assign(player_id: str, kind: FloatKind) -> None:
+        existing = assignments.get(player_id)
+        if existing is not None and existing != kind:
+            raise AssertionError(f"conflicting float assignment for {player_id}")
+        assignments[player_id] = kind
+
+    for pairing in pairings:
+        if pairing.black_id is None:
+            assign(pairing.white_id, FloatKind.DOWN)
+            continue
+
+        white = by_id[pairing.white_id]
+        black = by_id[pairing.black_id]
+        if white.score == black.score:
+            continue
+
+        higher, lower = (
+            (white, black) if _player_rank_key(white) <= _player_rank_key(black) else (black, white)
+        )
+        assign(higher.player_id, FloatKind.DOWN)
+        assign(lower.player_id, FloatKind.UP)
+
+    for player_id in unpaired_ids:
+        assign(player_id, FloatKind.DOWN)
+
+    return tuple(
+        FloatAssignment(player_id=player_id, kind=assignments[player_id])
+        for player_id in sorted(
+            assignments,
+            key=lambda player_id: _player_rank_key(by_id[player_id]),
+        )
+    )
+
+
 def pair_bracket(
     players: Sequence[PlayerState],
     *,
@@ -2412,7 +2462,7 @@ def pair_bracket(
     must downfloat instead of receiving a pairing-allocated bye.
     """
     if len(players) == 0:
-        return PairingResult(pairings=(), unpaired_ids=())
+        return PairingResult(pairings=(), unpaired_ids=(), float_assignments=())
 
     local_context = context or BracketContext()
     ordered_players = tuple(sorted(players, key=_player_rank_key))
@@ -2429,9 +2479,15 @@ def pair_bracket(
             white, black = _choose_color_order(left, right, initial_color=initial_color)
             pairings.append(Pairing(white_id=white.player_id, black_id=black.player_id))
         unresolved_ids = tuple(player.player_id for player in candidate.unresolved)
+        sorted_pairings = _sort_for_publication(pairings, by_id)
         return PairingResult(
-            pairings=_sort_for_publication(pairings, by_id),
+            pairings=sorted_pairings,
             unpaired_ids=unresolved_ids,
+            float_assignments=build_float_assignments(
+                ordered_players,
+                pairings=sorted_pairings,
+                unpaired_ids=unresolved_ids,
+            ),
         )
 
     # Even case: one cardinality-optimal candidate.
@@ -2445,9 +2501,16 @@ def pair_bracket(
         for left, right in even_result.pairings:
             white, black = _choose_color_order(left, right, initial_color=initial_color)
             pairings.append(Pairing(white_id=white.player_id, black_id=black.player_id))
+        sorted_pairings = _sort_for_publication(pairings, by_id)
+        unresolved_ids = tuple(player.player_id for player in even_result.unresolved)
         return PairingResult(
-            pairings=_sort_for_publication(pairings, by_id),
-            unpaired_ids=tuple(player.player_id for player in even_result.unresolved),
+            pairings=sorted_pairings,
+            unpaired_ids=unresolved_ids,
+            float_assignments=build_float_assignments(
+                ordered_players,
+                pairings=sorted_pairings,
+                unpaired_ids=unresolved_ids,
+            ),
         )
 
     # Odd case with pairing-allocated bye:
@@ -2530,7 +2593,13 @@ def pair_bracket(
     all_pairings = [*normal_pairings, Pairing(white_id=bye_player.player_id, black_id=None)]
 
     unresolved_ids = tuple(player.player_id for player in best_candidate.unresolved)
+    sorted_pairings = _sort_for_publication(all_pairings, by_id)
     return PairingResult(
-        pairings=_sort_for_publication(all_pairings, by_id),
+        pairings=sorted_pairings,
         unpaired_ids=unresolved_ids,
+        float_assignments=build_float_assignments(
+            ordered_players,
+            pairings=sorted_pairings,
+            unpaired_ids=unresolved_ids,
+        ),
     )

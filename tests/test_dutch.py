@@ -10,7 +10,7 @@ import pytest
 import swisspairing.dutch as dutch
 from swisspairing.dutch import BracketContext, NextBracketKey, NextBracketLocalKey, pair_bracket
 from swisspairing.exceptions import PairingError
-from swisspairing.model import Color, FloatKind, Pairing, PlayerState
+from swisspairing.model import Color, FloatAssignment, FloatKind, Pairing, PlayerState
 
 
 def _player(
@@ -214,6 +214,22 @@ def test_pair_bracket_odd_excludes_previous_full_point_unplayed_round_candidates
     result = pair_bracket(players)
 
     assert ("p3", None) not in _to_pairs(result.pairings)
+
+
+def test_pair_bracket_reports_float_assignments_for_cross_score_pairs_and_byes() -> None:
+    players = (
+        _player(player_id="p1", pairing_no=1, score=3),
+        _player(player_id="p2", pairing_no=2, score=2),
+        _player(player_id="p3", pairing_no=3, score=1),
+    )
+
+    result = pair_bracket(players)
+
+    assert result.float_assignments == (
+        FloatAssignment(player_id="p1", kind=FloatKind.DOWN),
+        FloatAssignment(player_id="p2", kind=FloatKind.UP),
+        FloatAssignment(player_id="p3", kind=FloatKind.DOWN),
+    )
 
 
 def test_pair_bracket_odd_raises_when_no_legal_bye_candidate_exists() -> None:

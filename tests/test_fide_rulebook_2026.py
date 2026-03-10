@@ -9,7 +9,7 @@ import pytest
 
 from swisspairing.dutch import BracketContext, pair_bracket
 from swisspairing.exceptions import PairingError
-from swisspairing.model import Color, FloatKind, PairingResult, PlayerState
+from swisspairing.model import Color, FloatAssignment, FloatKind, PairingResult, PlayerState
 from swisspairing.tournament import pair_round_dutch
 
 type RuleStatus = Literal[
@@ -247,6 +247,47 @@ def test_c0403_1_4_1_and_c6_downfloat_the_single_unavoidable_player() -> None:
     assert len(result.pairings) == 1
     assert all(pairing.black_id is not None for pairing in result.pairings)
     assert result.unpaired_ids == ("p3",)
+
+
+def test_c0403_1_4_2_reports_opposite_floats_for_cross_score_games() -> None:
+    players = (
+        _player(player_id="mdp", pairing_no=1, score=3),
+        _player(player_id="resident", pairing_no=2, score=2),
+    )
+
+    result = pair_bracket(
+        players,
+        context=BracketContext(mdp_ids=frozenset({"mdp"})),
+        allow_bye=False,
+    )
+
+    assert result.float_assignments == (
+        FloatAssignment(player_id="mdp", kind=FloatKind.DOWN),
+        FloatAssignment(player_id="resident", kind=FloatKind.UP),
+    )
+
+
+def test_c0403_1_4_3_reports_pairing_allocated_byes_as_downfloats() -> None:
+    players = (
+        _player(player_id="p1", pairing_no=1, score=3),
+        _player(player_id="p2", pairing_no=2, score=2),
+        _player(player_id="p3", pairing_no=3, score=1),
+    )
+
+    result = pair_bracket(players)
+
+    assert FloatAssignment(player_id="p3", kind=FloatKind.DOWN) in result.float_assignments
+
+
+def test_c0403_1_4_4_only_reports_defined_float_assignments() -> None:
+    players = (
+        _player(player_id="p1", pairing_no=1, score=3),
+        _player(player_id="p2", pairing_no=2, score=3),
+    )
+
+    result = pair_bracket(players)
+
+    assert result.float_assignments == ()
 
 
 def test_c0403_1_3_2_and_1_9_2_carry_mdps_into_the_next_scoregroup() -> None:
@@ -768,12 +809,14 @@ RULE_GROUPS = (
         ),
     ),
     RuleGroup(
-        status="input_contract",
+        status="partially_tested",
         reason=(
-            "Whether a previous unplayed scoring round counts as a downfloat is "
-            "consumed through caller-supplied `float_history`."
+            "Pairing results expose the PAB-downfloat part of this clause, but "
+            "the separate unplayed-score history still arrives through caller-"
+            "supplied state."
         ),
         clauses=("C0403.1.4.3",),
+        tests=("test_c0403_1_4_3_reports_pairing_allocated_byes_as_downfloats",),
     ),
     RuleGroup(
         status="tested",
@@ -838,13 +881,30 @@ RULE_GROUPS = (
         tests=("test_c0403_1_4_1_and_c6_downfloat_the_single_unavoidable_player",),
     ),
     RuleGroup(
-        status="not_represented",
+        status="partially_tested",
         reason=(
-            "The public result type does not emit float assignments after a "
-            "round, so these post-pairing float-definition clauses are not "
-            "directly testable yet."
+            "The result type now exposes current-round float assignments, but "
+            "the parent article also includes the partially covered 1.4.3 case."
         ),
-        clauses=("C0403.1.4", "C0403.1.4.2", "C0403.1.4.4"),
+        clauses=("C0403.1.4",),
+        tests=(
+            "test_c0403_1_4_1_and_c6_downfloat_the_single_unavoidable_player",
+            "test_c0403_1_4_2_reports_opposite_floats_for_cross_score_games",
+            "test_c0403_1_4_3_reports_pairing_allocated_byes_as_downfloats",
+            "test_c0403_1_4_4_only_reports_defined_float_assignments",
+        ),
+    ),
+    RuleGroup(
+        status="tested",
+        reason=(
+            "Cross-score pairings, PABs, and same-score pairs now expose their "
+            "current-round float consequences directly."
+        ),
+        clauses=("C0403.1.4.2", "C0403.1.4.4"),
+        tests=(
+            "test_c0403_1_4_2_reports_opposite_floats_for_cross_score_games",
+            "test_c0403_1_4_4_only_reports_defined_float_assignments",
+        ),
     ),
     RuleGroup(
         status="tested",

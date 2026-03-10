@@ -139,8 +139,17 @@ class Pairing:
 
 
 @dataclass(frozen=True, slots=True)
+class FloatAssignment:
+    """One round-float assignment."""
+
+    player_id: str
+    kind: FloatKind
+
+
+@dataclass(frozen=True, slots=True)
 class PairingResult:
     """Pairing output with explicit unresolved players."""
 
     pairings: tuple[Pairing, ...]
     unpaired_ids: tuple[str, ...]
+    float_assignments: tuple[FloatAssignment, ...] = ()

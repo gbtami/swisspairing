@@ -12,6 +12,7 @@ from functools import cache
 from swisspairing.dutch import (
     BracketContext,
     NextBracketKey,
+    build_float_assignments,
     pair_bracket,
     pairing_result_next_bracket_local_key,
 )
@@ -313,7 +314,7 @@ def pair_round_dutch(
       greedy pipeline sooner.
     """
     if not players:
-        return PairingResult(pairings=(), unpaired_ids=())
+        return PairingResult(pairings=(), unpaired_ids=(), float_assignments=())
 
     ordered_players = tuple(sorted(players, key=_player_rank_key))
     scoregroups = _group_residents_by_score(ordered_players)
@@ -330,7 +331,15 @@ def pair_round_dutch(
         )
         if pairings is None:
             raise PairingError("round cannot be fully paired under current absolute constraints")
-        return PairingResult(pairings=pairings, unpaired_ids=())
+        return PairingResult(
+            pairings=pairings,
+            unpaired_ids=(),
+            float_assignments=build_float_assignments(
+                ordered_players,
+                pairings=pairings,
+                unpaired_ids=(),
+            ),
+        )
 
     @cache
     def solve(
@@ -544,7 +553,15 @@ def pair_round_dutch(
     solution = solve(scoregroups, ())
     if solution is None:
         raise PairingError("round cannot be fully paired under current absolute constraints")
-    return PairingResult(pairings=solution.pairings, unpaired_ids=())
+    return PairingResult(
+        pairings=solution.pairings,
+        unpaired_ids=(),
+        float_assignments=build_float_assignments(
+            ordered_players,
+            pairings=solution.pairings,
+            unpaired_ids=(),
+        ),
+    )
 
 
 def pair_round_dutch_fast(
@@ -561,7 +578,7 @@ def pair_round_dutch_fast(
     `pair_round_dutch`.
     """
     if not players:
-        return PairingResult(pairings=(), unpaired_ids=())
+        return PairingResult(pairings=(), unpaired_ids=(), float_assignments=())
     scoregroups = _group_residents_by_score(tuple(sorted(players, key=_player_rank_key)))
     pairings = _pair_round_dutch_greedy(
         scoregroups,
@@ -570,4 +587,13 @@ def pair_round_dutch_fast(
     )
     if pairings is None:
         raise PairingError("round cannot be fully paired under current absolute constraints")
-    return PairingResult(pairings=pairings, unpaired_ids=())
+    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    return PairingResult(
+        pairings=pairings,
+        unpaired_ids=(),
+        float_assignments=build_float_assignments(
+            ordered_players,
+            pairings=pairings,
+            unpaired_ids=(),
+        ),
+    )
