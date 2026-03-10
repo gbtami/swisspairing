@@ -371,6 +371,15 @@ dependencies = [
     { name = "rustworkx" },
 ]
 
+[package.optional-dependencies]
+test = [
+    { name = "networkx" },
+    { name = "py4swiss" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "networkx" },
@@ -382,9 +391,15 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "networkx", marker = "extra == 'test'", specifier = ">=3.5" },
+    { name = "py4swiss", marker = "extra == 'test'", specifier = ">=0.3.1" },
+    { name = "pyright", marker = "extra == 'test'", specifier = ">=1.1.408" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.3.5" },
     { name = "requests", specifier = ">=2.32.5" },
+    { name = "ruff", marker = "extra == 'test'", specifier = ">=0.15.4" },
     { name = "rustworkx", specifier = ">=0.17.1" },
 ]
+provides-extras = ["test"]
 
 [package.metadata.requires-dev]
 dev = [

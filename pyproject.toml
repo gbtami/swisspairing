@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling>=1.27.0"]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
@@ -7,10 +7,37 @@ name = "swisspairing"
 version = "0.1.0"
 description = "FIDE Swiss (Dutch) pairing package based on rustworkx"
 readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Tamas Bajusz" }]
 requires-python = ">=3.13"
+keywords = ["chess", "fide", "swiss", "pairing", "dutch-system"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Games/Entertainment :: Board Games",
+    "Topic :: Software Development :: Libraries",
+    "Typing :: Typed",
+]
 dependencies = [
     "requests>=2.32.5",
     "rustworkx>=0.17.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/gbtami/swisspairing"
+Repository = "https://github.com/gbtami/swisspairing"
+Issues = "https://github.com/gbtami/swisspairing/issues"
+
+[project.optional-dependencies]
+test = [
+    "networkx>=3.5",
+    "py4swiss>=0.3.1",
+    "pyright>=1.1.408",
+    "pytest>=8.3.5",
+    "ruff>=0.15.4",
 ]
 
 [dependency-groups]
@@ -25,6 +52,9 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py313"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/swisspairing"]
 
 [tool.ruff.lint]
 select = [
