@@ -90,7 +90,11 @@ def _normalize_manifest_pairings(
     for left, right in raw_pairings:
         if left is None:
             raise AssertionError("published pairings must always include a first player id")
-        normalized.append((left, right))
+        if right is None:
+            normalized.append((left, None))
+            continue
+        first, second = sorted((left, right))
+        normalized.append((first, second))
     normalized.sort(key=lambda pair: (pair[1] is None, pair[0], pair[1] or ""))
     return tuple(normalized)
 

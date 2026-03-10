@@ -6,6 +6,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -25,7 +26,7 @@ def _has_py4swiss_runtime() -> bool:
     return ok
 
 
-def _run_fixture(name: str) -> dict[str, object]:
+def _run_fixture(name: str) -> dict[str, Any]:
     fixture_path = FIXTURES_DIRECTORY / name
     completed = subprocess.run(
         [sys.executable, str(RUNNER_PATH), str(fixture_path)],

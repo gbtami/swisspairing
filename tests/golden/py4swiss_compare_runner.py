@@ -21,8 +21,10 @@ from py4swiss.trf import TrfParser
 
 from swisspairing.benchmarking import (
     build_trf_had_full_point_unplayed_round_by_player_id,
+    build_trf_initial_color,
     build_trf_unplayed_games_by_player_id,
     portable_path_str,
+    sort_pairings_for_compare,
 )
 from swisspairing.exceptions import PairingError as SwissPairingError
 from swisspairing.model import FloatKind, Pairing, PlayerState
@@ -102,10 +104,8 @@ def _normalize_py4swiss_pairings(pairings: list[Any]) -> list[list[str | None]]:
         if pairing.black == 0:
             normalized.append([str(pairing.white), None])
             continue
-        ordered = sorted((str(pairing.white), str(pairing.black)))
-        normalized.append([ordered[0], ordered[1]])
-    normalized.sort(key=lambda pair: (pair[1] is None, pair[0], pair[1] or ""))
-    return normalized
+        normalized.append([str(pairing.white), str(pairing.black)])
+    return sort_pairings_for_compare(normalized)
 
 
 def _normalize_swisspairing_pairings(pairings: tuple[Pairing, ...]) -> list[list[str | None]]:
@@ -114,10 +114,8 @@ def _normalize_swisspairing_pairings(pairings: tuple[Pairing, ...]) -> list[list
         if pairing.black_id is None:
             normalized.append([pairing.white_id, None])
             continue
-        ordered = sorted((pairing.white_id, pairing.black_id))
-        normalized.append([ordered[0], ordered[1]])
-    normalized.sort(key=lambda pair: (pair[1] is None, pair[0], pair[1] or ""))
-    return normalized
+        normalized.append([pairing.white_id, pairing.black_id])
+    return sort_pairings_for_compare(normalized)
 
 
 def main() -> None:
@@ -140,7 +138,7 @@ def main() -> None:
 
     try:
         states = _build_player_states_from_trf(trf)
-        swisspairing_raw = pair_round_dutch(states)
+        swisspairing_raw = pair_round_dutch(states, initial_color=build_trf_initial_color(trf))
         swisspairing_pairings = _normalize_swisspairing_pairings(swisspairing_raw.pairings)
     except SwissPairingError:
         swisspairing_error = "PairingError"

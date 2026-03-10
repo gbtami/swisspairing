@@ -20,14 +20,16 @@ from py4swiss.trf import TrfParser
 
 from swisspairing.benchmarking import (
     build_trf_had_full_point_unplayed_round_by_player_id,
+    build_trf_initial_color,
     build_trf_unplayed_games_by_player_id,
     parse_bbp_pairings_output,
     parse_javafo_pairings_output,
     percentile,
     portable_path_str,
+    sort_pairings_for_compare,
 )
 from swisspairing.exceptions import PairingError as SwissPairingError
-from swisspairing.model import FloatKind, Pairing, PlayerState
+from swisspairing.model import Color, FloatKind, Pairing, PlayerState
 from swisspairing.tournament import pair_round_dutch
 
 _DEFAULT_FAST_SEQUENTIAL_SEARCH_MAX_PLAYERS = 6
@@ -106,10 +108,8 @@ def _normalize_py4swiss_pairings(pairings: list[Any]) -> list[list[str | None]]:
         if pairing.black == 0:
             normalized.append([str(pairing.white), None])
             continue
-        ordered = sorted((str(pairing.white), str(pairing.black)))
-        normalized.append([ordered[0], ordered[1]])
-    normalized.sort(key=lambda pair: (pair[1] is None, pair[0], pair[1] or ""))
-    return normalized
+        normalized.append([str(pairing.white), str(pairing.black)])
+    return sort_pairings_for_compare(normalized)
 
 
 def _normalize_swisspairing_pairings(pairings: tuple[Pairing, ...]) -> list[list[str | None]]:
@@ -118,10 +118,8 @@ def _normalize_swisspairing_pairings(pairings: tuple[Pairing, ...]) -> list[list
         if pairing.black_id is None:
             normalized.append([pairing.white_id, None])
             continue
-        ordered = sorted((pairing.white_id, pairing.black_id))
-        normalized.append([ordered[0], ordered[1]])
-    normalized.sort(key=lambda pair: (pair[1] is None, pair[0], pair[1] or ""))
-    return normalized
+        normalized.append([pairing.white_id, pairing.black_id])
+    return sort_pairings_for_compare(normalized)
 
 
 def _timed_result(
@@ -281,6 +279,7 @@ def _time_swisspairing(
     warmup: int,
     repeats: int,
     sequential_search_max_players: int | None,
+    initial_color: Color,
 ) -> dict[str, Any]:
     timings_ms: list[float] = []
     last_pairings: list[list[str | None]] = []
@@ -291,6 +290,7 @@ def _time_swisspairing(
             raw = pair_round_dutch(
                 states,
                 sequential_search_max_players=sequential_search_max_players,
+                initial_color=initial_color,
             )
             last_pairings = _normalize_swisspairing_pairings(raw.pairings)
         except SwissPairingError:
@@ -304,6 +304,7 @@ def _time_swisspairing(
                 raw = pair_round_dutch(
                     states,
                     sequential_search_max_players=sequential_search_max_players,
+                    initial_color=initial_color,
                 )
                 last_pairings = _normalize_swisspairing_pairings(raw.pairings)
             except SwissPairingError:
@@ -343,6 +344,7 @@ def main() -> None:
     trf_path = args.trf.resolve()
     trf = TrfParser.parse(trf_path)
     states = _build_player_states_from_trf(trf)
+    initial_color = build_trf_initial_color(trf)
 
     py4swiss_result = _time_py4swiss(trf, warmup=args.warmup, repeats=args.repeats)
     bbp_result = _time_bbp(
@@ -367,6 +369,7 @@ def main() -> None:
         warmup=args.warmup,
         repeats=args.repeats,
         sequential_search_max_players=swisspairing_limit,
+        initial_color=initial_color,
     )
 
     pairings_equal_vs_py4swiss: bool | None = None

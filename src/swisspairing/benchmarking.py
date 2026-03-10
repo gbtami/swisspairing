@@ -13,6 +13,8 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, cast
 
+from swisspairing.model import Color
+
 _PLAYED_TRF_RESULT_VALUES = frozenset({"1", "=", "0", "W", "D", "L"})
 _NON_PAB_FULL_POINT_UNPLAYED_TRF_RESULT_VALUES = frozenset({"+", "F"})
 _LENIENT_TRF_RESULT_PAIR_PATTERN = re.compile(
@@ -210,8 +212,38 @@ def percentile(values: Sequence[float], percentile_value: float) -> float:
     return ordered[index]
 
 
+def sort_pairings_for_compare(
+    pairings: Sequence[Sequence[str | None]],
+) -> list[list[str | None]]:
+    """Return pairings in deterministic compare order without changing colors."""
+
+    def _sort_key(pair: Sequence[str | None]) -> tuple[bool, str, str, str, str]:
+        left = pair[0]
+        right = pair[1]
+        if left is None:
+            raise ValueError("pairing compare rows must always include a white-side player id")
+        if right is None:
+            return True, left, left, left, ""
+        first, second = sorted((left, right))
+        return False, first, second, left, right
+
+    normalized = [[pair[0], pair[1]] for pair in pairings]
+    normalized.sort(key=_sort_key)
+    return normalized
+
+
+def build_trf_initial_color(trf: Any) -> Color:
+    """Return the TRF-configured first-round color (`white` or `black`)."""
+    first_round_color = getattr(
+        getattr(getattr(trf, "x_section", None), "configuration", None),
+        "first_round_color",
+        True,
+    )
+    return "white" if first_round_color else "black"
+
+
 def parse_bbp_pairings_output(output_text: str) -> list[list[str | None]]:
-    """Parse bbpPairings `-p` output into normalized unordered pairings."""
+    """Parse bbpPairings `-p` output into compare-ready oriented pairings."""
     lines = [line.strip() for line in output_text.splitlines() if line.strip()]
     if not lines:
         raise ValueError("bbpPairings output is empty")
@@ -229,15 +261,13 @@ def parse_bbp_pairings_output(output_text: str) -> list[list[str | None]]:
         if black_id == "0":
             normalized.append([white_id, None])
             continue
-        ordered = sorted((white_id, black_id))
-        normalized.append([ordered[0], ordered[1]])
+        normalized.append([white_id, black_id])
 
-    normalized.sort(key=lambda pair: (pair[1] is None, pair[0], pair[1] or ""))
-    return normalized
+    return sort_pairings_for_compare(normalized)
 
 
 def parse_javafo_pairings_output(output_text: str) -> list[list[str | None]]:
-    """Parse JaVaFo `-p` output into normalized unordered pairings."""
+    """Parse JaVaFo `-p` output into compare-ready oriented pairings."""
     lines = [line.strip() for line in output_text.splitlines() if line.strip()]
     if not lines:
         raise ValueError("JaVaFo output is empty")
@@ -256,16 +286,14 @@ def parse_javafo_pairings_output(output_text: str) -> list[list[str | None]]:
         if black_id == "0":
             normalized.append([white_id, None])
             continue
-        ordered = sorted((white_id, black_id))
-        normalized.append([ordered[0], ordered[1]])
+        normalized.append([white_id, black_id])
 
     if len(normalized) != expected_pairs:
         raise ValueError(
             f"JaVaFo output expected {expected_pairs} pairs but contained {len(normalized)}"
         )
 
-    normalized.sort(key=lambda pair: (pair[1] is None, pair[0], pair[1] or ""))
-    return normalized
+    return sort_pairings_for_compare(normalized)
 
 
 def _parse_trf16_points_times_ten(points_text: str) -> int:

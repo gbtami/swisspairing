@@ -11,6 +11,7 @@ from swisspairing.benchmarking import (
     BenchmarkSLA,
     build_benchmark_summary,
     build_trf_had_full_point_unplayed_round_by_player_id,
+    build_trf_initial_color,
     build_trf_unplayed_games_by_player_id,
     discover_bbp_executable,
     discover_javafo_jar,
@@ -19,6 +20,7 @@ from swisspairing.benchmarking import (
     parse_bbp_pairings_output,
     parse_javafo_pairings_output,
     portable_path_str,
+    sort_pairings_for_compare,
 )
 
 
@@ -103,12 +105,36 @@ def test_current_recurring_sla_preset_matches_checked_in_baseline() -> None:
         assert failures == []
 
 
-def test_parse_bbp_pairings_output_normalizes_byes_and_colors() -> None:
+def test_sort_pairings_for_compare_preserves_color_orientation() -> None:
+    pairings = [["3", "1"], ["6", None], ["4", "2"]]
+
+    normalized = sort_pairings_for_compare(pairings)
+
+    assert normalized == [["3", "1"], ["4", "2"], ["6", None]]
+
+
+def test_build_trf_initial_color_reads_trf_configuration() -> None:
+    white_first = SimpleNamespace(
+        x_section=SimpleNamespace(configuration=SimpleNamespace(first_round_color=True))
+    )
+    black_first = SimpleNamespace(
+        x_section=SimpleNamespace(configuration=SimpleNamespace(first_round_color=False))
+    )
+
+    assert build_trf_initial_color(white_first) == "white"
+    assert build_trf_initial_color(black_first) == "black"
+
+
+def test_build_trf_initial_color_defaults_to_white_when_missing() -> None:
+    assert build_trf_initial_color(SimpleNamespace()) == "white"
+
+
+def test_parse_bbp_pairings_output_preserves_byes_and_colors() -> None:
     output_text = "\n".join(("6", "3 1", "4 2", "6 0"))
 
     pairings = parse_bbp_pairings_output(output_text)
 
-    assert pairings == [["1", "3"], ["2", "4"], ["6", None]]
+    assert pairings == [["3", "1"], ["4", "2"], ["6", None]]
 
 
 def test_parse_bbp_pairings_output_rejects_invalid_lines() -> None:
@@ -122,12 +148,12 @@ def test_parse_bbp_pairings_output_rejects_invalid_lines() -> None:
         raise AssertionError("expected invalid bbpPairings output to raise ValueError")
 
 
-def test_parse_javafo_pairings_output_normalizes_byes_and_colors() -> None:
+def test_parse_javafo_pairings_output_preserves_byes_and_colors() -> None:
     output_text = "\n".join(("3", "3 1", "4 2", "6 0"))
 
     pairings = parse_javafo_pairings_output(output_text)
 
-    assert pairings == [["1", "3"], ["2", "4"], ["6", None]]
+    assert pairings == [["3", "1"], ["4", "2"], ["6", None]]
 
 
 def test_parse_javafo_pairings_output_rejects_mismatched_pair_count() -> None:
