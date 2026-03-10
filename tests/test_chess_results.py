@@ -1065,3 +1065,110 @@ def test_graz_fast_round_4_matches_engine_consensus() -> None:
     assert compare["reference_pairings_equal"] is True
     assert compare["pairings_equal_vs_py4swiss"] is True
     assert compare["pairings_equal_vs_bbp"] is True
+
+
+@pytest.mark.skipif(
+    not _has_py4swiss_runtime(),
+    reason="active Python interpreter unavailable for Graz bracket checks",
+)
+def test_graz_round_5_score_25_bracket_keeps_recent_downfloater_in_bracket() -> None:
+    manifest_path = _graz_manifest_path()
+    round_entry = _graz_round_entry(5)
+    trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
+    initial_color = build_trf_initial_color(trf)
+    scoregroups = _group_residents_by_score(_graz_states_for_round(5))
+
+    mdp = next(player for player in scoregroups[2] if player.pairing_no == 234)
+    bracket_players = tuple(
+        sorted(
+            (mdp, *scoregroups[3]),
+            key=lambda player: (-player.score, player.pairing_no),
+        )
+    )
+    next_residents = scoregroups[4]
+    next_bracket_cache: dict[tuple[PlayerState, ...], bool] = {}
+    next_bracket_key_cache: dict[tuple[PlayerState, ...], NextBracketKey] = {}
+
+    def next_bracket_validator(downfloaters: tuple[PlayerState, ...]) -> bool:
+        ordered_downfloaters = tuple(
+            sorted(downfloaters, key=lambda player: (-player.score, player.pairing_no))
+        )
+        cached = next_bracket_cache.get(ordered_downfloaters)
+        if cached is not None:
+            return cached
+
+        next_players = tuple(
+            sorted(
+                (*ordered_downfloaters, *next_residents),
+                key=lambda player: (-player.score, player.pairing_no),
+            )
+        )
+        next_mdp_ids = frozenset(player.player_id for player in ordered_downfloaters)
+        try:
+            next_result = _pair_bracket_with_optional_limit(
+                next_players,
+                context=BracketContext(mdp_ids=next_mdp_ids, initial_color=initial_color),
+                allow_bye=False,
+                sequential_search_max_players=6,
+                initial_color=initial_color,
+            )
+        except PairingError:
+            next_bracket_cache[ordered_downfloaters] = False
+            return False
+
+        next_bracket_key_cache[ordered_downfloaters] = _build_next_bracket_key(
+            players=next_players,
+            result=next_result,
+            mdp_ids=next_mdp_ids,
+            initial_color=initial_color,
+        )
+        next_bracket_cache[ordered_downfloaters] = True
+        return True
+
+    def next_bracket_key(downfloaters: tuple[PlayerState, ...]) -> NextBracketKey | None:
+        ordered_downfloaters = tuple(
+            sorted(downfloaters, key=lambda player: (-player.score, player.pairing_no))
+        )
+        cached = next_bracket_key_cache.get(ordered_downfloaters)
+        if cached is not None:
+            return cached
+        if not next_bracket_validator(ordered_downfloaters):
+            return None
+        return next_bracket_key_cache.get(ordered_downfloaters)
+
+    result = pair_bracket(
+        bracket_players,
+        context=BracketContext(
+            mdp_ids=frozenset({mdp.player_id}),
+            initial_color=initial_color,
+            next_bracket_validator=next_bracket_validator,
+            next_bracket_key=next_bracket_key,
+        ),
+        allow_bye=False,
+        sequential_search_max_players=6,
+        initial_color=initial_color,
+    )
+
+    paired_ids = {
+        frozenset({pairing.white_id, pairing.black_id})
+        for pairing in result.pairings
+        if pairing.black_id is not None
+    }
+
+    assert result.unpaired_ids == ("213",)
+    assert frozenset({"92", "229"}) in paired_ids
+
+
+@pytest.mark.skipif(
+    not (_has_py4swiss_runtime() and _has_bbp_executable()),
+    reason="active Python interpreter or bbpPairings runtime unavailable for Graz reference checks",
+)
+def test_graz_fast_round_5_matches_engine_consensus() -> None:
+    manifest_path = _graz_manifest_path()
+    round_entry = _graz_round_entry(5)
+
+    compare = _run_reference_compare(manifest_path.parent / cast(str, round_entry["trf"]))
+
+    assert compare["reference_pairings_equal"] is True
+    assert compare["pairings_equal_vs_py4swiss"] is True
+    assert compare["pairings_equal_vs_bbp"] is True

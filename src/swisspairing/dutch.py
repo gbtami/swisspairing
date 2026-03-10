@@ -439,6 +439,7 @@ _ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES = 20_000
 _ODD_FINAL_BYE_SCAN_MAX_PLAYERS = 20
 _ODD_HOMOGENEOUS_REFINEMENT_SCAN_MAX_PLAYERS = 34
 _SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS = 24
+_SINGLE_MDP_REMAINDER_HOMOGENEOUS_REFINEMENT_MAX_PLAYERS = 54
 _SINGLE_MDP_ODD_REFINEMENT_SEARCH_MAX_PLAYERS = 6
 
 
@@ -1415,6 +1416,7 @@ def _refine_weighted_homogeneous_odd_candidate(
     context: BracketContext,
     weighted_candidate: _CandidateInternal,
     sequential_search_max_players: int,
+    scan_max_players: int = _ODD_HOMOGENEOUS_REFINEMENT_SCAN_MAX_PLAYERS,
 ) -> _CandidateInternal:
     """Refine medium-size odd homogeneous brackets around the weighted result.
 
@@ -1424,6 +1426,9 @@ def _refine_weighted_homogeneous_odd_candidate(
     cost of scanning every possible downfloater.
     """
     ordered_players = tuple(sorted(players, key=_player_rank_key))
+    if len(ordered_players) > scan_max_players:
+        return weighted_candidate
+
     split_size = len(ordered_players) // 2
     original_s2 = ordered_players[split_size:]
     candidate_pool = original_s2
@@ -1629,11 +1634,29 @@ def _refine_weighted_single_mdp_remainder_candidate(
     remainder_players = tuple(
         player for player in residents if player.player_id != mdp_partner.player_id
     )
+    remainder_context = BracketContext(initial_color=context.initial_color)
     remainder_candidate = _solve_without_bye_candidate(
         remainder_players,
-        context=BracketContext(initial_color=context.initial_color),
+        context=remainder_context,
         sequential_search_max_players=refinement_search_limit,
     )
+    if (
+        _ODD_HOMOGENEOUS_REFINEMENT_SCAN_MAX_PLAYERS
+        < len(remainder_players)
+        <= _SINGLE_MDP_REMAINDER_HOMOGENEOUS_REFINEMENT_MAX_PLAYERS
+    ):
+        weighted_remainder_candidate = _solve_without_bye_candidate_via_weighted_steps(
+            remainder_players,
+            context=remainder_context,
+        )
+        if weighted_remainder_candidate is not None and weighted_remainder_candidate.unresolved:
+            remainder_candidate = _refine_weighted_homogeneous_odd_candidate(
+                remainder_players,
+                context=remainder_context,
+                weighted_candidate=weighted_remainder_candidate,
+                sequential_search_max_players=refinement_search_limit,
+                scan_max_players=_SINGLE_MDP_REMAINDER_HOMOGENEOUS_REFINEMENT_MAX_PLAYERS,
+            )
     sequence_no = next(
         index for index, player in enumerate(residents) if player.player_id == mdp_partner.player_id
     )

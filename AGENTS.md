@@ -309,10 +309,10 @@ benchmarks/import_lichess_fixtures.sh
 - On the checked Budapest corpus, round 5 currently matches `py4swiss` +
   `JaVaFo` against a `bbpPairings` alternative, while round 7 exposes a
   fast-mode-only `swisspairing` divergence that disappears in strict mode.
-- On the checked Graz corpus, `swisspairing` currently disagrees with
-  `bbpPairings`, `py4swiss`, and `JaVaFo` in rounds 5 and 9 in both
-  `fast` and `strict`, while round 1 is a large runtime tail even though all
-  engines agree on the pairing.
+- On the checked Graz corpus, `swisspairing` now matches `bbpPairings`,
+  `py4swiss`, and `JaVaFo` on all 9 rounds; the remaining Graz note is round
+  1 runtime, which is still much slower than the external engines despite
+  matching their pairing.
 - Aeroflot 2026 regulations say the pairings were managed by `Swiss Manager`;
   later published-pairing differences where `swisspairing`, `bbpPairings`,
   and `py4swiss` all agree with each other should therefore not be treated as
@@ -353,9 +353,9 @@ Current practical default:
 - On the checked public JaVaFo release, Aeroflot round 5 aligns with the
   `py4swiss` side rather than the BBP/2026 side. Treat that as Swiss-Manager
   lineage evidence, not as stronger normative evidence than FIDE + BBP.
-- International Chessopen Graz 2026 A still has two consensus-engine
-  `swisspairing` divergences in rounds 5 and 9; all checked external
-  references agree with each other there.
+- International Chessopen Graz 2026 A is now a clean consensus corpus:
+  `swisspairing`, `bbpPairings`, `py4swiss`, and the checked JaVaFo release
+  all agree there, with the remaining concern limited to round-1 runtime.
 - On the checked golden catalog, the public JaVaFo release agrees on all
   pairable fixtures but does not reject the two impossible-fixture cases that
   `swisspairing`, `bbpPairings`, and `py4swiss` all reject.
