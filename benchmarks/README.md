@@ -137,16 +137,6 @@ uv run python benchmarks/export_chess_results_trf_snapshots.py \
   --output-dir /tmp/chess_results_trf
 ```
 
-If the round exports live next to the starting list with the standard
-`chessResultsList(1).xlsx`, `chessResultsList(2).xlsx`, ... naming pattern,
-the exporter auto-discovers them. The output directory contains one TRF per
-published round plus a `published_pairings.json` manifest.
-
-Chess-Results exports are paginated by default. For larger events, use the
-site's `Show complete list` view or export with `zeilen=99999`; otherwise the
-XLSX files may stop after the first 150 rows and the exporter will reject the
-incomplete input.
-
 Fetch and convert directly from a Chess-Results event URL:
 
 ```bash
@@ -155,9 +145,7 @@ uv run python benchmarks/import_chess_results_event.py \
   --output-dir /tmp/chess_results_trf
 ```
 
-The importer forces the English event page, discovers the available board
-pairing rounds, downloads the complete `zeilen=99999` XLSX exports, and then
-reuses the same snapshot exporter as above.
+For the full repo-operator workflow and pagination caveats, see `AGENTS.md`.
 
 The repo now includes checked-in real-world OTB corpora reconstructed from
 Chess-Results:

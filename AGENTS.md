@@ -236,7 +236,24 @@ uv run python benchmarks/run_recurring_baselines.py \
 
 ### Real-world Chess-Results import
 
-Reconstruct TRF snapshots from Chess-Results exports:
+Preferred path: fetch and convert directly from a Chess-Results event URL:
+
+```bash
+uv run python benchmarks/import_chess_results_event.py \
+  --url https://s1.chess-results.com/tnr1307079.aspx \
+  --output-dir /tmp/chess_results_trf
+```
+
+What the importer does:
+
+- forces the English event page and normalized query shape
+- verifies that the event looks like a supported individual Swiss event
+- detects the declared round count and available board-pairing rounds
+- downloads the complete `zeilen=99999` XLSX exports
+- runs the same TRF snapshot reconstruction used by the manual exporter
+
+Manual fallback: reconstruct TRF snapshots from already-downloaded
+Chess-Results exports:
 
 ```bash
 uv run python benchmarks/export_chess_results_trf_snapshots.py \
@@ -246,6 +263,11 @@ uv run python benchmarks/export_chess_results_trf_snapshots.py \
 
 If the standard `chessResultsList(1).xlsx`, `chessResultsList(2).xlsx`, ...
 files live next to the starting list, the exporter auto-discovers them.
+
+Important: Chess-Results XLSX exports are paginated by default. For larger
+events, use `Show complete list` or `zeilen=99999`; otherwise the first-page
+download may stop around 150 rows and the exporter will reject it as
+incomplete.
 
 Normalize lenient TRF16 exports (for example, Lichess Swiss downloads):
 
