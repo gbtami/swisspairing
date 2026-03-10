@@ -180,23 +180,43 @@ uv run pyright
 uv run pytest
 ```
 
-### Local packaging smoke test
+### Local wheel install for downstream projects
 
-Build a wheel/sdist from the current checkout:
+To make the current checkout importable by another local project without
+publishing a new PyPI release, build a fresh wheel and reinstall it locally.
 
-```bash
-uv build
-```
-
-Install the repo into another environment without relying on
-`SWISSPAIRING_SRC`:
+Build:
 
 ```bash
-uv pip install dist/swisspairing-*.whl
+rm -f dist/swisspairing-*.whl
+uv build --wheel
 ```
 
-The project is already buildable locally via `hatchling`; what is still
-missing is publication and downstream rollout.
+Install to your user site:
+
+```bash
+python -m pip install --user --no-deps --force-reinstall dist/swisspairing-*.whl
+```
+
+Install into another project's Python environment directly
+(for example `pychess-variants`):
+
+```bash
+cd ~/pychess-variants
+uv pip install --python .venv/bin/python --no-deps --force-reinstall \
+  ~/swisspairing/dist/swisspairing-*.whl
+```
+
+After that, prefer running the downstream project without `SWISSPAIRING_SRC`
+so it exercises the installed wheel instead of the source-path fallback.
+
+Package check:
+
+```bash
+rm -f dist/swisspairing-*.whl dist/swisspairing-*.tar.gz
+uv build --wheel --sdist
+uvx twine check dist/*
+```
 
 ### Golden parity
 
