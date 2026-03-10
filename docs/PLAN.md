@@ -45,7 +45,7 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
 - 2026-rule conformance suites driven from frozen tournament fixtures.
 - Performance profiling and bounded-time stress tests (200-300 player targets).
 
-## Progress Snapshot (2026-03-07)
+## Progress Snapshot (2026-03-10)
 
 - Completed:
   - [C5]-[C21] candidate key implemented in bracket solver.
@@ -173,6 +173,22 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - Added a one-command Lichess fixture refresh script
     (`benchmarks/import_lichess_fixtures.sh`) that normalizes local downloads,
     updates checked fixtures, and emits a reference-compare JSON snapshot.
+  - Added a rulebook-driven 2026 coverage suite against the local handbook
+    markdown copies and closed the remaining Dutch article 5.2 color-allocation
+    gaps. The public state/input surface now also carries explicit
+    `initial_color`, full-point unplayed-round state, and current-round float
+    assignments, and Chess-Results float history can be derived from imported
+    round sheets.
+  - The multi-engine compare harness now preserves white/black orientation and
+    honors TRF `XXC` initial-color configuration instead of normalizing away
+    color-order-only differences.
+  - Added a live Chess-Results event importer and expanded the checked real-world
+    OTB corpus with Prague International Chess Festival 2026 D, Budapest Spring
+    Festival 2026 Group A, and International Chessopen Graz 2026 A.
+  - Budapest round 7 is now fixed in fast mode, Graz now matches
+    `bbpPairings`, `py4swiss`, and `JaVaFo` on all 9 checked rounds, and the
+    earlier Graz round-1 runtime tail is closed out by a direct trivial
+    first-round bracket path.
   - External pychess integration checkpoint completed on
     `pychess-variants` branch `feature/swiss-py4swiss-integration`
     (commit `7cdedf470460891e30a25321742098153b921063`):
@@ -181,8 +197,10 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     link in the client, and matching backend/API tests.
   - Extended unit-test coverage for criteria and sequence behavior.
 - Next:
-  - Extend the real-world OTB corpus beyond Aeroflot and use it to drive the
-    remaining parity/conformance fixes.
+  - Extend the real-world OTB corpus beyond the current
+    Aeroflot/Prague/Budapest/Graz set and use it to drive the remaining
+    parity/conformance fixes. On the checked corpora, Budapest round 5 is the
+    clearest live real-world reference split.
   - Upstream and deploy the pychess integration checkpoint, then run staged
     dual-backend soak checks before any default-backend flip.
 
