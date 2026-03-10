@@ -1,0 +1,107 @@
+001    1      Aditya, Mittal                    2610                             3.5    9    53 w 1    29 b 1    22 w =    18 b =    20 w =
+001    2      Samunenkov, Ihor                  2604                             3.5   10    54 b 1    35 w =    32 b 1    20 w =    21 b =
+001    3      Dardha, Daniel                    2602                             4.5    1    55 w 1    30 b 1    37 w 1    16 b =    10 w 1
+001    4      Abdisalimov, Abdimalik            2563                             3.0   20    56 b =    58 w =    68 b 1    46 w 1    54 b 0
+001    5      Li, Di                            2558                             3.0   21    57 w =    65 b =    67 w 1    37 b 1    18 w 0
+001    6      Vrolijk, Liam                     2537                             3.5   11    58 b =    56 w =    70 b 1    39 w =    38 b 1
+001    7      Klimkowski, Jan                   2532                             4.0    2    59 w 1    34 b =    38 w 1    42 b =    22 w 1
+001    8      Kozak, Adam                       2527                             3.5   12    60 b =    64 w 1    33 b 1    25 w 0    39 b 1
+001    9      Fodor, Tamas Jr.                  2520                             4.0    3    61 w 1    37 b 0    55 w 1    63 b 1    42 w 1
+001   10      Seemann, Jakub                    2517                             3.5   13    62 b 1    39 w 1    46 b =    31 w 1     3 b 0
+001   11      Lalit, Babu M R                   2511                             4.0    4    63 w 1    42 b =    34 w 1    22 b =    98 w 1
+001   12      Chanda, Sandipan                  2479                             3.5   14    64 b =    60 w 1    35 b =    43 w =    40 b 1
+001   13      Akbas, Umut Ata                   2473                             3.0   22    65 w =    57 b 0   104 b 1    51 w =    56 b 1
+001   14      Mosesov, Danyil                   2463                             3.0   23    66 b =    70 w =    56 b 1    45 w =    43 b =
+001   15      Pham, Khoi                        2462                             2.0   65    67 w =    75 b =    58 w =    52 b 0    66 w =
+001   16      Tarhan, Adar                      2460                             4.0    5    68 b 1    47 w 1   101 b 1     3 w =    25 b =
+001   17      Nigmatov, Ortik                   2459                             1.0   95    69 w 1    46 b 0    63 w 0    77 b -  0000 - Z
+001   18      Ilinca, Felix-Antonio             2458                             4.0    6    70 b =    66 w 1    40 b 1     1 w =     5 b 1
+001   19      Palczert, Matyas                  2450                             2.5   41    71 w 1    51 b =    42 w 0    57 b =    61 w =
+001   20      Xiang, Zeyu                       2449                             3.5   15    72 b 1    88 w =    51 w 1     2 b =     1 b =
+001   21      Dehtiarov, Roman                  2430                             3.5   16    73 w 1   101 b 0    65 w 1    97 b 1     2 w =
+001   22      Begmuratov, Khumoyun              2429                             3.0   24    74 b 1   102 w 1     1 b =    11 w =     7 b 0
+001   23      Amartuvshin, Ganzorig             2428                             2.5   42    75 w =    67 b 0    79 w =    92 b 1    57 w =
+001   24      Bai, Adelard                      2423                             2.5   43    76 b =    78 w =    74 b 1    54 w 0    63 b =
+001   25      Saydaliev, Saidakbar              2415                             4.0    7    77 w =    79 b 1    52 w 1     8 b 1    16 w =
+001   26      Panesar, Vedant                   2406                             3.0   25    78 b =    76 w =    86 b 1    88 w =    45 b =
+001   27      Assylov, Miras                    2405                             3.0   26    79 w =    77 b =    75 w =    58 b 1    50 w =
+001   28      Liyanage, Ranindu Dilshan         2404                             3.0   27    80 b =    84 w 1    88 b =    98 w 0    70 b 1
+001   29      Jin, Yueheng                      2400                             3.5   17    81 w 1     1 w 0    76 b =    67 b 1    52 w 1
+001   30      Juhasz, Agoston                   2396                             3.5   18    82 b 1     3 w 0    78 b =   101 w 1    46 b 1
+001   31      Yordanov, Lachezar                2391                             3.0   28    83 w =    85 b 1    57 w 1    10 b 0    87 w =
+001   32      Singh, Siddharth                  2385                             2.5   44    84 b =    80 w 1     2 w 0    73 b =   100 w =
+001   33      Nguyen, Piotr                     2383                             2.5   45    85 w =    83 b 1     8 w 0    75 b 0    67 w 1
+001   34      Papp, Levente                     2381                             3.0   29    86 b 1     7 w =    11 b 0    62 w 1    88 b =
+001   35      Gaal, Zsoka                       2377                             3.0   30    87 w 1     2 b =    12 w =    99 b =    75 w =
+001   36      Pasti, Aron                       2377                             3.5   19    88 b 0    71 w 1    87 b =    64 w 1    99 w 1
+001   37      Bhagat, Kush                      2375                             2.0   66    89 w 1     9 w 1     3 b 0     5 w 0    77 b 0
+001   38      Wagh, Suyog                       2374                             2.5   46    90 b =    92 w 1     7 b 0    66 w 1     6 w 0
+001   39      Geher, Koppany                    2369                             2.5   47    91 w 1    10 b 0    77 w 1     6 b =     8 w 0
+001   40      Abdurakhmonov, Mukhammadali       2365                             2.5   48    92 b =    90 w 1    18 w 0    83 b 1    12 w 0
+001   41      Pacher, Milan                     2356                             2.5   49    93 w =    95 b =    97 w 0    79 b =    83 w 1
+001   42      Egresi, Mate                      2354                             3.0   31    94 b 1    11 w =    19 b 1     7 w =     9 b 0
+001   43      Ilkhomi, Jaloliddin               2353                             3.0   32    95 w =    97 b =    93 w 1    12 b =    14 w =
+001   44      Stepanencu, Nicodim-Cosmin        2353                             2.0   67    96 b =   100 w =    98 b 0    78 w 1   101 b 0
+001   45      Otsuka, Shou                      2350                             3.0   33    97 w =    93 b =    95 w 1    14 b =    26 w =
+001   46      Setyaki, Azarya Jodi              2345                             2.5   50    98 b 1    17 w 1    10 w =     4 b 0    30 w 0
+001   47      Turcsanyi, Vince Gergo            2345                             2.0   68    99 w 1    16 b 0   100 w =    87 b 0    79 w =
+001   48      Jakab, Bela                       2343                             2.0   69   100 b =   104 w =    99 b 0    72 w =    68 b =
+001   49      Priansh, Das                      2343                             2.5   51   101 w 0    73 b =    80 w 1   100 b =    97 w =
+001   50      Paszewski, Mateusz                2335                             3.0   34   102 b 0    72 w =    84 b 1    76 w 1    27 b =
+001   51      Lewtak, Damian                    2334                             2.5   52   103 w 1    19 w =    20 b 0    13 b =    73 w =
+001   52      Bouska, Jiri                      2334                             2.5   53   104 b =    96 w 1    25 b 0    15 w 1    29 b 0
+001   53      Yilmaz, Baver                     2329                             1.5   86     1 b 0    74 w 0    71 b =    86 w 1    72 b 0
+001   54      Jake, Shanty                      2327                             4.0    8     2 w 0    81 b 1   102 w 1    24 b 1     4 w 1
+001   55      Novosel, Lovro                    2326                             2.5   54     3 b 0    82 w 1     9 b 0    74 w =    71 b 1
+001   56      Tamas, Christian-Arrydan          2325                             2.0   70     4 w =     6 b =    14 w 0    93 b 1    13 w 0
+001   57      Kaliakhmet, Elnaz                 2321                             2.5   55     5 b =    13 w 1    31 b 0    19 w =    23 b =
+001   58      Dubnevych, Maksym                 2320                             1.5   87     6 w =     4 b =    15 b =    27 w 0    74 b 0
+001   59      Rudolf, Michal                    2317                             2.0   71     7 b 0    86 w 0    81 b =    84 w 1   104 b =
+001   60      Senthil, Maran K                  2311                             1.5   88     8 w =    12 b 0    83 w 0    85 b 0   102 w 1
+001   61      Unat, Can Haktan                  2311                             2.5   56     9 b 0    87 w 0    82 b 1    91 w 1    19 b =
+001   62      Dyachuk, Artem                    2310                             2.5   57    10 w 0    89 b =    85 w 1    34 b 0    95 w 1
+001   63      Negrean, Andrei                   2308                             2.5   58    11 b 0    94 w 1    17 b 1     9 w 0    24 w =
+001   64      Shatil, Or                        2305                             2.0   72    12 w =     8 b 0    89 w 1    36 b 0    85 w =
+001   65      Krishnan, Ritvik                  2304                             2.0   73    13 b =     5 w =    21 b 0   104 w =    78 b =
+001   66      Harshit, Ranjan Sahu              2302                             2.0   74    14 w =    18 b 0    90 w 1    38 b 0    15 b =
+001   67      Gathi, Donat                      2298                             1.5   89    15 b =    23 w 1     5 b 0    29 w 0    33 b 0
+001   68      Vijayakumar, Rishi                2296                             2.0   75    16 w 0    91 b 1     4 w 0    95 b =    48 w =
+001   69      Kun, Gabor                        2291                             2.0   76    17 b 0    98 w 0    94 b =    81 w =    76 b 1
+001   70      Piddubna, Bozhena                 2288                             2.0   77    18 w =    14 b =     6 w 0   102 b 1    28 w 0
+001   71      Vaidyanathan, Adithya             2286                             1.5   90    19 b 0    36 b 0    53 w =    89 b 1    55 w 0
+001   72      Manea, Alexandru                  2284                             2.5   59    20 w 0    50 b =    92 w =    48 b =    53 w 1
+001   73      Coles, Ruben                      2284                             2.5   60    21 b 0    49 w =    96 b +    32 w =    51 b =
+001   74      Aarit, Kapil                      2271                             2.5   61    22 w 0    53 b 1    24 w 0    55 b =    58 w 1
+001   75      Trushko, Andrii                   2271                             3.0   35    23 b =    15 w =    27 b =    33 w 1    35 b =
+001   76      Nayak, Rajesh                     2269                             1.5   91    24 w =    26 b =    29 w =    50 b 0    69 w 0
+001   77      Dinesh, Rajan M                   2267                             3.0   36    25 b =    27 w =    39 b 0    17 w +    37 w 1
+001   78      Pipiras, Filipa Fortuna           2266                             2.0   78    26 w =    24 b =    30 w =    44 b 0    65 w =
+001   79      Foldes, Marton Gabor              2259                             2.0   79    27 b =    25 w 0    23 b =    41 w =    47 b =
+001   80      Rupesh, Reddy Y                   2257                             1.0   96    28 w =    32 b 0    49 b 0    94 w =    91 b 0
+001   81      Jaiveer, Mahendru                 2255                             2.0   80    29 b 0    54 w 0    59 w =    69 b =    92 w 1
+001   82      Seres, Barnabas                   2248                             1.0   97    30 w 0    55 b 0    61 w 0    90 b =    89 w =
+001   83      Swarna, Nihal                     2243                             1.5   92    31 b =    33 w 0    60 b 1    40 w 0    41 b 0
+001   84      Szieberth, Adam                   2241                             1.5   93    32 w =    28 b 0    50 w 0    59 b 0  0000 - U
+001   85      Dirikolu, Deniz                   2240                             2.0   81    33 b =    31 w 0    62 b 0    60 w 1    64 b =
+001   86      Mehta, Naitik R                   2240                             2.0   82    34 w 0    59 b 1    26 w 0    53 b 0    93 w 1
+001   87      Dhananjay, S                      2237                             3.0   37    35 b 0    61 b 1    36 w =    47 w 1    31 b =
+001   88      Vasynda, Oleksandr                2237                             3.0   38    36 w 1    20 b =    28 w =    26 b =    34 w =
+001   89      Mummana, Venkata Ruthvik          2237                             1.0   98    37 b 0    62 w =    64 b 0    71 w 0    82 b =
+001   90      Karacsonyi, Kata                  2232                             1.0   99    38 w =    40 b 0    66 b 0    82 w =    94 b 0
+001   91      Sargissyan, Sargis                2227                             2.0   83    39 b 0    68 w 0  0000 - U    61 b 0    80 w 1
+001   92      Pandey, Srishti                   2224                             1.0  100    40 w =    38 b 0    72 b =    23 w 0    81 b 0
+001   93      Mandalinic, David                 2224                             1.0  101    41 b =    45 w =    43 b 0    56 w 0    86 b 0
+001   94      Sriansh, Das                      2223                             2.0   84    42 w 0    63 b 0    69 w =    80 b =    90 w 1
+001   95      Uzdemir, Ali Poyraz               2219                             1.5   94    43 b =    41 w =    45 b 0    68 w =    62 b 0
+001   96      Coles, Robin                      2219                             0.5  103    44 w =    52 b 0    73 w -  0000 - Z  0000 - Z
+001   97      Terbe, Julianna                   2214                             2.5   62    45 b =    43 w =    41 b 1    21 w 0    49 b =
+001   98      Aamuktha, Guntaka                 2208                             3.0   39    46 w 0    69 b 1    44 w 1    28 b 1    11 b 0
+001   99      Sachi, Jain                       2205                             2.5   63    47 b 0  0000 - U    48 w 1    35 w =    36 b 0
+001  100      Starosta, Martyna                 2205                             2.5   64    48 w =    44 b =    47 b =    49 w =    32 b =
+001  101      Jihan, Tejas Shah                 2205                             3.0   40    49 b 1    21 w 1    16 w 0    30 b 0    44 w 1
+001  102      Torok, Sandor                     2203                             1.0  102    50 w 1    22 b 0    54 b 0    70 w 0    60 b 0
+001  103      Szalay-Ocsak, Bank                2202                             0.0  104    51 b 0  0000 - Z  0000 - Z  0000 - Z  0000 - Z
+001  104      Kukushkin, Ivan                   2193                             2.0   85    52 w =    48 b =    13 w 0    65 b =    59 w =
+XXR 6
+XXS WW=1.0 BW=1.0 WD=0.5 BD=0.5 WL=0.0 BL=0.0 ZPB=0.0 HPB=0.5 FPB=1.0 PAB=1.0 FW=1.0 FL=0.0
+XXC white1

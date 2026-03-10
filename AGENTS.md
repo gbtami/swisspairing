@@ -83,7 +83,11 @@ Key fixture directories:
 - `benchmarks/fixtures/p64_regressions`
   Checked-in synthetic 64-player runtime tail cases.
 - `benchmarks/fixtures/chess_results/aeroflot_open_2026`
-  First checked-in real-world OTB corpus.
+  Real-world OTB corpus from Aeroflot Open 2026.
+- `benchmarks/fixtures/chess_results/prague_international_chess_festival_2026_d`
+  Real-world OTB corpus from Prague International Chess Festival 2026 D.
+- `benchmarks/fixtures/chess_results/budapest_spring_festival_2026_group_a_2200`
+  Real-world OTB corpus from Budapest Spring Festival 2026 Group A.
 - `benchmarks/fixtures/lichess`
   Normalized TRF16 fixtures exported from Lichess Swiss events.
 
@@ -289,12 +293,17 @@ benchmarks/import_lichess_fixtures.sh
 - Prefer checked-in fixtures before inventing new ad hoc repros.
 - If a bug is already visible in Aeroflot or BBP fixtures, work from that
   corpus rather than from synthetic data.
-- The first checked-in real-world corpus is
-  `benchmarks/fixtures/chess_results/aeroflot_open_2026`.
+- The checked-in real-world Chess-Results corpora are:
+  `benchmarks/fixtures/chess_results/aeroflot_open_2026`,
+  `benchmarks/fixtures/chess_results/prague_international_chess_festival_2026_d`,
+  and `benchmarks/fixtures/chess_results/budapest_spring_festival_2026_group_a_2200`.
 - Aeroflot rounds 1-3 published-pairing regressions are already fixed and
   covered in `tests/test_chess_results.py`.
 - Aeroflot round 5 is the main real-world BBP-backed Dutch regression and is
   also covered in `tests/test_chess_results.py`.
+- On the checked Budapest corpus, round 5 currently matches `py4swiss` +
+  `JaVaFo` against a `bbpPairings` alternative, while round 7 exposes a
+  fast-mode-only `swisspairing` divergence that disappears in strict mode.
 - Aeroflot 2026 regulations say the pairings were managed by `Swiss Manager`;
   later published-pairing differences where `swisspairing`, `bbpPairings`,
   and `py4swiss` all agree with each other should therefore not be treated as
