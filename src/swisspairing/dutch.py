@@ -436,6 +436,7 @@ _ODD_REFINEMENT_EXACT_SEARCH_MAX_PLAYERS = 10
 _ODD_HETEROGENEOUS_REFINEMENT_MAX_PLAYERS = 11
 _ODD_HETEROGENEOUS_REFINEMENT_EXACT_UPPER_BOUND = 80_000
 _ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES = 20_000
+_ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES_WITH_NEXT_BRACKET = 1_000
 _ODD_FINAL_BYE_SCAN_MAX_PLAYERS = 20
 _ODD_HOMOGENEOUS_REFINEMENT_SCAN_MAX_PLAYERS = 34
 _SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS = 24
@@ -1425,6 +1426,9 @@ def _refine_weighted_homogeneous_odd_candidate(
     candidates preserves the observed parity improvement without the runtime
     cost of scanning every possible downfloater.
     """
+    if context.next_bracket_validator is not None and context.next_bracket_key is None:
+        return weighted_candidate
+
     ordered_players = tuple(sorted(players, key=_player_rank_key))
     if len(ordered_players) > scan_max_players:
         return weighted_candidate
@@ -1531,7 +1535,10 @@ def _refine_weighted_heterogeneous_odd_candidate(
         return weighted_candidate
 
     exact_candidates = _iter_heterogeneous_candidates(ordered_players, context=context)
-    if len(exact_candidates) > _ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES:
+    max_candidates = _ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES
+    if context.next_bracket_validator is not None:
+        max_candidates = _ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES_WITH_NEXT_BRACKET
+    if len(exact_candidates) > max_candidates:
         return weighted_candidate
 
     best_candidate = _select_best_candidate(exact_candidates, context=context)

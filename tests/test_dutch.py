@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 import pytest
@@ -332,6 +333,91 @@ def test_pair_bracket_uses_c8_next_bracket_key_tie_break() -> None:
     )
     pairs = _to_pairs(result.pairings)
     assert ("p1", None) not in pairs
+
+
+def test_homogeneous_odd_refinement_skips_feasibility_only_next_bracket_checks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    players = (
+        _player(player_id="p1", pairing_no=1, score=2),
+        _player(player_id="p2", pairing_no=2, score=2),
+        _player(player_id="p3", pairing_no=3, score=2),
+    )
+    weighted_candidate = dutch._CandidateInternal(
+        pairings=((players[0], players[1]),),
+        unresolved=(players[2],),
+        bye_player=None,
+        sequence_no=0,
+    )
+
+    def _unexpected_even_solve(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError(
+            "feasibility-only C8 path should not rescan homogeneous odd candidates"
+        )
+
+    dutch._refine_weighted_homogeneous_odd_candidate.cache_clear()
+    monkeypatch.setattr(dutch, "_solve_even_players", _unexpected_even_solve)
+    try:
+        refined = dutch._refine_weighted_homogeneous_odd_candidate(
+            players,
+            context=BracketContext(next_bracket_validator=lambda _: True),
+            weighted_candidate=weighted_candidate,
+            sequential_search_max_players=6,
+        )
+    finally:
+        dutch._refine_weighted_homogeneous_odd_candidate.cache_clear()
+
+    assert refined is weighted_candidate
+
+
+def test_heterogeneous_odd_refinement_uses_tighter_c8_candidate_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    players = (
+        _player(player_id="m1", pairing_no=1, score=3),
+        _player(player_id="p2", pairing_no=2, score=2),
+        _player(player_id="p3", pairing_no=3, score=2),
+    )
+    weighted_candidate = dutch._CandidateInternal(
+        pairings=((players[0], players[1]),),
+        unresolved=(players[2],),
+        bye_player=None,
+        sequence_no=0,
+    )
+    over_budget = dutch._ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES_WITH_NEXT_BRACKET + 1
+
+    def _over_budget_candidates(
+        players: Sequence[PlayerState],
+        *,
+        context: BracketContext,
+    ) -> tuple[dutch._CandidateInternal, ...]:
+        del players, context
+        return (weighted_candidate,) * over_budget
+
+    def _unexpected_selection(
+        candidates: Sequence[dutch._CandidateInternal],
+        *,
+        context: BracketContext,
+    ) -> dutch._CandidateInternal | None:
+        del candidates, context
+        raise AssertionError("over-budget C8 refinement should fall back before exact selection")
+
+    dutch._refine_weighted_heterogeneous_odd_candidate.cache_clear()
+    monkeypatch.setattr(dutch, "_iter_heterogeneous_candidates", _over_budget_candidates)
+    monkeypatch.setattr(dutch, "_select_best_candidate", _unexpected_selection)
+    try:
+        refined = dutch._refine_weighted_heterogeneous_odd_candidate(
+            players,
+            context=BracketContext(
+                mdp_ids=frozenset({"m1"}),
+                next_bracket_validator=lambda _: True,
+            ),
+            weighted_candidate=weighted_candidate,
+        )
+    finally:
+        dutch._refine_weighted_heterogeneous_odd_candidate.cache_clear()
+
+    assert refined is weighted_candidate
 
 
 def test_pair_bracket_uses_c9_unplayed_games_for_bye_tie_break() -> None:

@@ -85,6 +85,8 @@ Key fixture directories:
   Imported Dutch fixtures from `bbpPairings`.
 - `benchmarks/fixtures/p64_regressions`
   Checked-in synthetic 64-player runtime tail cases.
+- `benchmarks/fixtures/p32_regressions`
+  Checked-in synthetic 32-player runtime tail cases.
 - `benchmarks/fixtures/chess_results/aeroflot_open_2026`
   Real-world OTB corpus from Aeroflot Open 2026.
 - `benchmarks/fixtures/chess_results/prague_international_chess_festival_2026_d`
