@@ -23,3 +23,28 @@ jobs:
         run: uv pip install -e ".[test]"
       - name: Run tests
         run: uv run pytest
+
+  wheel-smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.12"
+          - "3.13"
+          - "3.14"
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        run: pip install uv
+      - name: Build wheel
+        run: uv build --wheel
+      - name: Create clean venv
+        run: python -m venv /tmp/wheel-smoke
+      - name: Install built wheel
+        run: /tmp/wheel-smoke/bin/python -m pip install dist/swisspairing-*.whl
+      - name: Smoke test installed wheel
+        run: /tmp/wheel-smoke/bin/python scripts/wheel_smoke.py

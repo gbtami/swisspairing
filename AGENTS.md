@@ -50,8 +50,8 @@ Current validation expectation:
 Important open items:
 
 - pychess integration is in progress on `pychess-variants` `master`: the
-  backend switch, `SWISSPAIRING_SRC` source fallback, native snapshot bridge,
-  and extended reload/state-change soak coverage are in place, but production
+  backend switch, installed-wheel import path, native snapshot bridge, and
+  extended reload/state-change soak coverage are in place, but production
   rollout, package publication, and the default-backend flip are still pending
 - checked 2026-specific BBP coverage is still thin; we need more frozen Dutch
   fixtures beyond the current `dutch_2025_C5` / `dutch_2025_C9` set plus the
@@ -207,8 +207,9 @@ uv pip install --python .venv/bin/python --no-deps --force-reinstall \
   ~/swisspairing/dist/swisspairing-*.whl
 ```
 
-After that, prefer running the downstream project without `SWISSPAIRING_SRC`
-so it exercises the installed wheel instead of the source-path fallback.
+The current `pychess-variants` `master` integration now imports the installed
+wheel directly, so local wheel reinstall is the preferred downstream update
+path between unreleased commits.
 
 Package check:
 

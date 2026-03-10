@@ -17,8 +17,9 @@ work, but it is still under active development.
 - Parity and benchmark harnesses are in place.
 - Checked fixture corpora include synthetic cases, imported BBP fixtures, and
   multiple real-world OTB corpora reconstructed from Chess-Results events.
-- The pychess integration path is already working behind a backend switch in
-  `pychess-variants`, but it is not the default production backend yet.
+- The pychess integration path already works from an installed `swisspairing`
+  wheel in `pychess-variants`, but it is not the default production backend
+  yet.
 
 For the current roadmap and progress notes, see [docs/PLAN.md](docs/PLAN.md).
 For the rule-transition notes that matter for this repo, see

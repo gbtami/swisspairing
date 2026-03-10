@@ -195,19 +195,23 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     `py4swiss` and `JaVaFo` still agree with each other there.
   - External pychess integration checkpoint was merged forward onto
     `pychess-variants` `master`. The current integration now includes backend
-    selection via `SWISS_PAIRING_BACKEND`, `SWISSPAIRING_SRC` source fallback
-    for the not-yet-published `swisspairing` package, the Swiss TRF export endpoint
+    selection via `SWISS_PAIRING_BACKEND`, direct installed-wheel loading for
+    `swisspairing`, the Swiss TRF export endpoint
     (`/games/export/tournament/{tournamentId}/trf`), the Swiss summary TRF
     download link in the client, native `swisspairing` snapshot construction,
     TRF-aligned float-history derivation, and extended dual-backend soak tests
     covering direct multi-round parity, full 5-round Swiss tournament flow,
     reload-boundary late-join parity, paused-player reload flow, repeated
     restart pairing, and multi-reload late-join / pause-rejoin state changes.
+  - Packaging now includes a clean-wheel smoke path: local wheel install is
+    documented for downstream projects, and CI installs the built wheel into a
+    fresh virtualenv and exercises a small import/pairing smoke test on Python
+    3.12, 3.13, and 3.14.
   - Extended unit-test coverage for criteria and sequence behavior.
 - Next:
-  - Publish/package `swisspairing` for downstream consumption so the
-    `pychess-variants` integration can stop depending on the temporary
-    `SWISSPAIRING_SRC` source-path fallback.
+  - Publish/package `swisspairing` for downstream consumption so downstream
+    integrations can move from manual local wheel reinstalls to tagged
+    TestPyPI / PyPI releases.
   - Extend the real-world OTB corpus beyond the current
     Aeroflot/Prague/Budapest/Graz set. After switching the harness to
     TRF-derived float history, no checked real-world TRF corpus currently
