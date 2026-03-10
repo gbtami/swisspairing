@@ -219,6 +219,23 @@ uv build --wheel --sdist
 uvx twine check dist/*
 ```
 
+### TestPyPI / PyPI publish notes
+
+The repo already has a GitHub Actions publish workflow in
+`.github/workflows/publish.yml` with manual dispatch targets for `testpypi`
+and `pypi`.
+
+Local upload caveat:
+
+- a normal PyPI API token section in `~/.pypirc` is not enough for TestPyPI
+- TestPyPI needs either:
+  - a dedicated TestPyPI token / `~/.pypirc` section, or
+  - the GitHub trusted-publishing path via the existing workflow
+
+In a local shell, a failed upload with a PyPI token typically comes back as
+`403 Forbidden` from `https://test.pypi.org/legacy/`, even when the package
+version is still free there.
+
 ### Golden parity
 
 ```bash
