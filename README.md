@@ -16,9 +16,9 @@ work, but it is still under active development.
 - A typed pychess adapter is included.
 - Parity and benchmark harnesses are in place.
 - Checked fixture corpora include synthetic cases, imported BBP fixtures, and
-  a first real-world OTB corpus reconstructed from Aeroflot Open 2026.
-- Full 2026-rule sign-off is not complete yet, and pychess integration is
-  still pending.
+  multiple real-world OTB corpora reconstructed from Chess-Results events.
+- The pychess integration path is already working behind a backend switch in
+  `pychess-variants`, but it is not the default production backend yet.
 
 For the current roadmap and progress notes, see [docs/PLAN.md](docs/PLAN.md).
 For the rule-transition notes that matter for this repo, see
@@ -35,7 +35,7 @@ For the rule-transition notes that matter for this repo, see
 
 ## Installation
 
-This project is currently installed from source.
+This project can be installed from source or built into a local wheel.
 
 For development:
 
@@ -43,6 +43,18 @@ For development:
 git clone https://github.com/gbtami/swisspairing.git
 cd swisspairing
 uv sync --group dev
+```
+
+For an editable install:
+
+```bash
+uv pip install -e .
+```
+
+To build distributable artifacts locally:
+
+```bash
+uv build
 ```
 
 The repo is pinned to Python `3.13` via [`.python-version`](/home/tami/swisspairing/.python-version),

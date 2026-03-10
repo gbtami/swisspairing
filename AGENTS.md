@@ -51,8 +51,8 @@ Important open items:
 
 - pychess integration is in progress on `pychess-variants` `master`: the
   backend switch, `SWISSPAIRING_SRC` source fallback, native snapshot bridge,
-  and initial dual-backend soak tests are in place, but production rollout and
-  default-backend flip are still pending
+  and extended reload/state-change soak coverage are in place, but production
+  rollout, package publication, and the default-backend flip are still pending
 - checked 2026-specific BBP coverage is still thin; we need more frozen Dutch
   fixtures beyond the current `dutch_2025_C5` / `dutch_2025_C9` set plus the
   checked real-world OTB corpora
@@ -179,6 +179,24 @@ uv run ruff check .
 uv run pyright
 uv run pytest
 ```
+
+### Local packaging smoke test
+
+Build a wheel/sdist from the current checkout:
+
+```bash
+uv build
+```
+
+Install the repo into another environment without relying on
+`SWISSPAIRING_SRC`:
+
+```bash
+uv pip install dist/swisspairing-*.whl
+```
+
+The project is already buildable locally via `hatchling`; what is still
+missing is publication and downstream rollout.
 
 ### Golden parity
 

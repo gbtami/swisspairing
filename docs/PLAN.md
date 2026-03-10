@@ -196,20 +196,25 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - External pychess integration checkpoint was merged forward onto
     `pychess-variants` `master`. The current integration now includes backend
     selection via `SWISS_PAIRING_BACKEND`, `SWISSPAIRING_SRC` source fallback
-    for the not-yet-packaged `swisspairing` repo, the Swiss TRF export endpoint
+    for the not-yet-published `swisspairing` package, the Swiss TRF export endpoint
     (`/games/export/tournament/{tournamentId}/trf`), the Swiss summary TRF
     download link in the client, native `swisspairing` snapshot construction,
-    TRF-aligned float-history derivation, and initial dual-backend soak tests
-    covering direct multi-round parity plus full 5-round Swiss tournament flow.
+    TRF-aligned float-history derivation, and extended dual-backend soak tests
+    covering direct multi-round parity, full 5-round Swiss tournament flow,
+    reload-boundary late-join parity, paused-player reload flow, repeated
+    restart pairing, and multi-reload late-join / pause-rejoin state changes.
   - Extended unit-test coverage for criteria and sequence behavior.
 - Next:
+  - Publish/package `swisspairing` for downstream consumption so the
+    `pychess-variants` integration can stop depending on the temporary
+    `SWISSPAIRING_SRC` source-path fallback.
   - Extend the real-world OTB corpus beyond the current
     Aeroflot/Prague/Budapest/Graz set. After switching the harness to
     TRF-derived float history, no checked real-world TRF corpus currently
     shows an unexplained `swisspairing` vs `bbpPairings` disagreement.
-  - Continue pychess soak coverage beyond the current backend-parity and
-    full-flow checkpoints, then deploy behind the existing backend switch
-    before any default-backend flip.
+  - Deploy the pychess integration behind the existing backend switch, then
+    evaluate the default-backend flip after production evidence rather than
+    from more local soak expansion alone.
 
 ## Non-Goals (for stage 1)
 
