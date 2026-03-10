@@ -50,6 +50,21 @@ def test_build_player_states_derives_topscorer_or_opponent_marker() -> None:
     assert not by_id["other"].is_topscorer_or_opponent
 
 
+def test_build_player_states_preserves_full_point_unplayed_round_marker() -> None:
+    snapshots = (
+        PychessPlayerSnapshot(
+            username="player",
+            pairing_no=1,
+            score=30,
+            had_full_point_unplayed_round=True,
+        ),
+    )
+
+    (state,) = build_player_states_from_snapshots(snapshots)
+
+    assert state.had_full_point_unplayed_round is True
+
+
 def test_pair_snapshots_dutch_returns_pairings_and_bye() -> None:
     snapshots = (
         PychessPlayerSnapshot(username="p1", pairing_no=1, score=30),
@@ -69,12 +84,16 @@ def test_pair_snapshots_dutch_reads_sequential_search_limit_from_env(
         PychessPlayerSnapshot(username="p1", pairing_no=1, score=30),
         PychessPlayerSnapshot(username="p2", pairing_no=2, score=20),
     )
-    captured: dict[str, int | None] = {}
+    captured: dict[str, int | str | None] = {}
 
     def fake_pair_round_dutch(
-        _states: tuple[object, ...], *, sequential_search_max_players: int | None = None
+        _states: tuple[object, ...],
+        *,
+        sequential_search_max_players: int | None = None,
+        initial_color: str = "white",
     ) -> PairingResult:
         captured["limit"] = sequential_search_max_players
+        captured["initial_color"] = initial_color
         return PairingResult(
             pairings=(Pairing(white_id="p1", black_id="p2"),),
             unpaired_ids=(),
@@ -85,6 +104,7 @@ def test_pair_snapshots_dutch_reads_sequential_search_limit_from_env(
 
     plan = pair_snapshots_dutch(snapshots)
     assert captured["limit"] == 9
+    assert captured["initial_color"] == "white"
     assert plan.pairings == (("p1", "p2"),)
 
 
@@ -95,12 +115,16 @@ def test_pair_snapshots_dutch_limit_env_overrides_pairing_mode(
         PychessPlayerSnapshot(username="p1", pairing_no=1, score=30),
         PychessPlayerSnapshot(username="p2", pairing_no=2, score=20),
     )
-    captured: dict[str, int | None] = {}
+    captured: dict[str, int | str | None] = {}
 
     def fake_pair_round_dutch(
-        _states: tuple[object, ...], *, sequential_search_max_players: int | None = None
+        _states: tuple[object, ...],
+        *,
+        sequential_search_max_players: int | None = None,
+        initial_color: str = "white",
     ) -> PairingResult:
         captured["limit"] = sequential_search_max_players
+        captured["initial_color"] = initial_color
         return PairingResult(
             pairings=(Pairing(white_id="p1", black_id="p2"),),
             unpaired_ids=(),
@@ -112,6 +136,7 @@ def test_pair_snapshots_dutch_limit_env_overrides_pairing_mode(
 
     pair_snapshots_dutch(snapshots)
     assert captured["limit"] == 9
+    assert captured["initial_color"] == "white"
 
 
 def test_pair_snapshots_dutch_defaults_to_fast_mode_limit_when_unset(
@@ -121,12 +146,16 @@ def test_pair_snapshots_dutch_defaults_to_fast_mode_limit_when_unset(
         PychessPlayerSnapshot(username="p1", pairing_no=1, score=30),
         PychessPlayerSnapshot(username="p2", pairing_no=2, score=20),
     )
-    captured: dict[str, int | None] = {}
+    captured: dict[str, int | str | None] = {}
 
     def fake_pair_round_dutch(
-        _states: tuple[object, ...], *, sequential_search_max_players: int | None = None
+        _states: tuple[object, ...],
+        *,
+        sequential_search_max_players: int | None = None,
+        initial_color: str = "white",
     ) -> PairingResult:
         captured["limit"] = sequential_search_max_players
+        captured["initial_color"] = initial_color
         return PairingResult(
             pairings=(Pairing(white_id="p1", black_id="p2"),),
             unpaired_ids=(),
@@ -138,6 +167,7 @@ def test_pair_snapshots_dutch_defaults_to_fast_mode_limit_when_unset(
 
     pair_snapshots_dutch(snapshots)
     assert captured["limit"] == 6
+    assert captured["initial_color"] == "white"
 
 
 def test_pair_snapshots_dutch_strict_mode_disables_default_limit(
@@ -147,12 +177,16 @@ def test_pair_snapshots_dutch_strict_mode_disables_default_limit(
         PychessPlayerSnapshot(username="p1", pairing_no=1, score=30),
         PychessPlayerSnapshot(username="p2", pairing_no=2, score=20),
     )
-    captured: dict[str, int | None] = {}
+    captured: dict[str, int | str | None] = {}
 
     def fake_pair_round_dutch(
-        _states: tuple[object, ...], *, sequential_search_max_players: int | None = None
+        _states: tuple[object, ...],
+        *,
+        sequential_search_max_players: int | None = None,
+        initial_color: str = "white",
     ) -> PairingResult:
         captured["limit"] = sequential_search_max_players
+        captured["initial_color"] = initial_color
         return PairingResult(
             pairings=(Pairing(white_id="p1", black_id="p2"),),
             unpaired_ids=(),
@@ -164,6 +198,7 @@ def test_pair_snapshots_dutch_strict_mode_disables_default_limit(
 
     pair_snapshots_dutch(snapshots)
     assert captured["limit"] is None
+    assert captured["initial_color"] == "white"
 
 
 def test_pair_snapshots_dutch_explicit_limit_overrides_env(
@@ -173,12 +208,16 @@ def test_pair_snapshots_dutch_explicit_limit_overrides_env(
         PychessPlayerSnapshot(username="p1", pairing_no=1, score=30),
         PychessPlayerSnapshot(username="p2", pairing_no=2, score=20),
     )
-    captured: dict[str, int | None] = {}
+    captured: dict[str, int | str | None] = {}
 
     def fake_pair_round_dutch(
-        _states: tuple[object, ...], *, sequential_search_max_players: int | None = None
+        _states: tuple[object, ...],
+        *,
+        sequential_search_max_players: int | None = None,
+        initial_color: str = "white",
     ) -> PairingResult:
         captured["limit"] = sequential_search_max_players
+        captured["initial_color"] = initial_color
         return PairingResult(
             pairings=(Pairing(white_id="p1", black_id="p2"),),
             unpaired_ids=(),
@@ -189,6 +228,37 @@ def test_pair_snapshots_dutch_explicit_limit_overrides_env(
 
     pair_snapshots_dutch(snapshots, sequential_search_max_players=7)
     assert captured["limit"] == 7
+    assert captured["initial_color"] == "white"
+
+
+def test_pair_snapshots_dutch_forwards_initial_color(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshots = (
+        PychessPlayerSnapshot(username="p1", pairing_no=1, score=30),
+        PychessPlayerSnapshot(username="p2", pairing_no=2, score=20),
+    )
+    captured: dict[str, int | str | None] = {}
+
+    def fake_pair_round_dutch(
+        _states: tuple[object, ...],
+        *,
+        sequential_search_max_players: int | None = None,
+        initial_color: str = "white",
+    ) -> PairingResult:
+        captured["limit"] = sequential_search_max_players
+        captured["initial_color"] = initial_color
+        return PairingResult(
+            pairings=(Pairing(white_id="p1", black_id="p2"),),
+            unpaired_ids=(),
+        )
+
+    monkeypatch.setattr(pychess_adapter, "pair_round_dutch", fake_pair_round_dutch)
+
+    pair_snapshots_dutch(snapshots, initial_color="black")
+
+    assert captured["limit"] == 6
+    assert captured["initial_color"] == "black"
 
 
 def test_pair_snapshots_dutch_rejects_invalid_sequential_search_limit_env(

@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, cast
 
 _PLAYED_TRF_RESULT_VALUES = frozenset({"1", "=", "0", "W", "D", "L"})
+_NON_PAB_FULL_POINT_UNPLAYED_TRF_RESULT_VALUES = frozenset({"+", "F"})
 _LENIENT_TRF_RESULT_PAIR_PATTERN = re.compile(
     r"^(?P<opponent>\d{1,4})\s+(?P<color>[wWbB-])\s+(?P<result>[+\-WDL10=HFUZwdlhfuz])$"
 )
@@ -609,6 +610,26 @@ def build_trf_unplayed_games_by_player_id(trf: Any) -> dict[int, int]:
         counts[player_id] = max(completed_rounds - played_games, 0)
 
     return counts
+
+
+def build_trf_had_full_point_unplayed_round_by_player_id(trf: Any) -> dict[int, bool]:
+    """Return whether each player has a prior non-PAB full-point unplayed round.
+
+    This covers FIDE Basic Rule 4 / Dutch [C2] history beyond pairing-allocated
+    byes, which are already tracked separately from TRF player metadata.
+    """
+
+    flags: dict[int, bool] = {}
+
+    for section in cast(Sequence[Any], getattr(trf, "player_sections", ())):
+        player_id = int(section.starting_number)
+        flags[player_id] = any(
+            getattr(getattr(result, "result", None), "value", None)
+            in _NON_PAB_FULL_POINT_UNPLAYED_TRF_RESULT_VALUES
+            for result in cast(Sequence[Any], section.results)
+        )
+
+    return flags
 
 
 def py4swiss_runtime_probe(

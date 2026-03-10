@@ -39,6 +39,7 @@ class PlayerState:
     color_history: tuple[Color, ...] = ()
     unplayed_games: int = 0
     had_full_point_bye: bool = False
+    had_full_point_unplayed_round: bool = False
     is_top_scorer: bool = False
     is_topscorer_or_opponent: bool = False
     float_history: tuple[FloatKind, ...] = ()
@@ -111,6 +112,11 @@ class PlayerState:
     def color_preference(self) -> Color | None:
         """Return preference side with absolute > strong > mild priority."""
         return self._color_preference
+
+    @property
+    def is_pairing_allocated_bye_ineligible(self) -> bool:
+        """Return whether the player is ineligible for a future PAB under C2."""
+        return self.had_full_point_bye or self.had_full_point_unplayed_round
 
     def had_float(self, *, rounds_ago: int, kind: FloatKind) -> bool:
         """Return whether player received the given float `rounds_ago` rounds before."""

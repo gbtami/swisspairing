@@ -19,6 +19,7 @@ from py4swiss.engines.dutch.player import get_player_infos_from_trf
 from py4swiss.trf import TrfParser
 
 from swisspairing.benchmarking import (
+    build_trf_had_full_point_unplayed_round_by_player_id,
     build_trf_unplayed_games_by_player_id,
     parse_bbp_pairings_output,
     parse_javafo_pairings_output,
@@ -53,6 +54,7 @@ def _build_player_states_from_trf(trf: Any) -> tuple[PlayerState, ...]:
     top_ids = {player.id for player in py4swiss_players if player.top_scorer}
     forbidden_map = _build_forbidden_map(trf)
     unplayed_games_by_id = build_trf_unplayed_games_by_player_id(trf)
+    full_point_unplayed_round_by_id = build_trf_had_full_point_unplayed_round_by_player_id(trf)
     states: list[PlayerState] = []
 
     for player in py4swiss_players:
@@ -62,6 +64,7 @@ def _build_player_states_from_trf(trf: Any) -> tuple[PlayerState, ...]:
                 top_ids,
                 forbidden_map,
                 unplayed_games=unplayed_games_by_id.get(player.id, 0),
+                had_full_point_unplayed_round=full_point_unplayed_round_by_id.get(player.id, False),
             )
         )
     return tuple(states)
@@ -73,6 +76,7 @@ def _build_player_state(
     forbidden_map: dict[int, set[int]],
     *,
     unplayed_games: int,
+    had_full_point_unplayed_round: bool,
 ) -> PlayerState:
     float_history = (
         _to_float_kind(player.float_2),
@@ -89,6 +93,7 @@ def _build_player_state(
         color_history=tuple("white" if is_white else "black" for is_white in player.colors),
         unplayed_games=unplayed_games,
         had_full_point_bye=player.bye_received,
+        had_full_point_unplayed_round=had_full_point_unplayed_round,
         is_top_scorer=player.top_scorer,
         is_topscorer_or_opponent=player.top_scorer or bool(player.opponents & top_ids),
         float_history=float_history,

@@ -14,6 +14,7 @@ from py4swiss.trf import TrfParser
 
 from swisspairing.benchmarking import (
     build_pythonpath_env,
+    build_trf_had_full_point_unplayed_round_by_player_id,
     build_trf_unplayed_games_by_player_id,
     discover_bbp_executable,
     py4swiss_runtime_probe,
@@ -127,6 +128,7 @@ def _aeroflot_states_for_round(round_number: int) -> tuple[PlayerState, ...]:
         forbidden_map.setdefault(left_id, set()).add(right_id)
         forbidden_map.setdefault(right_id, set()).add(left_id)
     unplayed_games_by_id = build_trf_unplayed_games_by_player_id(trf)
+    full_point_unplayed_round_by_id = build_trf_had_full_point_unplayed_round_by_player_id(trf)
 
     def to_float_kind(float_value: PyFloat) -> FloatKind:
         if float_value == PyFloat.UP:
@@ -147,6 +149,7 @@ def _aeroflot_states_for_round(round_number: int) -> tuple[PlayerState, ...]:
             color_history=tuple("white" if is_white else "black" for is_white in player.colors),
             unplayed_games=unplayed_games_by_id.get(player.id, 0),
             had_full_point_bye=player.bye_received,
+            had_full_point_unplayed_round=full_point_unplayed_round_by_id.get(player.id, False),
             is_top_scorer=player.top_scorer,
             is_topscorer_or_opponent=player.top_scorer or bool(player.opponents & top_ids),
             float_history=(

@@ -32,6 +32,7 @@ class PychessPlayerSnapshot:
     color_history: tuple[Color, ...] = ()
     unplayed_games: int = 0
     had_full_point_bye: bool = False
+    had_full_point_unplayed_round: bool = False
     is_top_scorer: bool = False
     is_topscorer_or_opponent: bool | None = None
     float_history: tuple[FloatKind, ...] = ()
@@ -150,6 +151,7 @@ def build_player_states_from_snapshots(
                 color_history=snapshot.color_history,
                 unplayed_games=snapshot.unplayed_games,
                 had_full_point_bye=snapshot.had_full_point_bye,
+                had_full_point_unplayed_round=snapshot.had_full_point_unplayed_round,
                 is_top_scorer=snapshot.is_top_scorer,
                 is_topscorer_or_opponent=topscorer_or_opponent,
                 float_history=snapshot.float_history,
@@ -180,6 +182,7 @@ def pair_snapshots_dutch(
     snapshots: tuple[PychessPlayerSnapshot, ...],
     *,
     sequential_search_max_players: int | None = None,
+    initial_color: Color = "white",
 ) -> PychessPairingPlan:
     """Pair one round from pychess snapshots using Dutch round pairing.
 
@@ -188,14 +191,18 @@ def pair_snapshots_dutch(
       exact article-4 sequence search.
     - When omitted, precedence is:
       1) `SWISSPAIRING_SEQUENTIAL_SEARCH_MAX_PLAYERS`,
-      2) `SWISSPAIRING_PAIRING_MODE` (`fast` default -> cap 8, `strict` -> no cap).
+      2) `SWISSPAIRING_PAIRING_MODE` (`fast` default -> cap 6, `strict` -> no cap).
     - Lower values usually improve speed for pathological states but can reduce
       strict parity with exhaustive sequence ordering in edge cases.
     """
     states = build_player_states_from_snapshots(snapshots)
     limit = _effective_sequential_search_limit(sequential_search_max_players)
     return pairing_result_to_pychess_plan(
-        pair_round_dutch(states, sequential_search_max_players=limit)
+        pair_round_dutch(
+            states,
+            sequential_search_max_players=limit,
+            initial_color=initial_color,
+        )
     )
 
 

@@ -67,6 +67,7 @@ def _player(
     color_history: tuple[Color, ...] = (),
     unplayed_games: int = 0,
     had_full_point_bye: bool = False,
+    had_full_point_unplayed_round: bool = False,
     is_top_scorer: bool = False,
     is_topscorer_or_opponent: bool = False,
     float_history: tuple[FloatKind, ...] = (),
@@ -80,6 +81,7 @@ def _player(
         color_history=color_history,
         unplayed_games=unplayed_games,
         had_full_point_bye=had_full_point_bye,
+        had_full_point_unplayed_round=had_full_point_unplayed_round,
         is_top_scorer=is_top_scorer,
         is_topscorer_or_opponent=is_topscorer_or_opponent,
         float_history=float_history,
@@ -187,6 +189,21 @@ def test_c0401_rules_3_and_4_assign_a_single_legal_pairing_allocated_bye() -> No
     assert len(bye_pairings) == 1
     assert bye_pairings[0].white_id != "p1"
     assert len(result.pairings) == 2
+    assert result.unpaired_ids == ()
+
+
+def test_c0401_rule_4_and_c0403_c2_exclude_previous_full_point_unplayed_rounds_from_pab() -> None:
+    players = (
+        _player(player_id="p1", pairing_no=1, score=2, had_full_point_unplayed_round=True),
+        _player(player_id="p2", pairing_no=2, score=1),
+        _player(player_id="p3", pairing_no=3, score=1),
+    )
+
+    result = pair_bracket(players)
+
+    bye_pairings = [pairing for pairing in result.pairings if pairing.black_id is None]
+    assert len(bye_pairings) == 1
+    assert bye_pairings[0].white_id != "p1"
     assert result.unpaired_ids == ()
 
 
@@ -643,6 +660,24 @@ def test_c0403_5_2_4_prefers_the_higher_ranked_players_preference_when_other_ste
     assert result.pairings[0].black_id == "higher"
 
 
+def test_c0403_5_1_and_5_2_5_use_the_initial_color_when_other_steps_tie() -> None:
+    players = (
+        _player(player_id="odd", pairing_no=1, score=3),
+        _player(player_id="even", pairing_no=2, score=3),
+    )
+
+    white_first = pair_bracket(players, initial_color="white")
+    black_first = pair_bracket(players, initial_color="black")
+
+    assert len(white_first.pairings) == 1
+    assert white_first.pairings[0].white_id == "odd"
+    assert white_first.pairings[0].black_id == "even"
+
+    assert len(black_first.pairings) == 1
+    assert black_first.pairings[0].white_id == "even"
+    assert black_first.pairings[0].black_id == "odd"
+
+
 RULE_GROUPS = (
     RuleGroup(
         status="process_only",
@@ -721,13 +756,24 @@ RULE_GROUPS = (
         tests=("test_c0401_rules_3_and_4_assign_a_single_legal_pairing_allocated_bye",),
     ),
     RuleGroup(
-        status="partially_tested",
+        status="tested",
         reason=(
-            "The current model excludes previous pairing-allocated byes, but it "
-            "does not separately model other full-point unplayed rounds yet."
+            "The bye-eligibility path now excludes both previous pairing-"
+            "allocated byes and previous non-PAB full-point unplayed rounds."
         ),
-        clauses=("C0401.4", "C0403.1.4.3", "C0403.2.1.2"),
-        tests=("test_c0401_rules_3_and_4_assign_a_single_legal_pairing_allocated_bye",),
+        clauses=("C0401.4", "C0403.2.1.2"),
+        tests=(
+            "test_c0401_rules_3_and_4_assign_a_single_legal_pairing_allocated_bye",
+            "test_c0401_rule_4_and_c0403_c2_exclude_previous_full_point_unplayed_rounds_from_pab",
+        ),
+    ),
+    RuleGroup(
+        status="input_contract",
+        reason=(
+            "Whether a previous unplayed scoring round counts as a downfloat is "
+            "consumed through caller-supplied `float_history`."
+        ),
+        clauses=("C0403.1.4.3",),
     ),
     RuleGroup(
         status="tested",
@@ -966,19 +1012,11 @@ RULE_GROUPS = (
         ),
     ),
     RuleGroup(
-        status="not_represented",
-        reason=(
-            "The public pairing API has no initial-colour input yet, so these "
-            "initial-colour-dependent tie-breaks cannot be executed end-to-end."
-        ),
-        clauses=("C0403.5.1", "C0403.5.2.5"),
-    ),
-    RuleGroup(
         status="partially_tested",
         reason=(
-            "Color allocation is largely covered, but the full article is still "
-            "only partially represented because C.04.3 5.2.5 depends on the "
-            "missing initial-colour input."
+            "Color allocation is fully covered where the current package has a "
+            "public input surface for it, but the parent article remains mixed "
+            "with earlier input-contract rules."
         ),
         clauses=("C0403.5.2",),
         tests=(
@@ -988,14 +1026,23 @@ RULE_GROUPS = (
             "test_c0403_5_2_2_grants_the_wider_absolute_preference_for_topscorers",
             "test_c0403_5_2_3_alternates_from_the_most_recent_opposite_colors",
             "test_c0403_5_2_4_prefers_the_higher_ranked_players_preference_when_other_steps_tie",
+            "test_c0403_5_1_and_5_2_5_use_the_initial_color_when_other_steps_tie",
         ),
     ),
     RuleGroup(
         status="tested",
         reason=(
-            "The implemented color-order path now covers the represented article-5.2 tie-breaks."
+            "The implemented color-order path now covers article 5.1 and the "
+            "full article-5.2 tie-break chain."
         ),
-        clauses=("C0403.5.2.1", "C0403.5.2.2", "C0403.5.2.3", "C0403.5.2.4"),
+        clauses=(
+            "C0403.5.1",
+            "C0403.5.2.1",
+            "C0403.5.2.2",
+            "C0403.5.2.3",
+            "C0403.5.2.4",
+            "C0403.5.2.5",
+        ),
         tests=(
             "test_c0403_5_2_1_grants_both_compatible_color_preferences",
             "test_c0403_c10_and_c11_keep_a_topscorer_on_their_absolute_color",
@@ -1003,6 +1050,7 @@ RULE_GROUPS = (
             "test_c0403_5_2_2_grants_the_wider_absolute_preference_for_topscorers",
             "test_c0403_5_2_3_alternates_from_the_most_recent_opposite_colors",
             "test_c0403_5_2_4_prefers_the_higher_ranked_players_preference_when_other_steps_tie",
+            "test_c0403_5_1_and_5_2_5_use_the_initial_color_when_other_steps_tie",
         ),
     ),
 )

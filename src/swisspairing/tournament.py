@@ -16,7 +16,7 @@ from swisspairing.dutch import (
     pairing_result_next_bracket_local_key,
 )
 from swisspairing.exceptions import PairingError
-from swisspairing.model import Pairing, PairingResult, PlayerState
+from swisspairing.model import Color, Pairing, PairingResult, PlayerState
 
 _COLLAPSE_SEARCH_MAX_PLAYERS = 80
 _FAST_COLLAPSE_SEARCH_MAX_PLAYERS = 40
@@ -75,7 +75,9 @@ def _solution_bye_key(
 def _lowest_possible_bye_key(players: tuple[PlayerState, ...]) -> tuple[int, int]:
     if len(players) % 2 == 0:
         return (0, 0)
-    eligible_players = tuple(player for player in players if not player.had_full_point_bye)
+    eligible_players = tuple(
+        player for player in players if not player.is_pairing_allocated_bye_ineligible
+    )
     if not eligible_players:
         return (10**9, 10**9)
     lowest_score = min(player.score for player in eligible_players)
@@ -129,14 +131,21 @@ def _pair_bracket_with_optional_limit(
     context: BracketContext,
     allow_bye: bool,
     sequential_search_max_players: int | None,
+    initial_color: Color,
 ) -> PairingResult:
     if sequential_search_max_players is None:
-        return pair_bracket(players, context=context, allow_bye=allow_bye)
+        return pair_bracket(
+            players,
+            context=context,
+            allow_bye=allow_bye,
+            initial_color=initial_color,
+        )
     return pair_bracket(
         players,
         context=context,
         allow_bye=allow_bye,
         sequential_search_max_players=sequential_search_max_players,
+        initial_color=initial_color,
     )
 
 
@@ -144,6 +153,7 @@ def _pair_round_dutch_greedy(
     scoregroups: tuple[tuple[PlayerState, ...], ...],
     *,
     sequential_search_max_players: int | None = None,
+    initial_color: Color = "white",
 ) -> tuple[Pairing, ...] | None:
     """Pair one round without global collapse backtracking (fast-path for large events)."""
     all_pairings: list[Pairing] = []
@@ -177,6 +187,7 @@ def _pair_round_dutch_greedy(
                         context=BracketContext(mdp_ids=mdp_ids),
                         allow_bye=True,
                         sequential_search_max_players=sequential_search_max_players,
+                        initial_color=initial_color,
                     )
                 except PairingError:
                     continue
@@ -217,6 +228,7 @@ def _pair_round_dutch_greedy(
                         context=BracketContext(mdp_ids=next_mdp_ids),
                         allow_bye=allow_bye_next,
                         sequential_search_max_players=sequential_search_max_players,
+                        initial_color=initial_color,
                     )
                 except PairingError:
                     next_bracket_cache_snapshot[ordered_downfloaters] = False
@@ -259,6 +271,7 @@ def _pair_round_dutch_greedy(
                     ),
                     allow_bye=False,
                     sequential_search_max_players=sequential_search_max_players,
+                    initial_color=initial_color,
                 )
             except PairingError:
                 continue
@@ -282,6 +295,7 @@ def pair_round_dutch(
     players: tuple[PlayerState, ...],
     *,
     sequential_search_max_players: int | None = None,
+    initial_color: Color = "white",
 ) -> PairingResult:
     """Pair one full round with bracket chaining over scoregroups.
 
@@ -312,6 +326,7 @@ def pair_round_dutch(
         pairings = _pair_round_dutch_greedy(
             scoregroups,
             sequential_search_max_players=sequential_search_max_players,
+            initial_color=initial_color,
         )
         if pairings is None:
             raise PairingError("round cannot be fully paired under current absolute constraints")
@@ -364,6 +379,7 @@ def pair_round_dutch(
                         context=BracketContext(mdp_ids=mdp_ids),
                         allow_bye=True,
                         sequential_search_max_players=sequential_search_max_players,
+                        initial_color=initial_color,
                     )
                 except PairingError:
                     continue
@@ -424,6 +440,7 @@ def pair_round_dutch(
                             context=BracketContext(mdp_ids=next_mdp_ids),
                             allow_bye=True,
                             sequential_search_max_players=sequential_search_max_players,
+                            initial_color=initial_color,
                         )
                     except PairingError:
                         next_bracket_key_cache_snapshot[ordered_downfloaters] = None
@@ -454,6 +471,7 @@ def pair_round_dutch(
                         ),
                         allow_bye=False,
                         sequential_search_max_players=sequential_search_max_players,
+                        initial_color=initial_color,
                     )
                 except PairingError:
                     next_bracket_key_cache_snapshot[ordered_downfloaters] = None
@@ -476,6 +494,7 @@ def pair_round_dutch(
                     ),
                     allow_bye=False,
                     sequential_search_max_players=sequential_search_max_players,
+                    initial_color=initial_color,
                 )
             except PairingError:
                 continue
@@ -532,6 +551,7 @@ def pair_round_dutch_fast(
     players: tuple[PlayerState, ...],
     *,
     sequential_search_max_players: int | None = None,
+    initial_color: Color = "white",
 ) -> PairingResult:
     """Pair one full round with the greedy bracket pipeline only.
 
@@ -546,6 +566,7 @@ def pair_round_dutch_fast(
     pairings = _pair_round_dutch_greedy(
         scoregroups,
         sequential_search_max_players=sequential_search_max_players,
+        initial_color=initial_color,
     )
     if pairings is None:
         raise PairingError("round cannot be fully paired under current absolute constraints")

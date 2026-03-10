@@ -95,6 +95,15 @@ def test_choose_color_order_uses_article_5_2_4_higher_ranked_preference() -> Non
     assert (white.player_id, black.player_id) == ("lower", "higher")
 
 
+def test_choose_color_order_uses_article_5_2_5_initial_color_tie_break() -> None:
+    first = _player(player_id="p1", pairing_no=1, score=3, color_history=())
+    second = _player(player_id="p2", pairing_no=2, score=3, color_history=())
+
+    white, black = _choose_color_order(first, second, initial_color="black")
+
+    assert (white.player_id, black.player_id) == ("p2", "p1")
+
+
 def test_homogeneous_article_order_key_prefers_zero_exchange_candidate() -> None:
     players = tuple(
         _player(player_id=f"p{i}", pairing_no=i, score=3, color_history=()) for i in range(1, 6)

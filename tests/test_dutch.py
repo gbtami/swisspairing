@@ -23,6 +23,7 @@ def _player(
     color_history: tuple[Color, ...] = (),
     unplayed_games: int = 0,
     had_full_point_bye: bool = False,
+    had_full_point_unplayed_round: bool = False,
     is_top_scorer: bool = False,
     is_topscorer_or_opponent: bool = False,
     float_history: tuple[FloatKind, ...] = (),
@@ -36,6 +37,7 @@ def _player(
         color_history=color_history,
         unplayed_games=unplayed_games,
         had_full_point_bye=had_full_point_bye,
+        had_full_point_unplayed_round=had_full_point_unplayed_round,
         is_top_scorer=is_top_scorer,
         is_topscorer_or_opponent=is_topscorer_or_opponent,
         float_history=float_history,
@@ -44,6 +46,17 @@ def _player(
 
 def _to_pairs(result_pairings: tuple[Pairing, ...]) -> set[tuple[str, str | None]]:
     return {(pairing.white_id, pairing.black_id) for pairing in result_pairings}
+
+
+def _normalized_pairs(result_pairings: tuple[Pairing, ...]) -> set[tuple[str, str | None]]:
+    normalized: set[tuple[str, str | None]] = set()
+    for pairing in result_pairings:
+        if pairing.black_id is None:
+            normalized.add((pairing.white_id, None))
+            continue
+        left, right = sorted((pairing.white_id, pairing.black_id))
+        normalized.add((left, right))
+    return normalized
 
 
 def test_pair_bracket_empty_returns_empty_result() -> None:
@@ -186,6 +199,23 @@ def test_pair_bracket_odd_excludes_previous_full_point_bye_candidates() -> None:
     assert ("p3", None) not in pairs
 
 
+def test_pair_bracket_odd_excludes_previous_full_point_unplayed_round_candidates() -> None:
+    players = (
+        _player(player_id="p1", pairing_no=1, score=3),
+        _player(player_id="p2", pairing_no=2, score=2),
+        _player(
+            player_id="p3",
+            pairing_no=3,
+            score=1,
+            had_full_point_unplayed_round=True,
+        ),
+    )
+
+    result = pair_bracket(players)
+
+    assert ("p3", None) not in _to_pairs(result.pairings)
+
+
 def test_pair_bracket_odd_raises_when_no_legal_bye_candidate_exists() -> None:
     players = (
         _player(player_id="p1", pairing_no=1, score=3, had_full_point_bye=True),
@@ -221,7 +251,13 @@ def test_pair_bracket_publication_sort_is_deterministic() -> None:
         _player(player_id="p4", pairing_no=4, score=2, opponents=frozenset({"p2"})),
     )
     result = pair_bracket(players)
-    assert [pairing.white_id for pairing in result.pairings] == ["p1", "p2"]
+    ranking_order = {player.player_id: player.pairing_no for player in players}
+    publication_heads = [
+        min((pairing.white_id, pairing.black_id), key=lambda player_id: ranking_order[player_id])
+        for pairing in result.pairings
+        if pairing.black_id is not None
+    ]
+    assert publication_heads == ["p1", "p2"]
 
 
 def test_pair_bracket_is_deterministic_for_same_input() -> None:
@@ -400,7 +436,7 @@ def test_pair_bracket_small_homogeneous_uses_article42_transposition_order() -> 
         _player(player_id="p4", pairing_no=4, score=3),
     )
     result = pair_bracket(players)
-    pairs = _to_pairs(result.pairings)
+    pairs = _normalized_pairs(result.pairings)
     assert ("p1", "p3") in pairs
     assert ("p2", "p4") in pairs
 
@@ -490,7 +526,7 @@ def test_pair_bracket_large_heterogeneous_fallback_prefers_lowest_bsn_residents(
     )
 
     assert result.unpaired_ids == ()
-    assert _to_pairs(result.pairings) == {("m1", "r1"), ("m2", "r2"), ("m3", "r3")}
+    assert _normalized_pairs(result.pairings) == {("m1", "r1"), ("m2", "r2"), ("m3", "r3")}
 
 
 def test_pair_bracket_small_odd_heterogeneous_exact_sequence_matches_resident_remainder_order() -> (

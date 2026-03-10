@@ -10,6 +10,7 @@ from swisspairing.benchmarking import (
     RECURRING_SYNTHETIC_SLA_PRESETS,
     BenchmarkSLA,
     build_benchmark_summary,
+    build_trf_had_full_point_unplayed_round_by_player_id,
     build_trf_unplayed_games_by_player_id,
     discover_bbp_executable,
     discover_javafo_jar,
@@ -189,6 +190,25 @@ def test_build_trf_unplayed_games_by_player_id_counts_played_vs_unplayed() -> No
     counts = build_trf_unplayed_games_by_player_id(trf)
 
     assert counts == {1: 1, 2: 2, 3: 0, 4: 2}
+
+
+def test_build_trf_had_full_point_unplayed_round_by_player_id_detects_non_pab_full_points() -> None:
+    def _result(token: str) -> SimpleNamespace:
+        return SimpleNamespace(result=SimpleNamespace(value=token))
+
+    trf = SimpleNamespace(
+        player_sections=(
+            SimpleNamespace(starting_number=1, results=(_result("F"),)),
+            SimpleNamespace(starting_number=2, results=(_result("+"),)),
+            SimpleNamespace(starting_number=3, results=(_result("U"),)),
+            SimpleNamespace(starting_number=4, results=(_result("H"),)),
+            SimpleNamespace(starting_number=5, results=(_result("1"),)),
+        ),
+    )
+
+    flags = build_trf_had_full_point_unplayed_round_by_player_id(trf)
+
+    assert flags == {1: True, 2: True, 3: False, 4: False, 5: False}
 
 
 def _lenient_player_line(

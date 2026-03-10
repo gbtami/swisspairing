@@ -6,7 +6,7 @@ import pytest
 
 from swisspairing.exceptions import PairingError
 from swisspairing.model import FloatKind, Pairing, PlayerState
-from swisspairing.tournament import pair_round_dutch
+from swisspairing.tournament import pair_round_dutch, pair_round_dutch_fast
 
 
 def _player(
@@ -15,12 +15,14 @@ def _player(
     pairing_no: int,
     score: int,
     had_full_point_bye: bool = False,
+    had_full_point_unplayed_round: bool = False,
 ) -> PlayerState:
     return PlayerState(
         player_id=player_id,
         pairing_no=pairing_no,
         score=score,
         had_full_point_bye=had_full_point_bye,
+        had_full_point_unplayed_round=had_full_point_unplayed_round,
     )
 
 
@@ -98,6 +100,20 @@ def test_pair_round_dutch_respects_c2_for_last_bracket_bye() -> None:
     assert bye_pairings[0].white_id != "p1"
 
 
+def test_pair_round_dutch_respects_c2_for_previous_full_point_unplayed_round() -> None:
+    players = (
+        _player(player_id="p1", pairing_no=1, score=2, had_full_point_unplayed_round=True),
+        _player(player_id="p2", pairing_no=2, score=2),
+        _player(player_id="p3", pairing_no=3, score=2),
+    )
+
+    result = pair_round_dutch(players)
+    bye_pairings = [pairing for pairing in result.pairings if pairing.black_id is None]
+
+    assert len(bye_pairings) == 1
+    assert bye_pairings[0].white_id != "p1"
+
+
 def test_pair_round_dutch_uses_c8_lookahead_for_next_bracket_viability() -> None:
     players = (
         _player(player_id="t1", pairing_no=1, score=3, had_full_point_bye=True),
@@ -124,6 +140,20 @@ def test_pair_round_dutch_is_deterministic() -> None:
     first = pair_round_dutch(players)
     second = pair_round_dutch(players)
     assert first == second
+
+
+def test_pair_round_dutch_uses_initial_color_when_article_5_2_5_breaks_the_tie() -> None:
+    players = (
+        _player(player_id="odd", pairing_no=1, score=3),
+        _player(player_id="even", pairing_no=2, score=3),
+    )
+
+    strict_result = pair_round_dutch(players, initial_color="black")
+    fast_result = pair_round_dutch_fast(players, initial_color="black")
+
+    assert strict_result.pairings == (Pairing(white_id="even", black_id="odd"),)
+    assert strict_result.unpaired_ids == ()
+    assert fast_result == strict_result
 
 
 def test_pair_round_dutch_large_fixture_pairs_all_players_once() -> None:

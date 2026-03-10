@@ -77,6 +77,7 @@ class _MutablePlayer:
     color_history: list[Color] = field(default_factory=_new_colors)
     float_history: list[FloatKind] = field(default_factory=_new_floats)
     had_full_point_bye: bool = False
+    had_full_point_unplayed_round: bool = False
     withdrawn: bool = False
     round_outcomes: list[SyntheticRoundOutcome] = field(default_factory=_new_round_outcomes)
 
@@ -90,6 +91,7 @@ class _MutablePlayer:
             color_history=tuple(self.color_history),
             float_history=tuple(self.float_history),
             had_full_point_bye=self.had_full_point_bye,
+            had_full_point_unplayed_round=self.had_full_point_unplayed_round,
             withdrawn=self.withdrawn,
             round_outcomes=tuple(self.round_outcomes),
         )
@@ -105,6 +107,7 @@ class SyntheticPlayerSnapshot:
     color_history: tuple[Color, ...]
     float_history: tuple[FloatKind, ...]
     had_full_point_bye: bool
+    had_full_point_unplayed_round: bool
     withdrawn: bool
     round_outcomes: tuple[SyntheticRoundOutcome, ...]
 
@@ -264,6 +267,7 @@ def _build_states_for_pairing(
                 color_history=tuple(player.color_history),
                 unplayed_games=0,
                 had_full_point_bye=player.had_full_point_bye,
+                had_full_point_unplayed_round=player.had_full_point_unplayed_round,
                 is_top_scorer=player.player_id in top_ids,
                 is_topscorer_or_opponent=(
                     player.player_id in top_ids or bool(player.opponents & top_ids)

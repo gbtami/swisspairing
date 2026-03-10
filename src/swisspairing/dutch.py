@@ -268,11 +268,29 @@ def _higher_rank_preference_missed(
     return int(preference != assigned_color)
 
 
+def _initial_color_tie_break_missed(
+    *,
+    white: PlayerState,
+    black: PlayerState,
+    initial_color: Color,
+) -> int:
+    higher_ranked, assigned_color = (
+        (white, "white") if _player_rank_key(white) <= _player_rank_key(black) else (black, "black")
+    )
+    expected_color: Color = (
+        initial_color
+        if higher_ranked.pairing_no % 2 == 1
+        else ("black" if initial_color == "white" else "white")
+    )
+    return int(assigned_color != expected_color)
+
+
 def _color_allocation_key(
     *,
     white: PlayerState,
     black: PlayerState,
-) -> tuple[int, tuple[int, ...], int, int, int]:
+    initial_color: Color,
+) -> tuple[int, tuple[int, ...], int, int, int, int]:
     both_preferences_granted = int(
         not (_preference_is_granted(white, "white") and _preference_is_granted(black, "black"))
     )
@@ -285,6 +303,11 @@ def _color_allocation_key(
         alternation_missed = int(alternating_assignment != ("white", "black"))
 
     higher_rank_preference_missed = _higher_rank_preference_missed(white=white, black=black)
+    initial_color_tie_break_missed = _initial_color_tie_break_missed(
+        white=white,
+        black=black,
+        initial_color=initial_color,
+    )
 
     return (
         both_preferences_granted,
@@ -292,20 +315,24 @@ def _color_allocation_key(
         wider_absolute_difference,
         alternation_missed,
         higher_rank_preference_missed,
+        initial_color_tie_break_missed,
     )
 
 
 def _choose_color_order(
-    player_a: PlayerState, player_b: PlayerState
+    player_a: PlayerState,
+    player_b: PlayerState,
+    *,
+    initial_color: Color = "white",
 ) -> tuple[PlayerState, PlayerState]:
     """Pick white/black order following C.04.3 article 5.2 tie-breaks."""
     first_key = (
-        *_color_allocation_key(white=player_a, black=player_b),
+        *_color_allocation_key(white=player_a, black=player_b, initial_color=initial_color),
         _player_rank_key(player_a),
         _player_rank_key(player_b),
     )
     second_key = (
-        *_color_allocation_key(white=player_b, black=player_a),
+        *_color_allocation_key(white=player_b, black=player_a, initial_color=initial_color),
         _player_rank_key(player_b),
         _player_rank_key(player_a),
     )
@@ -2376,6 +2403,7 @@ def pair_bracket(
     context: BracketContext | None = None,
     allow_bye: bool = True,
     sequential_search_max_players: int = _SEQUENTIAL_SEARCH_MAX_PLAYERS,
+    initial_color: Color = "white",
 ) -> PairingResult:
     """Pair one bracket and return pairings plus unresolved player ids.
 
@@ -2398,7 +2426,7 @@ def pair_bracket(
         )
         pairings: list[Pairing] = []
         for left, right in candidate.pairings:
-            white, black = _choose_color_order(left, right)
+            white, black = _choose_color_order(left, right, initial_color=initial_color)
             pairings.append(Pairing(white_id=white.player_id, black_id=black.player_id))
         unresolved_ids = tuple(player.player_id for player in candidate.unresolved)
         return PairingResult(
@@ -2415,7 +2443,7 @@ def pair_bracket(
         )
         pairings: list[Pairing] = []
         for left, right in even_result.pairings:
-            white, black = _choose_color_order(left, right)
+            white, black = _choose_color_order(left, right, initial_color=initial_color)
             pairings.append(Pairing(white_id=white.player_id, black_id=black.player_id))
         return PairingResult(
             pairings=_sort_for_publication(pairings, by_id),
@@ -2423,10 +2451,14 @@ def pair_bracket(
         )
 
     # Odd case with pairing-allocated bye:
-    # C2: players with previous full-point pairing bye are excluded.
+    # C2: players with a previous PAB or other full-point unplayed round are excluded.
     bye_candidates = tuple(
         sorted(
-            (player for player in ordered_players if not player.had_full_point_bye),
+            (
+                player
+                for player in ordered_players
+                if not player.is_pairing_allocated_bye_ineligible
+            ),
             key=_player_rank_key,
         )
     )
@@ -2441,7 +2473,8 @@ def pair_bracket(
     legal_exact_bye_candidates = tuple(
         candidate
         for candidate in exact_bye_candidates
-        if candidate.bye_player is not None and not candidate.bye_player.had_full_point_bye
+        if candidate.bye_player is not None
+        and not candidate.bye_player.is_pairing_allocated_bye_ineligible
     )
     if exact_bye_candidates:
         best_candidate = _select_best_candidate(legal_exact_bye_candidates, context=local_context)
@@ -2488,7 +2521,7 @@ def pair_bracket(
 
     normal_pairings: list[Pairing] = []
     for left, right in best_candidate.pairings:
-        white, black = _choose_color_order(left, right)
+        white, black = _choose_color_order(left, right, initial_color=initial_color)
         normal_pairings.append(Pairing(white_id=white.player_id, black_id=black.player_id))
 
     bye_player = best_candidate.bye_player
