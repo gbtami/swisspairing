@@ -12,13 +12,13 @@ from pathlib import Path
 from typing import Any
 
 from py4swiss.engines.common.exceptions import PairingError as Py4SwissPairingError
-from py4swiss.engines.common.float import Float as PyFloat
 from py4swiss.engines.dutch.engine import Engine as Py4SwissDutchEngine
 from py4swiss.engines.dutch.player import Player as Py4SwissPlayer
 from py4swiss.engines.dutch.player import get_player_infos_from_trf
 from py4swiss.trf import TrfParser
 
 from swisspairing.benchmarking import (
+    build_trf_float_history_by_player_id,
     build_trf_had_full_point_unplayed_round_by_player_id,
     build_trf_initial_color,
     build_trf_unplayed_games_by_player_id,
@@ -35,14 +35,6 @@ from swisspairing.tournament import pair_round_dutch
 _DEFAULT_FAST_SEQUENTIAL_SEARCH_MAX_PLAYERS = 6
 
 
-def _to_float_kind(float_value: PyFloat) -> FloatKind:
-    if float_value == PyFloat.UP:
-        return FloatKind.UP
-    if float_value == PyFloat.DOWN:
-        return FloatKind.DOWN
-    return FloatKind.NONE
-
-
 def _build_forbidden_map(trf: Any) -> dict[int, set[int]]:
     forbidden_map: dict[int, set[int]] = {}
     for left_id, right_id in trf.x_section.forbidden_pairs:
@@ -55,6 +47,7 @@ def _build_player_states_from_trf(trf: Any) -> tuple[PlayerState, ...]:
     py4swiss_players = get_player_infos_from_trf(trf)
     top_ids = {player.id for player in py4swiss_players if player.top_scorer}
     forbidden_map = _build_forbidden_map(trf)
+    float_history_by_id = build_trf_float_history_by_player_id(trf)
     unplayed_games_by_id = build_trf_unplayed_games_by_player_id(trf)
     full_point_unplayed_round_by_id = build_trf_had_full_point_unplayed_round_by_player_id(trf)
     states: list[PlayerState] = []
@@ -65,6 +58,7 @@ def _build_player_states_from_trf(trf: Any) -> tuple[PlayerState, ...]:
                 player,
                 top_ids,
                 forbidden_map,
+                float_history=float_history_by_id.get(player.id, ()),
                 unplayed_games=unplayed_games_by_id.get(player.id, 0),
                 had_full_point_unplayed_round=full_point_unplayed_round_by_id.get(player.id, False),
             )
@@ -77,13 +71,10 @@ def _build_player_state(
     top_ids: set[int],
     forbidden_map: dict[int, set[int]],
     *,
+    float_history: tuple[FloatKind, ...],
     unplayed_games: int,
     had_full_point_unplayed_round: bool,
 ) -> PlayerState:
-    float_history = (
-        _to_float_kind(player.float_2),
-        _to_float_kind(player.float_1),
-    )
     return PlayerState(
         player_id=str(player.id),
         pairing_no=player.number,

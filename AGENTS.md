@@ -306,9 +306,10 @@ benchmarks/import_lichess_fixtures.sh
   covered in `tests/test_chess_results.py`.
 - Aeroflot round 5 is the main real-world BBP-backed Dutch regression and is
   also covered in `tests/test_chess_results.py`.
-- On the checked Budapest corpus, round 5 currently matches `py4swiss` +
-  `JaVaFo` against a `bbpPairings` alternative; the earlier round-7
-  fast-mode-only `swisspairing` divergence is fixed.
+- On the checked Budapest corpus, round 5 now matches `bbpPairings` once
+  float history is derived from the TRF instead of inherited from
+  `py4swiss`; the earlier round-7 fast-mode-only `swisspairing` divergence is
+  fixed.
 - On the checked Graz corpus, `swisspairing` now matches `bbpPairings`,
   `py4swiss`, and `JaVaFo` on all 9 rounds, and the earlier round-1 runtime
   tail is closed out by the direct trivial-first-round bracket path.
@@ -355,9 +356,11 @@ Current practical default:
 - International Chessopen Graz 2026 A is now a clean consensus corpus:
   `swisspairing`, `bbpPairings`, `py4swiss`, and the checked JaVaFo release
   all agree there, and the earlier round-1 runtime tail is fixed.
-- Budapest Spring Festival 2026 Group A currently gives the clearest live
-  real-world reference split: round 5 aligns `swisspairing` with `py4swiss`
-  + `JaVaFo` against `bbpPairings`.
+- Budapest Spring Festival 2026 Group A round 5 and all three checked Lichess
+  fixtures now align `swisspairing` with `bbpPairings` once float history is
+  derived from the TRF instead of inherited from `py4swiss`. In all of those
+  cases, `py4swiss` and the checked public JaVaFo release still agree with
+  each other on a different pairing.
 - On the checked golden catalog, the public JaVaFo release agrees on all
   pairable fixtures but does not reject the two impossible-fixture cases that
   `swisspairing`, `bbpPairings`, and `py4swiss` all reject.

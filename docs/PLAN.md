@@ -185,10 +185,14 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - Added a live Chess-Results event importer and expanded the checked real-world
     OTB corpus with Prague International Chess Festival 2026 D, Budapest Spring
     Festival 2026 Group A, and International Chessopen Graz 2026 A.
-  - Budapest round 7 is now fixed in fast mode, Graz now matches
-    `bbpPairings`, `py4swiss`, and `JaVaFo` on all 9 checked rounds, and the
-    earlier Graz round-1 runtime tail is closed out by a direct trivial
-    first-round bracket path.
+  - Budapest round 7 is now fixed in fast mode, Budapest round 5 now matches
+    `bbpPairings` after switching the compare/build-state path to TRF-derived
+    float history, Graz now matches `bbpPairings`, `py4swiss`, and `JaVaFo`
+    on all 9 checked rounds, and the earlier Graz round-1 runtime tail is
+    closed out by a direct trivial first-round bracket path.
+  - The checked Lichess corpus also moved to the `bbpPairings` side once float
+    history was derived from the TRF instead of inherited from `py4swiss`;
+    `py4swiss` and `JaVaFo` still agree with each other there.
   - External pychess integration checkpoint completed on
     `pychess-variants` branch `feature/swiss-py4swiss-integration`
     (commit `7cdedf470460891e30a25321742098153b921063`):
@@ -198,9 +202,9 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - Extended unit-test coverage for criteria and sequence behavior.
 - Next:
   - Extend the real-world OTB corpus beyond the current
-    Aeroflot/Prague/Budapest/Graz set and use it to drive the remaining
-    parity/conformance fixes. On the checked corpora, Budapest round 5 is the
-    clearest live real-world reference split.
+    Aeroflot/Prague/Budapest/Graz set. After switching the harness to
+    TRF-derived float history, no checked real-world TRF corpus currently
+    shows an unexplained `swisspairing` vs `bbpPairings` disagreement.
   - Upstream and deploy the pychess integration checkpoint, then run staged
     dual-backend soak checks before any default-backend flip.
 

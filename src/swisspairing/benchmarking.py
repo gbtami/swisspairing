@@ -13,7 +13,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, cast
 
-from swisspairing.model import Color
+from swisspairing.model import Color, FloatKind
 
 _PLAYED_TRF_RESULT_VALUES = frozenset({"1", "=", "0", "W", "D", "L"})
 _NON_PAB_FULL_POINT_UNPLAYED_TRF_RESULT_VALUES = frozenset({"+", "F"})
@@ -658,6 +658,128 @@ def build_trf_had_full_point_unplayed_round_by_player_id(trf: Any) -> dict[int, 
         )
 
     return flags
+
+
+def build_trf_float_history_by_player_id(trf: Any) -> dict[int, tuple[FloatKind, ...]]:
+    """Derive per-player float history directly from parsed TRF rounds.
+
+    The compare harness must derive this from the TRF itself instead of
+    inheriting another engine's internal float bookkeeping.
+    """
+
+    x_section = getattr(trf, "x_section", None)
+    scoring_point_system = getattr(x_section, "scoring_point_system", None)
+    completed_rounds = max(int(getattr(x_section, "number_of_rounds", 0)) - 1, 0)
+    sections = cast(Sequence[Any], getattr(trf, "player_sections", ()))
+    results_by_number = {
+        int(section.starting_number): tuple(cast(Sequence[Any], section.results))
+        for section in sections
+    }
+    points_by_number = {number: 0 for number in results_by_number}
+    history_by_number: dict[int, list[FloatKind]] = {number: [] for number in results_by_number}
+
+    for round_index in range(completed_rounds):
+        round_assignments = {number: FloatKind.NONE for number in results_by_number}
+
+        for number, results in results_by_number.items():
+            round_result = _trf_round_result_for_index(results, round_index)
+            if round_result is None:
+                continue
+
+            opponent_number = int(getattr(round_result, "id", 0) or 0)
+            color_value = _trf_round_result_color_value(round_result)
+
+            if color_value == "w" and opponent_number != 0:
+                opponent_result = _trf_round_result_for_index(
+                    results_by_number.get(opponent_number, ()),
+                    round_index,
+                )
+                if opponent_result is None:
+                    continue
+
+                if _trf_round_result_is_played(round_result) and _trf_round_result_is_played(
+                    opponent_result
+                ):
+                    white_score = points_by_number[number]
+                    black_score = points_by_number[opponent_number]
+                    if white_score != black_score:
+                        higher_number, lower_number = (
+                            (number, opponent_number)
+                            if (-white_score, number) <= (-black_score, opponent_number)
+                            else (opponent_number, number)
+                        )
+                        round_assignments[higher_number] = FloatKind.DOWN
+                        round_assignments[lower_number] = FloatKind.UP
+                else:
+                    for assignee_number, assignee_result in (
+                        (number, round_result),
+                        (opponent_number, opponent_result),
+                    ):
+                        if not _trf_round_result_is_played(assignee_result) and (
+                            _trf_round_result_points_times_ten(
+                                assignee_result,
+                                scoring_point_system=scoring_point_system,
+                            )
+                            > 0
+                        ):
+                            round_assignments[assignee_number] = FloatKind.DOWN
+                continue
+
+            if opponent_number == 0 and (
+                _trf_round_result_points_times_ten(
+                    round_result,
+                    scoring_point_system=scoring_point_system,
+                )
+                > 0
+            ):
+                round_assignments[number] = FloatKind.DOWN
+
+        for number, history in history_by_number.items():
+            history.append(round_assignments[number])
+            round_result = _trf_round_result_for_index(results_by_number[number], round_index)
+            if round_result is not None:
+                points_by_number[number] += _trf_round_result_points_times_ten(
+                    round_result,
+                    scoring_point_system=scoring_point_system,
+                )
+
+    return {number: tuple(history) for number, history in history_by_number.items()}
+
+
+def _trf_round_result_for_index(results: Sequence[Any], round_index: int) -> Any | None:
+    if round_index < 0 or round_index >= len(results):
+        return None
+    return results[round_index]
+
+
+def _trf_round_result_color_value(round_result: Any) -> str:
+    color = getattr(round_result, "color", None)
+    return cast(str, getattr(color, "value", color) or "")
+
+
+def _trf_round_result_is_played(round_result: Any) -> bool:
+    result = getattr(round_result, "result", None)
+    is_played = getattr(result, "is_played", None)
+    if callable(is_played):
+        return bool(is_played())
+    return getattr(result, "value", None) in _PLAYED_TRF_RESULT_VALUES
+
+
+def _trf_round_result_points_times_ten(
+    round_result: Any,
+    *,
+    scoring_point_system: Any,
+) -> int:
+    scoring_getter = getattr(scoring_point_system, "get_points_times_ten", None)
+    if callable(scoring_getter):
+        return cast(int, scoring_getter(round_result))
+
+    result_value = getattr(getattr(round_result, "result", None), "value", None)
+    if result_value in {"1", "W", "+", "F", "U"}:
+        return 10
+    if result_value in {"=", "D", "H"}:
+        return 5
+    return 0
 
 
 def py4swiss_runtime_probe(

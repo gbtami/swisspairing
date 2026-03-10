@@ -8,12 +8,12 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
-from py4swiss.engines.common.float import Float as PyFloat
 from py4swiss.engines.dutch.player import get_player_infos_from_trf
 from py4swiss.trf import TrfParser
 
 from swisspairing.benchmarking import (
     build_pythonpath_env,
+    build_trf_float_history_by_player_id,
     build_trf_had_full_point_unplayed_round_by_player_id,
     build_trf_initial_color,
     build_trf_unplayed_games_by_player_id,
@@ -146,15 +146,9 @@ def _chess_results_states_for_round(
     for left_id, right_id in trf.x_section.forbidden_pairs:
         forbidden_map.setdefault(left_id, set()).add(right_id)
         forbidden_map.setdefault(right_id, set()).add(left_id)
+    float_history_by_id = build_trf_float_history_by_player_id(trf)
     unplayed_games_by_id = build_trf_unplayed_games_by_player_id(trf)
     full_point_unplayed_round_by_id = build_trf_had_full_point_unplayed_round_by_player_id(trf)
-
-    def to_float_kind(float_value: PyFloat) -> FloatKind:
-        if float_value == PyFloat.UP:
-            return FloatKind.UP
-        if float_value == PyFloat.DOWN:
-            return FloatKind.DOWN
-        return FloatKind.NONE
 
     states = tuple(
         PlayerState(
@@ -171,10 +165,7 @@ def _chess_results_states_for_round(
             had_full_point_unplayed_round=full_point_unplayed_round_by_id.get(player.id, False),
             is_top_scorer=player.top_scorer,
             is_topscorer_or_opponent=player.top_scorer or bool(player.opponents & top_ids),
-            float_history=(
-                to_float_kind(player.float_2),
-                to_float_kind(player.float_1),
-            ),
+            float_history=float_history_by_id.get(player.id, ()),
         )
         for player in py4swiss_players
     )
@@ -941,6 +932,22 @@ def test_budapest_round_7_score_15_bracket_uses_exact_heterogeneous_refinement()
     assert frozenset({"94", "71"}) in paired_ids
     assert frozenset({"76", "102"}) in paired_ids
     assert frozenset({"89", "95"}) in paired_ids
+
+
+@pytest.mark.skipif(
+    not (_has_py4swiss_runtime() and _has_bbp_executable()),
+    reason=(
+        "active Python interpreter or bbpPairings runtime unavailable for Budapest reference checks"
+    ),
+)
+def test_budapest_fast_round_5_matches_bbp_reference_not_py4swiss() -> None:
+    manifest_path = _budapest_manifest_path()
+    round_entry = _budapest_round_entry(5)
+
+    compare = _run_reference_compare(manifest_path.parent / cast(str, round_entry["trf"]))
+
+    assert compare["pairings_equal_vs_bbp"] is True
+    assert compare["pairings_equal_vs_py4swiss"] is False
 
 
 @pytest.mark.skipif(

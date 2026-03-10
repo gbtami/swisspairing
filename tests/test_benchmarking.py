@@ -10,6 +10,7 @@ from swisspairing.benchmarking import (
     RECURRING_SYNTHETIC_SLA_PRESETS,
     BenchmarkSLA,
     build_benchmark_summary,
+    build_trf_float_history_by_player_id,
     build_trf_had_full_point_unplayed_round_by_player_id,
     build_trf_initial_color,
     build_trf_unplayed_games_by_player_id,
@@ -22,6 +23,7 @@ from swisspairing.benchmarking import (
     portable_path_str,
     sort_pairings_for_compare,
 )
+from swisspairing.model import FloatKind
 
 
 def _timed_result(*, ok: bool, timings_ms: list[float]) -> dict[str, object]:
@@ -235,6 +237,95 @@ def test_build_trf_had_full_point_unplayed_round_by_player_id_detects_non_pab_fu
     flags = build_trf_had_full_point_unplayed_round_by_player_id(trf)
 
     assert flags == {1: True, 2: True, 3: False, 4: False, 5: False}
+
+
+def test_build_trf_float_history_by_player_id_counts_only_positive_nonplayed_rounds() -> None:
+    def _result(opponent_id: int, color: str, result: str) -> SimpleNamespace:
+        return SimpleNamespace(
+            id=opponent_id,
+            color=SimpleNamespace(value=color),
+            result=SimpleNamespace(
+                value=result,
+                is_played=lambda: result in {"1", "=", "0", "W", "D", "L"},
+            ),
+        )
+
+    def _points(round_result: SimpleNamespace) -> int:
+        token = round_result.result.value
+        if token in {"1", "W", "+", "F", "U"}:
+            return 10
+        if token in {"=", "D", "H"}:
+            return 5
+        return 0
+
+    trf = SimpleNamespace(
+        x_section=SimpleNamespace(
+            number_of_rounds=3,
+            scoring_point_system=SimpleNamespace(get_points_times_ten=_points),
+        ),
+        player_sections=(
+            SimpleNamespace(
+                starting_number=1,
+                results=(
+                    _result(2, "w", "1"),
+                    _result(2, "w", "1"),
+                ),
+            ),
+            SimpleNamespace(
+                starting_number=2,
+                results=(
+                    _result(1, "b", "0"),
+                    _result(1, "b", "0"),
+                ),
+            ),
+            SimpleNamespace(
+                starting_number=3,
+                results=(
+                    _result(0, "-", "F"),
+                    _result(1, "b", "0"),
+                ),
+            ),
+        ),
+    )
+
+    assert build_trf_float_history_by_player_id(trf) == {
+        1: (FloatKind.NONE, FloatKind.DOWN),
+        2: (FloatKind.NONE, FloatKind.UP),
+        3: (FloatKind.DOWN, FloatKind.NONE),
+    }
+
+
+def test_build_trf_float_history_by_player_id_ignores_budapest_forfeit_loss_and_zero_byes() -> None:
+    from py4swiss.trf import TrfParser
+
+    trf = TrfParser.parse(
+        Path(
+            "benchmarks/fixtures/chess_results/"
+            "budapest_spring_festival_2026_group_a_2200/"
+            "budapest_spring_festival_2026_group_a_2200_r05.trf"
+        )
+    )
+
+    history_by_id = build_trf_float_history_by_player_id(trf)
+
+    assert history_by_id[82] == (
+        FloatKind.NONE,
+        FloatKind.NONE,
+        FloatKind.NONE,
+        FloatKind.UP,
+    )
+    assert history_by_id[96] == (
+        FloatKind.NONE,
+        FloatKind.NONE,
+        FloatKind.NONE,
+        FloatKind.NONE,
+    )
+    assert history_by_id[103] == (
+        FloatKind.NONE,
+        FloatKind.NONE,
+        FloatKind.NONE,
+        FloatKind.NONE,
+    )
 
 
 def _lenient_player_line(
