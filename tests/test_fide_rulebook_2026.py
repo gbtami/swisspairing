@@ -1158,11 +1158,10 @@ RULE_GROUPS = (
         ),
     ),
     RuleGroup(
-        status="partially_tested",
+        status="tested",
         reason=(
-            "Color allocation is fully covered where the current package has a "
-            "public input surface for it, but the parent article remains mixed "
-            "with earlier input-contract rules."
+            "The full article-5.2 color-allocation chain is covered by direct "
+            "minimal tests for 5.2.1 through 5.2.5."
         ),
         clauses=("C0403.5.2",),
         tests=(
