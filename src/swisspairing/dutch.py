@@ -187,8 +187,8 @@ def _is_strong_preference_missed(player: PlayerState, assigned_color: str) -> bo
     )
 
 
-def _pair_color_quality(
-    *,
+@cache
+def _pair_color_quality_cached(
     white: PlayerState,
     black: PlayerState,
 ) -> tuple[int, int, int, int]:
@@ -210,6 +210,14 @@ def _pair_color_quality(
         _is_strong_preference_missed(black, "black")
     )
     return c10, c11, c12, c13
+
+
+def _pair_color_quality(
+    *,
+    white: PlayerState,
+    black: PlayerState,
+) -> tuple[int, int, int, int]:
+    return _pair_color_quality_cached(white, black)
 
 
 def _preference_strength(player: PlayerState) -> int:
@@ -311,8 +319,8 @@ def _initial_color_tie_break_missed(
     return int(assigned_color != expected_color)
 
 
+@cache
 def _color_allocation_key(
-    *,
     white: PlayerState,
     black: PlayerState,
     initial_color: Color,
@@ -345,26 +353,37 @@ def _color_allocation_key(
     )
 
 
+@cache
+def _choose_color_order_cached(
+    player_a: PlayerState,
+    player_b: PlayerState,
+    initial_color: Color,
+) -> tuple[PlayerState, PlayerState]:
+    """Pick white/black order following C.04.3 article 5.2 tie-breaks."""
+    rank_a = _player_rank_key(player_a)
+    rank_b = _player_rank_key(player_b)
+    first_key = (
+        *_color_allocation_key(player_a, player_b, initial_color),
+        rank_a,
+        rank_b,
+    )
+    second_key = (
+        *_color_allocation_key(player_b, player_a, initial_color),
+        rank_b,
+        rank_a,
+    )
+    if first_key <= second_key:
+        return player_a, player_b
+    return player_b, player_a
+
+
 def _choose_color_order(
     player_a: PlayerState,
     player_b: PlayerState,
     *,
     initial_color: Color = "white",
 ) -> tuple[PlayerState, PlayerState]:
-    """Pick white/black order following C.04.3 article 5.2 tie-breaks."""
-    first_key = (
-        *_color_allocation_key(white=player_a, black=player_b, initial_color=initial_color),
-        _player_rank_key(player_a),
-        _player_rank_key(player_b),
-    )
-    second_key = (
-        *_color_allocation_key(white=player_b, black=player_a, initial_color=initial_color),
-        _player_rank_key(player_b),
-        _player_rank_key(player_a),
-    )
-    if first_key <= second_key:
-        return player_a, player_b
-    return player_b, player_a
+    return _choose_color_order_cached(player_a, player_b, initial_color)
 
 
 def _mdp_and_opponent(
@@ -1263,6 +1282,20 @@ def _solve_even_players_via_sequence(
     )
 
 
+@cache
+def _homogeneous_exact_pair_penalty_cached(
+    left: PlayerState,
+    right: PlayerState,
+    initial_color: Color,
+    pair_count: int,
+) -> int:
+    """Pack local [C10]-[C13] penalties for exact homogeneous matching shortcuts."""
+    white, black = _choose_color_order_cached(left, right, initial_color)
+    c10, c11, c12, c13 = _pair_color_quality_cached(white, black)
+    radix = (2 * pair_count) + 1
+    return (((c10 * radix) + c11) * radix + c12) * radix + c13
+
+
 def _homogeneous_exact_pair_penalty(
     left: PlayerState,
     right: PlayerState,
@@ -1270,11 +1303,7 @@ def _homogeneous_exact_pair_penalty(
     initial_color: Color,
     pair_count: int,
 ) -> int:
-    """Pack local [C10]-[C13] penalties for exact homogeneous matching shortcuts."""
-    white, black = _choose_color_order(left, right, initial_color=initial_color)
-    c10, c11, c12, c13 = _pair_color_quality(white=white, black=black)
-    radix = (2 * pair_count) + 1
-    return (((c10 * radix) + c11) * radix + c12) * radix + c13
+    return _homogeneous_exact_pair_penalty_cached(left, right, initial_color, pair_count)
 
 
 @cache

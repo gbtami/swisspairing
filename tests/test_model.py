@@ -130,3 +130,31 @@ def test_forbidden_opponents_defaults_to_empty_set() -> None:
         score=2,
     )
     assert player.forbidden_opponents == frozenset()
+
+
+def test_player_state_hash_tracks_value_equality() -> None:
+    first = PlayerState(
+        player_id="p1",
+        pairing_no=1,
+        score=2,
+        color_history=("white", "black"),
+        float_history=(FloatKind.NONE, FloatKind.UP),
+    )
+    second = PlayerState(
+        player_id="p1",
+        pairing_no=1,
+        score=2,
+        color_history=("white", "black"),
+        float_history=(FloatKind.NONE, FloatKind.UP),
+    )
+    different = PlayerState(
+        player_id="p1",
+        pairing_no=1,
+        score=2,
+        color_history=("black", "white"),
+        float_history=(FloatKind.NONE, FloatKind.UP),
+    )
+
+    assert first == second
+    assert hash(first) == hash(second)
+    assert first != different

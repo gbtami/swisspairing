@@ -43,6 +43,7 @@ class PlayerState:
     is_top_scorer: bool = False
     is_topscorer_or_opponent: bool = False
     float_history: tuple[FloatKind, ...] = ()
+    _hash: int = field(init=False, repr=False, compare=False)
     _color_difference: int = field(init=False, repr=False, compare=False)
     _absolute_color_preference: Color | None = field(init=False, repr=False, compare=False)
     _strong_color_preference: Color | None = field(init=False, repr=False, compare=False)
@@ -82,6 +83,30 @@ class PlayerState:
             "_color_preference",
             absolute_color_preference or strong_color_preference or mild_color_preference,
         )
+        object.__setattr__(
+            self,
+            "_hash",
+            hash(
+                (
+                    self.player_id,
+                    self.pairing_no,
+                    self.score,
+                    self.opponents,
+                    self.forbidden_opponents,
+                    self.color_history,
+                    self.unplayed_games,
+                    self.had_full_point_bye,
+                    self.had_full_point_unplayed_round,
+                    self.is_top_scorer,
+                    self.is_topscorer_or_opponent,
+                    self.float_history,
+                )
+            ),
+        )
+
+    def __hash__(self) -> int:
+        """Return a stable value hash without rebuilding it on every cache lookup."""
+        return self._hash
 
     @property
     def color_difference(self) -> int:
