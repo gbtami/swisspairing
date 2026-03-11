@@ -1994,6 +1994,11 @@ def _solve_even_players(
         if exact_shortcut is not None:
             return exact_shortcut
 
+    if len(context.mdp_ids) == 1 and not allow_heuristic_fallback:
+        single_mdp_exact = _solve_even_players_via_single_mdp_exact(players, context=context)
+        if single_mdp_exact is not None:
+            return single_mdp_exact
+
     if context.mdp_ids and _use_heterogeneous_exact_search(
         len(players),
         mdp_count=len(context.mdp_ids),
@@ -2619,6 +2624,91 @@ def _iter_heterogeneous_candidates(
     ordered_players = tuple(sorted(players, key=_player_rank_key))
     return _iter_heterogeneous_candidates_cached(
         ordered_players,
+        context.mdp_ids,
+        context.initial_color,
+    )
+
+
+@cache
+def _solve_even_players_via_single_mdp_exact_cached(
+    players: tuple[PlayerState, ...],
+    mdp_ids: frozenset[str],
+    initial_color: Color,
+) -> _EvenPairingInternal | None:
+    """Solve large one-MDP even brackets exactly without full hetero expansion.
+
+    With one MDP, article 3.7 reduces to scanning resident partners in
+    article-4.2 order and solving the remaining homogeneous bracket exactly.
+    """
+    if len(players) % 2 != 0 or len(mdp_ids) != 1:
+        return None
+
+    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    context = BracketContext(mdp_ids=mdp_ids, initial_color=initial_color)
+    mdps, residents = _split_mdps_and_residents(ordered_players, context=context)
+    if len(mdps) != 1 or not residents:
+        return None
+
+    mdp = mdps[0]
+    remainder_context = BracketContext(initial_color=initial_color)
+    bsn_by_player_id = {player.player_id: index + 1 for index, player in enumerate(ordered_players)}
+    best_candidate: _CandidateInternal | None = None
+    best_key: tuple[object, ...] | None = None
+
+    for sequence_no, s2_transposition in enumerate(
+        _iter_s2_transpositions(
+            s1=(mdp,),
+            s2=residents,
+            bsn_by_player_id=bsn_by_player_id,
+        )
+    ):
+        resident = s2_transposition[0]
+        if not _is_legal_pair(mdp, resident, context=context):
+            continue
+
+        remainder_players = tuple(sorted(s2_transposition[1:], key=_player_rank_key))
+        try:
+            remainder_result = _solve_even_players(
+                remainder_players,
+                context=remainder_context,
+                sequential_search_max_players=len(remainder_players),
+                allow_heuristic_fallback=False,
+            )
+        except ExactSearchUnavailableError:
+            continue
+
+        candidate = _CandidateInternal(
+            pairings=tuple(
+                sorted(
+                    (*remainder_result.pairings, (mdp, resident)),
+                    key=_candidate_pair_sort_key,
+                )
+            ),
+            unresolved=remainder_result.unresolved,
+            bye_player=None,
+            sequence_no=sequence_no,
+        )
+        candidate_key = _candidate_quality_key(candidate=candidate, context=context)
+        if best_key is None or candidate_key < best_key:
+            best_key = candidate_key
+            best_candidate = candidate
+
+    if best_candidate is None:
+        return None
+
+    return _EvenPairingInternal(
+        pairings=best_candidate.pairings,
+        unresolved=best_candidate.unresolved,
+    )
+
+
+def _solve_even_players_via_single_mdp_exact(
+    players: Sequence[PlayerState],
+    *,
+    context: BracketContext,
+) -> _EvenPairingInternal | None:
+    return _solve_even_players_via_single_mdp_exact_cached(
+        tuple(sorted(players, key=_player_rank_key)),
         context.mdp_ids,
         context.initial_color,
     )

@@ -111,7 +111,7 @@ def test_pair_bracket_exact_raises_when_current_solver_needs_heuristic_fallback(
     with pytest.raises(PairingError, match="heuristic fallback"):
         pair_bracket_exact(
             players,
-            context=BracketContext(mdp_ids=frozenset({"p1"})),
+            context=BracketContext(mdp_ids=frozenset({"p1", "p2"})),
             allow_bye=True,
         )
 
@@ -201,6 +201,25 @@ def test_pair_bracket_exact_solves_large_homogeneous_even_zero_exchange_optimum(
 
     assert result.unpaired_ids == ()
     assert len(result.pairings) == 7
+
+
+def test_pair_bracket_exact_solves_large_single_mdp_even_bracket() -> None:
+    players = (
+        _player(player_id="m1", pairing_no=1, score=4),
+        *tuple(_player(player_id=f"p{index}", pairing_no=index, score=3) for index in range(2, 49)),
+    )
+
+    result = pair_bracket_exact(
+        players,
+        context=BracketContext(mdp_ids=frozenset({"m1"})),
+        allow_bye=False,
+    )
+
+    assert result.unpaired_ids == ()
+    mdp_pair = next(
+        pairing for pairing in result.pairings if "m1" in {pairing.white_id, pairing.black_id}
+    )
+    assert mdp_pair.black_id is not None
 
 
 def test_pair_bracket_prevents_rematch_under_c0401_rule_2() -> None:

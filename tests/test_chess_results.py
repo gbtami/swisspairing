@@ -779,6 +779,24 @@ def test_aeroflot_round_2_exact_pairing_matches_published_round() -> None:
 
 
 @pytest.mark.skipif(
+    not _has_py4swiss_runtime(),
+    reason="active Python interpreter unavailable for Aeroflot exact checks",
+)
+def test_aeroflot_round_3_exact_pairs_full_round() -> None:
+    manifest_path = _aeroflot_manifest_path()
+    round_entry = _aeroflot_round_entry(3)
+    trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
+
+    result = pair_round_dutch_exact(
+        _aeroflot_states_for_round(3),
+        initial_color=build_trf_initial_color(trf),
+    )
+
+    assert result.unpaired_ids == ()
+    assert len(result.pairings) == len(round_entry["published_pairings"])
+
+
+@pytest.mark.skipif(
     not (_has_py4swiss_runtime() and _has_bbp_executable()),
     reason=(
         "active Python interpreter or bbpPairings runtime unavailable for Aeroflot reference checks"
