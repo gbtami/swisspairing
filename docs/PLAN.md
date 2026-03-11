@@ -88,7 +88,8 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - Refreshed checked-in recurring baselines
     (`post-c8-next-bracket-key-cut-20260306`,
     `post-fast-cap-6-20260306`,
-    `post-fast-cap-6-plus-512-20260306`) and matching calibrated SLA presets added,
+    `post-fast-cap-6-plus-512-20260306`,
+    `post-bounded-c8-20260311`) and matching calibrated SLA presets added,
     with per-profile pass/fail tracking in recurring baseline outputs.
   - Pychess adapter runtime mode control added:
     default `SWISSPAIRING_PAIRING_MODE=fast` (cap=6), explicit `strict` opt-in,

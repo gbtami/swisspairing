@@ -1,0 +1,95 @@
+{
+  "exported_paths": [
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0001_r07.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0001_r08.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0002_r09.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0002_r10.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0003_r09.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0003_r10.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0004_r08.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0004_r09.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0005_r09.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0005_r10.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0006_r04.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0006_r05.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0007_r04.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0007_r05.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0008_r04.trf",
+    "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures/sim0008_r05.trf"
+  ],
+  "skipped": [],
+  "summary": {
+    "exported_files": 16,
+    "exported_tournaments": 8,
+    "output_dir": "~/swisspairing/benchmarks/results/recurring/post-bounded-c8-20260311/p256/fixtures",
+    "requested_tournaments": 8,
+    "seed": 20260562,
+    "skipped": 0
+  },
+  "tournaments": [
+    {
+      "completed_rounds": 8,
+      "planned_rounds": 8,
+      "players": 256,
+      "snapshots_written": 2,
+      "stop_reason": null,
+      "tid": "sim0001"
+    },
+    {
+      "completed_rounds": 10,
+      "planned_rounds": 10,
+      "players": 256,
+      "snapshots_written": 2,
+      "stop_reason": null,
+      "tid": "sim0002"
+    },
+    {
+      "completed_rounds": 10,
+      "planned_rounds": 10,
+      "players": 256,
+      "snapshots_written": 2,
+      "stop_reason": null,
+      "tid": "sim0003"
+    },
+    {
+      "completed_rounds": 9,
+      "planned_rounds": 11,
+      "players": 256,
+      "snapshots_written": 2,
+      "stop_reason": "pairing_error",
+      "tid": "sim0004"
+    },
+    {
+      "completed_rounds": 10,
+      "planned_rounds": 10,
+      "players": 256,
+      "snapshots_written": 2,
+      "stop_reason": null,
+      "tid": "sim0005"
+    },
+    {
+      "completed_rounds": 5,
+      "planned_rounds": 5,
+      "players": 256,
+      "snapshots_written": 2,
+      "stop_reason": null,
+      "tid": "sim0006"
+    },
+    {
+      "completed_rounds": 5,
+      "planned_rounds": 5,
+      "players": 256,
+      "snapshots_written": 2,
+      "stop_reason": null,
+      "tid": "sim0007"
+    },
+    {
+      "completed_rounds": 5,
+      "planned_rounds": 5,
+      "players": 256,
+      "snapshots_written": 2,
+      "stop_reason": null,
+      "tid": "sim0008"
+    }
+  ]
+}

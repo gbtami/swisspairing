@@ -250,7 +250,7 @@ uv run python benchmarks/run_recurring_baselines.py \
 ```
 
 Apply the calibrated recurring synthetic SLA preset from the current checked-in
-`post-fast-cap-6-plus-512-20260306` baseline:
+`post-bounded-c8-20260311` baseline:
 
 ```bash
 uv run python benchmarks/run_recurring_baselines.py \
@@ -260,7 +260,7 @@ uv run python benchmarks/run_recurring_baselines.py \
   --repeats 1 \
   --warmup 0 \
   --timeout-seconds 120 \
-  --sla-preset post-fast-cap-6-plus-512-20260306
+  --sla-preset post-bounded-c8-20260311
 ```
 
 Output artifacts:

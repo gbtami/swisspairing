@@ -36,7 +36,53 @@ class BenchmarkSLA:
 
 
 RECURRING_SYNTHETIC_SLA_PRESETS: dict[str, dict[int, BenchmarkSLA]] = {
-    # Current recommended recurring synthetic baseline after lowering the fast
+    # Current recommended recurring synthetic baseline after bounding the
+    # medium-size [C8] odd-refinement tails and keeping the p512 sweep.
+    "post-bounded-c8-20260311": {
+        16: BenchmarkSLA(
+            min_fast_success_rate=1.0,
+            max_runner_error_rate=0.0,
+            max_fast_p95_ms=10.0,
+            max_fast_p50_ratio=1.05,
+            min_fast_equality_rate_when_both_ok=0.75,
+        ),
+        32: BenchmarkSLA(
+            min_fast_success_rate=1.0,
+            max_runner_error_rate=0.0,
+            max_fast_p95_ms=120.0,
+            max_fast_p50_ratio=2.6,
+            min_fast_equality_rate_when_both_ok=0.3,
+        ),
+        64: BenchmarkSLA(
+            min_fast_success_rate=1.0,
+            max_runner_error_rate=0.0,
+            max_fast_p95_ms=160.0,
+            max_fast_p50_ratio=0.4,
+            min_fast_equality_rate_when_both_ok=0.55,
+        ),
+        128: BenchmarkSLA(
+            min_fast_success_rate=1.0,
+            max_runner_error_rate=0.0,
+            max_fast_p95_ms=500.0,
+            max_fast_p50_ratio=0.6,
+            min_fast_equality_rate_when_both_ok=0.4,
+        ),
+        256: BenchmarkSLA(
+            min_fast_success_rate=1.0,
+            max_runner_error_rate=0.0,
+            max_fast_p95_ms=950.0,
+            max_fast_p50_ratio=0.6,
+            min_fast_equality_rate_when_both_ok=0.6,
+        ),
+        512: BenchmarkSLA(
+            min_fast_success_rate=1.0,
+            max_runner_error_rate=0.0,
+            max_fast_p95_ms=1500.0,
+            max_fast_p50_ratio=0.3,
+            min_fast_equality_rate_when_both_ok=0.8,
+        ),
+    },
+    # Historical synthetic baseline kept for reference after lowering the fast
     # sequential-search cap to 6 and extending the checked-in sweep to p512.
     "post-fast-cap-6-plus-512-20260306": {
         16: BenchmarkSLA(

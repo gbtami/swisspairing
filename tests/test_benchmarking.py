@@ -95,11 +95,11 @@ def test_current_recurring_sla_preset_matches_checked_in_baseline() -> None:
         / "benchmarks"
         / "results"
         / "recurring"
-        / "post-fast-cap-6-plus-512-20260306"
+        / "post-bounded-c8-20260311"
         / "run_summary.json"
     )
     run_summary = json.loads(run_summary_path.read_text(encoding="utf-8"))
-    preset = RECURRING_SYNTHETIC_SLA_PRESETS["post-fast-cap-6-plus-512-20260306"]
+    preset = RECURRING_SYNTHETIC_SLA_PRESETS["post-bounded-c8-20260311"]
 
     for result in run_summary["results"]:
         size = int(result["size"])

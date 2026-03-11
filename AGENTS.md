@@ -288,7 +288,7 @@ Current default size sweep:
 
 Current checked-in SLA preset:
 
-- `post-fast-cap-6-plus-512-20260306`
+- `post-bounded-c8-20260311`
 
 Command:
 
@@ -300,7 +300,7 @@ uv run python benchmarks/run_recurring_baselines.py \
   --repeats 1 \
   --warmup 0 \
   --timeout-seconds 120 \
-  --sla-preset post-fast-cap-6-plus-512-20260306
+  --sla-preset post-bounded-c8-20260311
 ```
 
 ### Real-world Chess-Results import
