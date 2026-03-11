@@ -202,6 +202,10 @@ def _budapest_group_b_manifest_path() -> Path:
     return _chess_results_manifest_path("budapest_spring_festival_2026_group_b_2250")
 
 
+def _budapest_group_b_round_entry(round_number: int) -> dict[str, Any]:
+    return _chess_results_round_entry("budapest_spring_festival_2026_group_b_2250", round_number)
+
+
 def _graz_manifest_path() -> Path:
     return _chess_results_manifest_path("international_chessopen_graz_2026_a")
 
@@ -976,6 +980,24 @@ def test_budapest_fast_round_5_matches_bbp_reference_not_py4swiss() -> None:
 def test_budapest_fast_round_7_matches_engine_consensus() -> None:
     manifest_path = _budapest_manifest_path()
     round_entry = _budapest_round_entry(7)
+
+    compare = _run_reference_compare(manifest_path.parent / cast(str, round_entry["trf"]))
+
+    assert compare["reference_pairings_equal"] is True
+    assert compare["pairings_equal_vs_py4swiss"] is True
+    assert compare["pairings_equal_vs_bbp"] is True
+
+
+@pytest.mark.skipif(
+    not (_has_py4swiss_runtime() and _has_bbp_executable()),
+    reason=(
+        "active Python interpreter or bbpPairings runtime unavailable for Budapest Group B "
+        "reference checks"
+    ),
+)
+def test_budapest_group_b_fast_round_8_matches_engine_consensus() -> None:
+    manifest_path = _budapest_group_b_manifest_path()
+    round_entry = _budapest_group_b_round_entry(8)
 
     compare = _run_reference_compare(manifest_path.parent / cast(str, round_entry["trf"]))
 

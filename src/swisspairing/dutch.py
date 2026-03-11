@@ -440,6 +440,7 @@ _ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES_WITH_NEXT_BRACKET = 1_000
 _ODD_FINAL_BYE_SCAN_MAX_PLAYERS = 20
 _ODD_HOMOGENEOUS_REFINEMENT_SCAN_MAX_PLAYERS = 34
 _ODD_HOMOGENEOUS_REFINEMENT_SKIP_MAX_PLAYERS_WITH_NEXT_BRACKET = 23
+_ODD_HOMOGENEOUS_C8_TAIL_SCAN_CANDIDATES = 2
 _SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS = 24
 _SINGLE_MDP_REMAINDER_HOMOGENEOUS_REFINEMENT_MAX_PLAYERS = 54
 _SINGLE_MDP_ODD_REFINEMENT_SEARCH_MAX_PLAYERS = 6
@@ -1431,23 +1432,27 @@ def _refine_weighted_homogeneous_odd_candidate(
         return weighted_candidate
 
     ordered_players = tuple(sorted(players, key=_player_rank_key))
-    if (
-        context.next_bracket_validator is not None
-        and len(ordered_players) <= _ODD_HOMOGENEOUS_REFINEMENT_SKIP_MAX_PLAYERS_WITH_NEXT_BRACKET
-    ):
-        return weighted_candidate
-    if len(ordered_players) > scan_max_players:
-        return weighted_candidate
-
     split_size = len(ordered_players) // 2
     original_s2 = ordered_players[split_size:]
-    candidate_pool = original_s2
+    candidate_specs = tuple((index, player) for index, player in enumerate(original_s2))
+
     if weighted_candidate.unresolved:
         weighted_downfloater_id = weighted_candidate.unresolved[0].player_id
         for index, player in enumerate(original_s2):
             if player.player_id == weighted_downfloater_id:
-                candidate_pool = original_s2[: index + 1]
+                candidate_specs = candidate_specs[: index + 1]
                 break
+
+    if (
+        context.next_bracket_validator is not None
+        and len(ordered_players) <= _ODD_HOMOGENEOUS_REFINEMENT_SKIP_MAX_PLAYERS_WITH_NEXT_BRACKET
+    ):
+        if len(candidate_specs) <= _ODD_HOMOGENEOUS_C8_TAIL_SCAN_CANDIDATES:
+            return weighted_candidate
+        candidate_specs = candidate_specs[-_ODD_HOMOGENEOUS_C8_TAIL_SCAN_CANDIDATES:]
+    if len(ordered_players) > scan_max_players:
+        return weighted_candidate
+
     refinement_search_limit = min(
         sequential_search_max_players,
         _ODD_REFINEMENT_EXACT_SEARCH_MAX_PLAYERS,
@@ -1462,9 +1467,9 @@ def _refine_weighted_homogeneous_odd_candidate(
         players=ordered_players,
         candidate=weighted_candidate,
     )
-    best_generation_order = len(candidate_pool)
+    best_generation_order = len(original_s2)
 
-    for sequence_no, downfloater in enumerate(candidate_pool):
+    for sequence_no, downfloater in candidate_specs:
         if weighted_candidate.unresolved == (downfloater,):
             best_generation_order = sequence_no
             continue

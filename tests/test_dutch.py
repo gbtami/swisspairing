@@ -370,27 +370,45 @@ def test_homogeneous_odd_refinement_skips_feasibility_only_next_bracket_checks(
     assert refined is weighted_candidate
 
 
-def test_homogeneous_odd_refinement_skips_medium_c8_scan(
+def test_homogeneous_odd_refinement_scans_only_bounded_c8_tail(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    players = tuple(
+    bracket_players = tuple(
         _player(player_id=f"p{index}", pairing_no=index, score=2) for index in range(1, 12)
     )
     weighted_candidate = dutch._CandidateInternal(
-        pairings=tuple((players[index], players[index + 1]) for index in range(0, 10, 2)),
-        unresolved=(players[-1],),
+        pairings=tuple(
+            (bracket_players[index], bracket_players[index + 1]) for index in range(0, 10, 2)
+        ),
+        unresolved=(bracket_players[-1],),
         bye_player=None,
         sequence_no=0,
     )
 
-    def _unexpected_even_solve(*args: Any, **kwargs: Any) -> Any:
-        raise AssertionError("bounded C8 refinement should keep the weighted homogeneous candidate")
+    scanned_missing_ids: list[str] = []
+
+    def _bounded_even_solve(
+        players: Sequence[PlayerState],
+        *,
+        context: BracketContext,
+        sequential_search_max_players: int,
+    ) -> dutch._EvenPairingInternal:
+        del context, sequential_search_max_players
+        remaining_by_id = {player.player_id for player in players}
+        missing_ids = sorted({player.player_id for player in bracket_players} - remaining_by_id)
+        scanned_missing_ids.extend(missing_ids)
+        return dutch._EvenPairingInternal(
+            pairings=tuple(
+                (players[index], players[index + 1]) for index in range(0, len(players), 2)
+            ),
+            unresolved=(),
+        )
 
     dutch._refine_weighted_homogeneous_odd_candidate.cache_clear()
-    monkeypatch.setattr(dutch, "_solve_even_players", _unexpected_even_solve)
+    monkeypatch.setattr(dutch, "_solve_even_players", _bounded_even_solve)
     try:
         refined = dutch._refine_weighted_homogeneous_odd_candidate(
-            players,
+            bracket_players,
             context=BracketContext(
                 next_bracket_validator=lambda _: True,
                 next_bracket_key=lambda _: NextBracketKey(),
@@ -401,7 +419,8 @@ def test_homogeneous_odd_refinement_skips_medium_c8_scan(
     finally:
         dutch._refine_weighted_homogeneous_odd_candidate.cache_clear()
 
-    assert refined is weighted_candidate
+    assert refined is not None
+    assert scanned_missing_ids == ["p10"]
 
 
 def test_heterogeneous_odd_refinement_uses_tighter_c8_candidate_budget(
