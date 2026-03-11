@@ -1467,6 +1467,17 @@ def _solve_homogeneous_even_players_via_zero_exchange_exact_shortcut(
     )
 
 
+@cache
+def _solve_homogeneous_even_players_via_zero_exchange_exact_shortcut_cached(
+    players: tuple[PlayerState, ...],
+    initial_color: Color,
+) -> _EvenPairingInternal | None:
+    return _solve_homogeneous_even_players_via_zero_exchange_exact_shortcut(
+        players,
+        initial_color=initial_color,
+    )
+
+
 def _matching_to_candidate(
     matching: set[tuple[str, str]],
     *,
@@ -1987,9 +1998,9 @@ def _solve_even_players(
     )
 
     if not context.mdp_ids and not allow_heuristic_fallback:
-        exact_shortcut = _solve_homogeneous_even_players_via_zero_exchange_exact_shortcut(
-            players,
-            initial_color=context.initial_color,
+        exact_shortcut = _solve_homogeneous_even_players_via_zero_exchange_exact_shortcut_cached(
+            tuple(sorted(players, key=_player_rank_key)),
+            context.initial_color,
         )
         if exact_shortcut is not None:
             return exact_shortcut
@@ -2714,6 +2725,62 @@ def _solve_even_players_via_single_mdp_exact(
     )
 
 
+def _find_single_mdp_even_feasible_unresolved(
+    players: Sequence[PlayerState],
+    *,
+    context: BracketContext,
+    sequential_search_max_players: int,
+) -> tuple[PlayerState, ...] | None:
+    """Return one feasible unresolved set for an exact one-MDP even bracket."""
+    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    if len(ordered_players) % 2 != 0 or len(context.mdp_ids) != 1:
+        return None
+
+    mdps, residents = _split_mdps_and_residents(ordered_players, context=context)
+    if len(mdps) != 1 or not residents:
+        return None
+
+    mdp = mdps[0]
+    remainder_context = BracketContext(initial_color=context.initial_color)
+    bsn_by_player_id = {player.player_id: index + 1 for index, player in enumerate(ordered_players)}
+    unsupported_found = False
+
+    for s2_transposition in _iter_s2_transpositions(
+        s1=(mdp,),
+        s2=residents,
+        bsn_by_player_id=bsn_by_player_id,
+    ):
+        resident = s2_transposition[0]
+        if not _is_legal_pair(mdp, resident, context=context):
+            continue
+
+        remainder_players = tuple(sorted(s2_transposition[1:], key=_player_rank_key))
+        try:
+            remainder_result = _solve_even_players(
+                remainder_players,
+                context=remainder_context,
+                sequential_search_max_players=sequential_search_max_players,
+                allow_heuristic_fallback=False,
+            )
+        except ExactSearchUnavailableError:
+            unsupported_found = True
+            continue
+        except PairingError:
+            continue
+
+        unresolved = tuple(sorted(remainder_result.unresolved, key=_player_rank_key))
+        validator = context.next_bracket_validator
+        if validator is not None and not validator(unresolved):
+            continue
+        return unresolved
+
+    if unsupported_found:
+        raise ExactSearchUnavailableError(
+            "exact Dutch mode currently requires heuristic fallback for this even bracket"
+        )
+    return None
+
+
 def _solve_without_bye_candidate_uncached(
     players: tuple[PlayerState, ...],
     *,
@@ -2750,6 +2817,8 @@ def _solve_without_bye_candidate_uncached(
         sequential_search_max_players=sequential_search_max_players,
         exact_candidate_max=exact_candidate_max,
     )
+    if len(context.mdp_ids) == 1 and not allow_heuristic_fallback:
+        use_exact_heterogeneous = False
     if use_exact_heterogeneous:
         best_candidate = _select_best_candidate(
             _iter_heterogeneous_candidates(ordered_players, context=context),
@@ -2850,17 +2919,42 @@ def _solve_without_bye_candidate_uncached(
                     next_bracket_validator=context.next_bracket_validator,
                     next_bracket_key=context.next_bracket_key,
                 )
+            remainder_context = BracketContext(
+                mdp_ids=adjusted_context.mdp_ids,
+                initial_color=adjusted_context.initial_color,
+            )
 
             remainder_candidates: tuple[_CandidateInternal, ...]
-            if adjusted_context.mdp_ids and _use_heterogeneous_exact_search(
+            if len(remainder_context.mdp_ids) == 1 and not allow_heuristic_fallback:
+                try:
+                    even_result = _solve_even_players(
+                        rest,
+                        context=remainder_context,
+                        sequential_search_max_players=sequential_search_max_players,
+                        allow_heuristic_fallback=False,
+                    )
+                except ExactSearchUnavailableError:
+                    unsupported_found = True
+                    continue
+                except PairingError:
+                    continue
+                remainder_candidates = (
+                    _CandidateInternal(
+                        pairings=even_result.pairings,
+                        unresolved=even_result.unresolved,
+                        bye_player=None,
+                        sequence_no=0,
+                    ),
+                )
+            elif remainder_context.mdp_ids and _use_heterogeneous_exact_search(
                 len(rest),
-                mdp_count=len(adjusted_context.mdp_ids),
+                mdp_count=len(remainder_context.mdp_ids),
                 sequential_search_max_players=sequential_search_max_players,
                 exact_candidate_max=exact_candidate_max,
             ):
                 remainder_candidates = _iter_heterogeneous_candidates(
                     rest,
-                    context=adjusted_context,
+                    context=remainder_context,
                 )
             elif _use_homogeneous_exact_search(
                 len(rest),
@@ -2872,7 +2966,7 @@ def _solve_without_bye_candidate_uncached(
                 try:
                     even_result = _solve_even_players(
                         rest,
-                        context=adjusted_context,
+                        context=remainder_context,
                         sequential_search_max_players=sequential_search_max_players,
                         allow_heuristic_fallback=allow_heuristic_fallback,
                     )
@@ -3275,6 +3369,170 @@ def pair_bracket(
             unpaired_ids=unresolved_ids,
         ),
     )
+
+
+def bracket_is_feasible_exact(
+    players: Sequence[PlayerState],
+    *,
+    context: BracketContext | None = None,
+    allow_bye: bool = True,
+    sequential_search_max_players: int | None = None,
+    initial_color: Color = "white",
+) -> bool:
+    """Return whether one exact bracket solution exists under the given context."""
+    if len(players) == 0:
+        return True
+
+    local_context = _context_with_initial_color(context, initial_color=initial_color)
+    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    effective_search_limit = (
+        len(ordered_players)
+        if sequential_search_max_players is None
+        else sequential_search_max_players
+    )
+
+    if not allow_bye:
+        unsupported_found = False
+        score_groups_desc: list[tuple[PlayerState, ...]] = []
+        current_score_group: list[PlayerState] = []
+        current_score: int | None = None
+        for player in ordered_players:
+            if current_score is None or player.score != current_score:
+                if current_score_group:
+                    score_groups_desc.append(tuple(current_score_group))
+                current_score_group = [player]
+                current_score = player.score
+                continue
+            current_score_group.append(player)
+        if current_score_group:
+            score_groups_desc.append(tuple(current_score_group))
+
+        for downfloater_group in reversed(score_groups_desc):
+            for downfloater in downfloater_group:
+                rest = tuple(
+                    player
+                    for player in ordered_players
+                    if player.player_id != downfloater.player_id
+                )
+                adjusted_context = local_context
+                if downfloater.player_id in local_context.mdp_ids:
+                    adjusted_context = BracketContext(
+                        mdp_ids=local_context.mdp_ids - {downfloater.player_id},
+                        initial_color=local_context.initial_color,
+                        next_bracket_validator=local_context.next_bracket_validator,
+                        next_bracket_key=local_context.next_bracket_key,
+                    )
+                feasibility_context = adjusted_context
+                validator = local_context.next_bracket_validator
+                if validator is not None:
+
+                    def wrapped_validator(
+                        remainder_downfloaters: tuple[PlayerState, ...],
+                        *,
+                        chosen_downfloater: PlayerState = downfloater,
+                        validator_fn: NextBracketValidator = validator,
+                    ) -> bool:
+                        full_downfloaters = tuple(
+                            sorted(
+                                (*remainder_downfloaters, chosen_downfloater),
+                                key=_player_rank_key,
+                            )
+                        )
+                        return validator_fn(full_downfloaters)
+
+                    feasibility_context = BracketContext(
+                        mdp_ids=adjusted_context.mdp_ids,
+                        initial_color=adjusted_context.initial_color,
+                        next_bracket_validator=wrapped_validator,
+                    )
+
+                if len(feasibility_context.mdp_ids) == 1:
+                    try:
+                        unresolved = _find_single_mdp_even_feasible_unresolved(
+                            rest,
+                            context=feasibility_context,
+                            sequential_search_max_players=effective_search_limit,
+                        )
+                    except ExactSearchUnavailableError:
+                        unsupported_found = True
+                        continue
+                    if unresolved is not None:
+                        return True
+                    continue
+                try:
+                    even_result = _solve_even_players(
+                        rest,
+                        context=feasibility_context,
+                        sequential_search_max_players=effective_search_limit,
+                        allow_heuristic_fallback=False,
+                    )
+                except ExactSearchUnavailableError:
+                    unsupported_found = True
+                    continue
+                except PairingError:
+                    continue
+                if (
+                    feasibility_context.next_bracket_validator is not None
+                    and not feasibility_context.next_bracket_validator(
+                        tuple(sorted(even_result.unresolved, key=_player_rank_key))
+                    )
+                ):
+                    continue
+                return True
+
+        if unsupported_found:
+            raise ExactSearchUnavailableError(
+                "exact Dutch mode currently requires heuristic fallback for this odd bracket"
+            )
+        return False
+
+    if len(ordered_players) % 2 == 0:
+        even_result = _solve_even_players(
+            ordered_players,
+            context=local_context,
+            sequential_search_max_players=effective_search_limit,
+            allow_heuristic_fallback=False,
+        )
+        return not even_result.unresolved
+
+    bye_candidates = tuple(
+        sorted(
+            (
+                player
+                for player in ordered_players
+                if not player.is_pairing_allocated_bye_ineligible
+            ),
+            key=_player_rank_key,
+        )
+    )
+    if not bye_candidates:
+        return False
+
+    unsupported_found = False
+    for bye_candidate in reversed(bye_candidates):
+        rest = tuple(
+            player for player in ordered_players if player.player_id != bye_candidate.player_id
+        )
+        try:
+            even_result = _solve_even_players(
+                rest,
+                context=local_context,
+                sequential_search_max_players=effective_search_limit,
+                allow_heuristic_fallback=False,
+            )
+        except ExactSearchUnavailableError:
+            unsupported_found = True
+            continue
+        except PairingError:
+            continue
+        if not even_result.unresolved:
+            return True
+
+    if unsupported_found:
+        raise ExactSearchUnavailableError(
+            "exact Dutch mode currently requires heuristic fallback for this final bracket"
+        )
+    return False
 
 
 def pair_bracket_exact(

@@ -12,6 +12,7 @@ from functools import cache
 from swisspairing.dutch import (
     BracketContext,
     NextBracketKey,
+    bracket_is_feasible_exact,
     build_float_assignments,
     pair_bracket,
     pairing_result_next_bracket_local_key,
@@ -462,6 +463,7 @@ def pair_round_dutch(
 
                 next_tail_groups = tail_groups_snapshot[1:]
                 next_is_last_bracket = len(next_tail_groups) == 0
+                next_next_validator_cache: dict[tuple[PlayerState, ...], bool] = {}
 
                 if next_is_last_bracket:
                     try:
@@ -490,7 +492,60 @@ def pair_round_dutch(
                     ordered_next_downfloaters = tuple(
                         sorted(next_downfloaters, key=_player_rank_key)
                     )
-                    return solve(next_tail_groups, ordered_next_downfloaters) is not None
+                    if ordered_next_downfloaters in next_next_validator_cache:
+                        return next_next_validator_cache[ordered_next_downfloaters]
+                    next_next_players = tuple(
+                        sorted(
+                            (*ordered_next_downfloaters, *next_tail_groups[0]),
+                            key=_player_rank_key,
+                        )
+                    )
+                    if len(ordered_next_downfloaters) == 1 and len(next_next_players) % 2 == 1:
+                        future_tail_groups = next_tail_groups[1:]
+                        next_next_context = BracketContext(
+                            mdp_ids=frozenset(
+                                player.player_id for player in ordered_next_downfloaters
+                            ),
+                            initial_color=initial_color,
+                        )
+                        allow_bye_next = len(future_tail_groups) == 0
+                        if not allow_bye_next:
+
+                            def future_validator(
+                                future_downfloaters: tuple[PlayerState, ...],
+                            ) -> bool:
+                                ordered_future_downfloaters = tuple(
+                                    sorted(future_downfloaters, key=_player_rank_key)
+                                )
+                                return (
+                                    solve(
+                                        future_tail_groups,
+                                        ordered_future_downfloaters,
+                                    )
+                                    is not None
+                                )
+
+                            next_next_context = BracketContext(
+                                mdp_ids=next_next_context.mdp_ids,
+                                initial_color=initial_color,
+                                next_bracket_validator=future_validator,
+                            )
+                        try:
+                            result = bracket_is_feasible_exact(
+                                next_next_players,
+                                context=next_next_context,
+                                allow_bye=allow_bye_next,
+                                sequential_search_max_players=sequential_search_max_players,
+                                initial_color=initial_color,
+                            )
+                            next_next_validator_cache[ordered_next_downfloaters] = result
+                            return result
+                        except ExactSearchUnavailableError:
+                            next_next_validator_cache[ordered_next_downfloaters] = False
+                            return False
+                    result = solve(next_tail_groups, ordered_next_downfloaters) is not None
+                    next_next_validator_cache[ordered_next_downfloaters] = result
+                    return result
 
                 # C.04.3 [C8] compares the immediate next bracket's [C1]-[C7]
                 # outlook. Keep deeper brackets inside that next bracket's own
