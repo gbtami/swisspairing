@@ -5,8 +5,12 @@ from __future__ import annotations
 
 from swisspairing.dutch import (
     BracketContext,
+    _candidate_local_quality_key,
     _CandidateInternal,
     _choose_color_order,
+    _collect_mdp_quality,
+    _collect_pair_quality_counts,
+    _edge_penalty_components,
     _heterogeneous_exact_candidate_upper_bound,
     _heterogeneous_structural_tie_key,
     _homogeneous_article_order_key,
@@ -17,7 +21,7 @@ from swisspairing.dutch import (
     _use_heterogeneous_exact_search,
     _use_homogeneous_exact_search,
 )
-from swisspairing.model import Color, PlayerState
+from swisspairing.model import Color, FloatKind, PlayerState
 
 
 def _player(
@@ -27,6 +31,9 @@ def _player(
     score: int,
     color_history: tuple[Color, ...],
     opponents: frozenset[str] = frozenset(),
+    float_history: tuple[FloatKind, ...] = (),
+    is_top_scorer: bool = False,
+    is_topscorer_or_opponent: bool = False,
 ) -> PlayerState:
     return PlayerState(
         player_id=player_id,
@@ -34,6 +41,9 @@ def _player(
         score=score,
         color_history=color_history,
         opponents=opponents,
+        float_history=float_history,
+        is_top_scorer=is_top_scorer,
+        is_topscorer_or_opponent=is_topscorer_or_opponent,
     )
 
 
@@ -102,6 +112,77 @@ def test_choose_color_order_uses_article_5_2_5_initial_color_tie_break() -> None
     white, black = _choose_color_order(first, second, initial_color="black")
 
     assert (white.player_id, black.player_id) == ("p2", "p1")
+
+
+def test_candidate_local_quality_key_matches_pair_and_mdp_helpers() -> None:
+    mdp = _player(
+        player_id="p1",
+        pairing_no=1,
+        score=12,
+        color_history=("black", "white", "black"),
+        float_history=(FloatKind.DOWN, FloatKind.DOWN),
+        is_top_scorer=True,
+        is_topscorer_or_opponent=True,
+    )
+    resident = _player(
+        player_id="p2",
+        pairing_no=2,
+        score=10,
+        color_history=("white", "white"),
+        float_history=(FloatKind.UP, FloatKind.UP),
+        is_top_scorer=True,
+        is_topscorer_or_opponent=True,
+    )
+    left = _player(
+        player_id="p3",
+        pairing_no=3,
+        score=12,
+        color_history=("white",),
+        is_topscorer_or_opponent=True,
+    )
+    right = _player(
+        player_id="p4",
+        pairing_no=4,
+        score=12,
+        color_history=("black",),
+        is_topscorer_or_opponent=True,
+    )
+    downfloater = _player(
+        player_id="p5",
+        pairing_no=5,
+        score=10,
+        color_history=("black",),
+        float_history=(FloatKind.DOWN, FloatKind.DOWN),
+    )
+    candidate = _CandidateInternal(
+        pairings=((mdp, resident), (left, right)),
+        unresolved=(downfloater,),
+        bye_player=None,
+        sequence_no=7,
+    )
+    context = BracketContext(mdp_ids=frozenset({"p1"}), initial_color="white")
+    pair_components = tuple(
+        _edge_penalty_components(player_a, player_b, context=context)
+        for player_a, player_b in candidate.pairings
+    )
+
+    local_key = _candidate_local_quality_key(candidate, context.mdp_ids, context.initial_color)
+    c10, c11, c12, c13 = _collect_pair_quality_counts(pair_components)
+    c15, c17, c18, c19, c20, c21 = _collect_mdp_quality(pair_components=pair_components)
+    c14 = sum(
+        int(player.had_float(rounds_ago=1, kind=FloatKind.DOWN)) for player in candidate.unresolved
+    )
+    c16 = sum(
+        int(player.had_float(rounds_ago=2, kind=FloatKind.DOWN)) for player in candidate.unresolved
+    )
+
+    assert local_key[4] == 0
+    assert local_key[5:9] == (c10, c11, c12, c13)
+    assert local_key[9] == c14
+    assert local_key[10] == c15
+    assert local_key[11] == c16
+    assert local_key[12] == c17
+    assert local_key[13:17] == (c18, c19, c20, c21)
 
 
 def test_homogeneous_article_order_key_prefers_zero_exchange_candidate() -> None:

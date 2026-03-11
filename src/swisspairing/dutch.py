@@ -412,12 +412,24 @@ def _edge_penalty_components(
     *,
     context: BracketContext,
 ) -> tuple[int, int, int, int, int, int, int, int, int, int]:
-    """Return local penalty components mapped to [C10]-[C13], [C15], [C17]-[C21]."""
-    white, black = _choose_color_order(
+    return _edge_penalty_components_cached(
         player_a,
         player_b,
-        initial_color=context.initial_color,
+        context.mdp_ids,
+        context.initial_color,
     )
+
+
+@cache
+def _edge_penalty_components_cached(
+    player_a: PlayerState,
+    player_b: PlayerState,
+    mdp_ids: frozenset[str],
+    initial_color: Color,
+) -> tuple[int, int, int, int, int, int, int, int, int, int]:
+    """Return local penalty components mapped to [C10]-[C13], [C15], [C17]-[C21]."""
+    context = BracketContext(mdp_ids=mdp_ids, initial_color=initial_color)
+    white, black = _choose_color_order(player_a, player_b, initial_color=initial_color)
     c10, c11, c12, c13 = _pair_color_quality(white=white, black=black)
 
     c15 = 0
@@ -2261,18 +2273,17 @@ def _candidate_local_quality_key(
     int,
 ]:
     context = BracketContext(mdp_ids=mdp_ids, initial_color=initial_color)
-    oriented_pairs = tuple(
-        _choose_color_order(left, right, initial_color=initial_color)
-        for left, right in candidate.pairings
-    )
     downfloaters = _candidate_downfloaters(candidate)
+    pair_components = tuple(
+        _edge_penalty_components(left, right, context=context) for left, right in candidate.pairings
+    )
 
     c5 = candidate.bye_player.score if candidate.bye_player is not None else 0
     c6 = -len(candidate.pairings)
     c7 = tuple(player.score for player in sorted(downfloaters, key=lambda player: -player.score))
     c9 = candidate.bye_player.unplayed_games if candidate.bye_player is not None else 0
 
-    c10, c11, c12, c13 = _collect_pair_quality_counts(oriented_pairs)
+    c10, c11, c12, c13 = _collect_pair_quality_counts(pair_components)
 
     resident_downfloaters = tuple(
         player for player in downfloaters if player.player_id not in context.mdp_ids
@@ -2283,11 +2294,7 @@ def _candidate_local_quality_key(
     c16 = sum(
         int(player.had_float(rounds_ago=2, kind=FloatKind.DOWN)) for player in resident_downfloaters
     )
-
-    c15, c17, c18, c19, c20, c21 = _collect_mdp_quality(
-        oriented_pairs=oriented_pairs,
-        context=context,
-    )
+    c15, c17, c18, c19, c20, c21 = _collect_mdp_quality(pair_components=pair_components)
 
     return (
         downfloaters,
@@ -2354,14 +2361,13 @@ def _next_bracket_key_result(
 
 
 def _collect_pair_quality_counts(
-    oriented_pairs: Sequence[tuple[PlayerState, PlayerState]],
+    pair_components: Sequence[tuple[int, int, int, int, int, int, int, int, int, int]],
 ) -> tuple[int, int, int, int]:
     c10 = 0
     c11 = 0
     c12 = 0
     c13 = 0
-    for white, black in oriented_pairs:
-        p10, p11, p12, p13 = _pair_color_quality(white=white, black=black)
+    for p10, p11, p12, p13, _, _, _, _, _, _ in pair_components:
         c10 += p10
         c11 += p11
         c12 += p12
@@ -2371,8 +2377,7 @@ def _collect_pair_quality_counts(
 
 def _collect_mdp_quality(
     *,
-    oriented_pairs: Sequence[tuple[PlayerState, PlayerState]],
-    context: BracketContext,
+    pair_components: Sequence[tuple[int, int, int, int, int, int, int, int, int, int]],
 ) -> tuple[int, int, tuple[int, ...], tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
     c15 = 0
     c17 = 0
@@ -2381,23 +2386,17 @@ def _collect_mdp_quality(
     c20_values: list[int] = []
     c21_values: list[int] = []
 
-    for white, black in oriented_pairs:
-        mdp_pair = _mdp_and_opponent(white, black, context=context)
-        if mdp_pair is None:
-            continue
-        mdp_player, opponent = mdp_pair
-        score_difference = _pair_score_difference(mdp_player, opponent)
-
-        if opponent.had_float(rounds_ago=1, kind=FloatKind.UP):
-            c15 += 1
-            c19_values.append(score_difference)
-        if opponent.had_float(rounds_ago=2, kind=FloatKind.UP):
-            c17 += 1
-            c21_values.append(score_difference)
-        if mdp_player.had_float(rounds_ago=1, kind=FloatKind.DOWN):
-            c18_values.append(score_difference)
-        if mdp_player.had_float(rounds_ago=2, kind=FloatKind.DOWN):
-            c20_values.append(score_difference)
+    for _, _, _, _, p15, p17, p18, p19, p20, p21 in pair_components:
+        c15 += p15
+        c17 += p17
+        if p18:
+            c18_values.append(p18)
+        if p19:
+            c19_values.append(p19)
+        if p20:
+            c20_values.append(p20)
+        if p21:
+            c21_values.append(p21)
 
     return (
         c15,
@@ -2821,8 +2820,8 @@ def _solve_even_players_via_single_mdp_exact_uncached(
         next_bracket_key=context.next_bracket_key,
     )
     bsn_by_player_id = {player.player_id: index + 1 for index, player in enumerate(ordered_players)}
-    best_candidate: _CandidateInternal | None = None
-    best_key: tuple[object, ...] | None = None
+    best_candidates_by_unresolved: dict[tuple[PlayerState, ...], _CandidateInternal] = {}
+    best_local_keys_by_unresolved: dict[tuple[PlayerState, ...], tuple[object, ...]] = {}
     unsupported_found = False
 
     for sequence_no, s2_transposition in enumerate(
@@ -2859,6 +2858,20 @@ def _solve_even_players_via_single_mdp_exact_uncached(
             bye_player=None,
             sequence_no=sequence_no,
         )
+        unresolved_key = candidate.unresolved
+        local_key = _candidate_local_quality_key(
+            candidate,
+            context.mdp_ids,
+            context.initial_color,
+        )
+        best_local_key = best_local_keys_by_unresolved.get(unresolved_key)
+        if best_local_key is None or local_key < best_local_key:
+            best_local_keys_by_unresolved[unresolved_key] = local_key
+            best_candidates_by_unresolved[unresolved_key] = candidate
+
+    best_candidate: _CandidateInternal | None = None
+    best_key: tuple[object, ...] | None = None
+    for candidate in best_candidates_by_unresolved.values():
         candidate_key = _candidate_quality_key(candidate=candidate, context=context)
         if best_key is None or candidate_key < best_key:
             best_key = candidate_key
