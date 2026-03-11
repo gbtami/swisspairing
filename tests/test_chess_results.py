@@ -19,6 +19,7 @@ from swisspairing.benchmarking import (
     build_trf_unplayed_games_by_player_id,
     discover_bbp_executable,
     py4swiss_runtime_probe,
+    sort_pairings_for_compare,
 )
 from swisspairing.chess_results import (
     ChessResultsPairingRecord,
@@ -1069,6 +1070,38 @@ def test_budapest_group_b_fast_round_8_matches_engine_consensus() -> None:
     assert compare["reference_pairings_equal"] is True
     assert compare["pairings_equal_vs_py4swiss"] is True
     assert compare["pairings_equal_vs_bbp"] is True
+
+
+@pytest.mark.skipif(
+    not (_has_py4swiss_runtime() and _has_bbp_executable()),
+    reason=(
+        "active Python interpreter or bbpPairings runtime unavailable for Budapest Group B "
+        "reference checks"
+    ),
+)
+def test_budapest_group_b_exact_round_8_matches_engine_consensus() -> None:
+    manifest_path = _budapest_group_b_manifest_path()
+    round_entry = _budapest_group_b_round_entry(8)
+    trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
+
+    compare = _run_reference_compare(manifest_path.parent / cast(str, round_entry["trf"]))
+    assert compare["reference_pairings_equal"] is True
+
+    exact_result = pair_round_dutch_exact(
+        _budapest_group_b_states_for_round(8),
+        initial_color=build_trf_initial_color(trf),
+    )
+    exact_pairings = sort_pairings_for_compare(
+        [[pairing.white_id, pairing.black_id] for pairing in exact_result.pairings]
+    )
+    py4_pairings = cast(
+        list[list[str | None]],
+        cast(dict[str, Any], compare["py4swiss"])["pairings"],
+    )
+    bbp_pairings = cast(list[list[str | None]], cast(dict[str, Any], compare["bbp"])["pairings"])
+
+    assert exact_pairings == py4_pairings
+    assert exact_pairings == bbp_pairings
 
 
 @pytest.mark.skipif(

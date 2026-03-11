@@ -1195,6 +1195,57 @@ def _select_best_candidate(
     return best_candidate
 
 
+def _select_best_homogeneous_odd_candidate(
+    players: Sequence[PlayerState],
+    candidates: Sequence[_CandidateInternal],
+    *,
+    context: BracketContext,
+) -> _CandidateInternal | None:
+    """Select one odd homogeneous candidate with article-order tie-breaks."""
+    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    best_candidate: _CandidateInternal | None = None
+    best_key_without_generation: tuple[object, ...] | None = None
+    best_article_order_key: tuple[object, ...] | None = None
+    best_sequence_no: int | None = None
+
+    for candidate in candidates:
+        candidate_key = _candidate_quality_key(candidate=candidate, context=context)
+        key_without_generation = candidate_key[:-1]
+        article_order_key = _homogeneous_article_order_key(
+            players=ordered_players,
+            candidate=candidate,
+        )
+        sequence_no = candidate.sequence_no
+
+        if (
+            best_key_without_generation is None
+            or key_without_generation < best_key_without_generation
+        ):
+            best_key_without_generation = key_without_generation
+            best_article_order_key = article_order_key
+            best_sequence_no = sequence_no
+            best_candidate = candidate
+            continue
+
+        if key_without_generation > best_key_without_generation:
+            continue
+
+        if best_article_order_key is None or article_order_key < best_article_order_key:
+            best_article_order_key = article_order_key
+            best_sequence_no = sequence_no
+            best_candidate = candidate
+            continue
+
+        if article_order_key > best_article_order_key:
+            continue
+
+        if best_sequence_no is None or sequence_no < best_sequence_no:
+            best_sequence_no = sequence_no
+            best_candidate = candidate
+
+    return best_candidate
+
+
 def _iter_exact_final_bye_candidates(
     players: Sequence[PlayerState],
     *,
@@ -1953,6 +2004,87 @@ def _refine_weighted_single_mdp_odd_candidate(
             best_key = candidate_key
             best_candidate = candidate
 
+    return best_candidate
+
+
+def _solve_single_mdp_odd_exact(
+    players: Sequence[PlayerState],
+    *,
+    context: BracketContext,
+    sequential_search_max_players: int,
+) -> _CandidateInternal | None:
+    """Solve manageable odd one-MDP brackets in article order.
+
+    This keeps the current bracket's exact sequence closer to the handbook than
+    the generic unresolved-player-first scan by iterating the MDP resident
+    partner in article-4.2 order and exact-solving the odd homogeneous
+    remainder for each partner.
+    """
+    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    if len(ordered_players) % 2 == 0 or len(context.mdp_ids) != 1:
+        return None
+    if len(ordered_players) > _SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS:
+        return None
+
+    mdp = next((player for player in ordered_players if player.player_id in context.mdp_ids), None)
+    if mdp is None:
+        return None
+
+    residents = tuple(player for player in ordered_players if player.player_id != mdp.player_id)
+    bsn_by_player_id = {player.player_id: index + 1 for index, player in enumerate(ordered_players)}
+    remainder_context = BracketContext(
+        initial_color=context.initial_color,
+        next_bracket_validator=context.next_bracket_validator,
+        next_bracket_key=context.next_bracket_key,
+    )
+    best_candidate: _CandidateInternal | None = None
+    best_key: tuple[object, ...] | None = None
+    unsupported_found = False
+
+    for sequence_no, s2_transposition in enumerate(
+        _iter_s2_transpositions(
+            s1=(mdp,),
+            s2=residents,
+            bsn_by_player_id=bsn_by_player_id,
+        )
+    ):
+        resident = s2_transposition[0]
+        if not _is_legal_pair(mdp, resident, context=context):
+            continue
+        remainder_players = tuple(sorted(s2_transposition[1:], key=_player_rank_key))
+        try:
+            remainder_candidate = _solve_without_bye_candidate(
+                remainder_players,
+                context=remainder_context,
+                sequential_search_max_players=sequential_search_max_players,
+                allow_heuristic_fallback=False,
+            )
+        except ExactSearchUnavailableError:
+            unsupported_found = True
+            continue
+        except PairingError:
+            continue
+
+        candidate = _CandidateInternal(
+            pairings=tuple(
+                sorted(
+                    (*remainder_candidate.pairings, (mdp, resident)),
+                    key=_candidate_pair_sort_key,
+                )
+            ),
+            unresolved=remainder_candidate.unresolved,
+            bye_player=None,
+            sequence_no=sequence_no,
+        )
+        candidate_key = _candidate_quality_key(candidate=candidate, context=context)
+        if best_key is None or candidate_key < best_key:
+            best_key = candidate_key
+            best_candidate = candidate
+
+    if best_candidate is None and unsupported_found:
+        raise ExactSearchUnavailableError(
+            "exact Dutch mode currently requires heuristic fallback for this odd bracket"
+        )
     return best_candidate
 
 
@@ -3075,6 +3207,15 @@ def _solve_without_bye_candidate_uncached(
         if best_candidate is not None:
             return best_candidate
 
+    if len(context.mdp_ids) == 1 and not allow_heuristic_fallback:
+        single_mdp_odd_exact = _solve_single_mdp_odd_exact(
+            ordered_players,
+            context=context,
+            sequential_search_max_players=sequential_search_max_players,
+        )
+        if single_mdp_odd_exact is not None:
+            return single_mdp_odd_exact
+
     if allow_heuristic_fallback and (
         len(ordered_players) > sequential_search_max_players
         or (context.mdp_ids and not use_exact_heterogeneous)
@@ -3202,7 +3343,17 @@ def _solve_without_bye_candidate_uncached(
             )
 
             remainder_candidates: tuple[_CandidateInternal, ...]
-            if len(remainder_context.mdp_ids) == 1 and not allow_heuristic_fallback:
+            if remainder_context.mdp_ids and _use_heterogeneous_exact_search(
+                len(rest),
+                mdp_count=len(remainder_context.mdp_ids),
+                sequential_search_max_players=sequential_search_max_players,
+                exact_candidate_max=exact_candidate_max,
+            ):
+                remainder_candidates = _iter_heterogeneous_candidates(
+                    rest,
+                    context=remainder_context,
+                )
+            elif len(remainder_context.mdp_ids) == 1 and not allow_heuristic_fallback:
                 try:
                     even_result = _solve_even_players(
                         rest,
@@ -3222,16 +3373,6 @@ def _solve_without_bye_candidate_uncached(
                         bye_player=None,
                         sequence_no=0,
                     ),
-                )
-            elif remainder_context.mdp_ids and _use_heterogeneous_exact_search(
-                len(rest),
-                mdp_count=len(remainder_context.mdp_ids),
-                sequential_search_max_players=sequential_search_max_players,
-                exact_candidate_max=exact_candidate_max,
-            ):
-                remainder_candidates = _iter_heterogeneous_candidates(
-                    rest,
-                    context=remainder_context,
                 )
             elif _use_homogeneous_exact_search(
                 len(rest),
@@ -3279,7 +3420,14 @@ def _solve_without_bye_candidate_uncached(
                 sequence_no += 1
 
         if not allow_heuristic_fallback and group_candidates:
-            best_candidate = _select_best_candidate(group_candidates, context=context)
+            if not context.mdp_ids:
+                best_candidate = _select_best_homogeneous_odd_candidate(
+                    ordered_players,
+                    group_candidates,
+                    context=context,
+                )
+            else:
+                best_candidate = _select_best_candidate(group_candidates, context=context)
             if best_candidate is not None:
                 return best_candidate
 
