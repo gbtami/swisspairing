@@ -2816,66 +2816,101 @@ def _solve_without_bye_candidate_uncached(
             return refined_weighted_candidate
 
     generated: list[_CandidateInternal] = []
-    sequence_no = 0
     unsupported_found = False
-    for downfloater in ordered_players:
-        rest = tuple(
-            player for player in ordered_players if player.player_id != downfloater.player_id
-        )
-        adjusted_context = context
-        if downfloater.player_id in context.mdp_ids:
-            adjusted_context = BracketContext(
-                mdp_ids=context.mdp_ids - {downfloater.player_id},
-                initial_color=context.initial_color,
-                next_bracket_validator=context.next_bracket_validator,
-                next_bracket_key=context.next_bracket_key,
-            )
+    if allow_heuristic_fallback:
+        downfloater_groups = tuple((player,) for player in ordered_players)
+    else:
+        score_groups_desc: list[tuple[PlayerState, ...]] = []
+        current_score_group: list[PlayerState] = []
+        current_score: int | None = None
+        for player in ordered_players:
+            if current_score is None or player.score != current_score:
+                if current_score_group:
+                    score_groups_desc.append(tuple(current_score_group))
+                current_score_group = [player]
+                current_score = player.score
+                continue
+            current_score_group.append(player)
+        if current_score_group:
+            score_groups_desc.append(tuple(current_score_group))
+        downfloater_groups = tuple(reversed(score_groups_desc))
 
-        remainder_candidates: tuple[_CandidateInternal, ...]
-        if adjusted_context.mdp_ids and _use_heterogeneous_exact_search(
-            len(rest),
-            mdp_count=len(adjusted_context.mdp_ids),
-            sequential_search_max_players=sequential_search_max_players,
-            exact_candidate_max=exact_candidate_max,
-        ):
-            remainder_candidates = _iter_heterogeneous_candidates(rest, context=adjusted_context)
-        elif _use_homogeneous_exact_search(
-            len(rest),
-            sequential_search_max_players=sequential_search_max_players,
-            exact_candidate_max=exact_candidate_max,
-        ):
-            remainder_candidates = _iter_homogeneous_candidates(rest)
-        else:
-            try:
-                even_result = _solve_even_players(
+    for downfloater_group in downfloater_groups:
+        group_candidates: list[_CandidateInternal] = []
+        sequence_no = 0
+        for downfloater in downfloater_group:
+            rest = tuple(
+                player for player in ordered_players if player.player_id != downfloater.player_id
+            )
+            adjusted_context = context
+            if downfloater.player_id in context.mdp_ids:
+                adjusted_context = BracketContext(
+                    mdp_ids=context.mdp_ids - {downfloater.player_id},
+                    initial_color=context.initial_color,
+                    next_bracket_validator=context.next_bracket_validator,
+                    next_bracket_key=context.next_bracket_key,
+                )
+
+            remainder_candidates: tuple[_CandidateInternal, ...]
+            if adjusted_context.mdp_ids and _use_heterogeneous_exact_search(
+                len(rest),
+                mdp_count=len(adjusted_context.mdp_ids),
+                sequential_search_max_players=sequential_search_max_players,
+                exact_candidate_max=exact_candidate_max,
+            ):
+                remainder_candidates = _iter_heterogeneous_candidates(
                     rest,
                     context=adjusted_context,
-                    sequential_search_max_players=sequential_search_max_players,
-                    allow_heuristic_fallback=allow_heuristic_fallback,
                 )
-            except ExactSearchUnavailableError:
-                unsupported_found = True
-                continue
-            remainder_candidates = (
-                _CandidateInternal(
-                    pairings=even_result.pairings,
-                    unresolved=even_result.unresolved,
-                    bye_player=None,
-                    sequence_no=0,
-                ),
-            )
+            elif _use_homogeneous_exact_search(
+                len(rest),
+                sequential_search_max_players=sequential_search_max_players,
+                exact_candidate_max=exact_candidate_max,
+            ):
+                remainder_candidates = _iter_homogeneous_candidates(rest)
+            else:
+                try:
+                    even_result = _solve_even_players(
+                        rest,
+                        context=adjusted_context,
+                        sequential_search_max_players=sequential_search_max_players,
+                        allow_heuristic_fallback=allow_heuristic_fallback,
+                    )
+                except ExactSearchUnavailableError:
+                    unsupported_found = True
+                    continue
+                remainder_candidates = (
+                    _CandidateInternal(
+                        pairings=even_result.pairings,
+                        unresolved=even_result.unresolved,
+                        bye_player=None,
+                        sequence_no=0,
+                    ),
+                )
 
-        for remainder in remainder_candidates:
-            unresolved = tuple(sorted((*remainder.unresolved, downfloater), key=_player_rank_key))
-            generated.append(
-                _CandidateInternal(
+            for remainder in remainder_candidates:
+                unresolved = tuple(
+                    sorted(
+                        (*remainder.unresolved, downfloater),
+                        key=_player_rank_key,
+                    )
+                )
+                candidate = _CandidateInternal(
                     pairings=remainder.pairings,
                     unresolved=unresolved,
                     bye_player=None,
                     sequence_no=sequence_no,
                 )
-            )
-            sequence_no += 1
+                if allow_heuristic_fallback:
+                    generated.append(candidate)
+                else:
+                    group_candidates.append(candidate)
+                sequence_no += 1
+
+        if not allow_heuristic_fallback and group_candidates:
+            best_candidate = _select_best_candidate(group_candidates, context=context)
+            if best_candidate is not None:
+                return best_candidate
 
     best_candidate = _select_best_candidate(generated, context=context)
     if best_candidate is None:

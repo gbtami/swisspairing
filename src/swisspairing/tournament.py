@@ -467,25 +467,6 @@ def pair_round_dutch(
                 )
                 next_mdp_ids = frozenset(player.player_id for player in ordered_downfloaters)
 
-                if not allow_heuristic_fallback:
-                    tail_solution = solve(tail_groups_snapshot, ordered_downfloaters)
-                    if tail_solution is None or tail_solution.first_result is None:
-                        next_bracket_key_cache_snapshot[ordered_downfloaters] = None
-                        return None
-                    next_key = NextBracketKey(
-                        local=pairing_result_next_bracket_local_key(
-                            players=tail_solution.first_players or next_players,
-                            result=tail_solution.first_result,
-                            context=BracketContext(
-                                mdp_ids=next_mdp_ids,
-                                initial_color=initial_color,
-                            ),
-                        ),
-                        future_game_counts=tail_solution.bracket_game_counts[1:],
-                    )
-                    next_bracket_key_cache_snapshot[ordered_downfloaters] = next_key
-                    return next_key
-
                 next_tail_groups = tail_groups_snapshot[1:]
                 next_is_last_bracket = len(next_tail_groups) == 0
 
@@ -524,9 +505,10 @@ def pair_round_dutch(
                     )
                     return solve(next_tail_groups, ordered_next_downfloaters) is not None
 
-                # Preserve C8 feasibility pruning, but stop the tie-break key
-                # at the immediate next bracket to avoid medium-size collapse
-                # search blow-ups from recursive downstream key expansion.
+                # C.04.3 [C8] compares the immediate next bracket's [C1]-[C7]
+                # outlook. Keep deeper brackets inside that next bracket's own
+                # exact solve instead of reusing them again as an extra current-
+                # bracket tie-break surface.
                 try:
                     next_result = _pair_bracket_with_optional_limit(
                         next_players,

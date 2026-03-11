@@ -124,7 +124,7 @@ def test_pair_round_dutch_exact_expands_medium_even_budget() -> None:
     assert {p1_pair.white_id, p1_pair.black_id} & {"p2", "p3", "p4", "p5"}
 
 
-def test_pair_round_dutch_exact_uses_full_tail_for_c8_key(
+def test_pair_round_dutch_exact_uses_immediate_next_bracket_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     players = (
@@ -188,7 +188,7 @@ def test_pair_round_dutch_exact_uses_full_tail_for_c8_key(
     result = pair_round_dutch_exact(players)
 
     assert result.unpaired_ids == ()
-    assert observed["future_game_counts"] == (2,)
+    assert observed["future_game_counts"] == ()
 
 
 def test_pair_round_dutch_exact_handles_collapsed_tail_c8_key() -> None:

@@ -222,6 +222,51 @@ def test_pair_bracket_exact_solves_large_single_mdp_even_bracket() -> None:
     assert mdp_pair.black_id is not None
 
 
+def test_pair_bracket_exact_odd_scan_stops_after_lowest_score_group(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    players = (
+        _player(player_id="m1", pairing_no=1, score=6),
+        *tuple(_player(player_id=f"p{index}", pairing_no=index, score=5) for index in range(2, 8)),
+        *tuple(_player(player_id=f"p{index}", pairing_no=index, score=4) for index in range(8, 15)),
+        *tuple(
+            _player(player_id=f"p{index}", pairing_no=index, score=3) for index in range(15, 21)
+        ),
+        _player(player_id="p21", pairing_no=21, score=2),
+    )
+    full_ids = frozenset(player.player_id for player in players)
+    seen_downfloaters: list[str] = []
+    original_solve_even = dutch._solve_even_players
+
+    def wrapped_solve_even(
+        even_players: Sequence[PlayerState],
+        *,
+        context: BracketContext,
+        sequential_search_max_players: int = 12,
+        allow_heuristic_fallback: bool = True,
+    ) -> dutch._EvenPairingInternal:
+        if len(even_players) == len(players) - 1:
+            missing_id = next(iter(full_ids - {player.player_id for player in even_players}))
+            seen_downfloaters.append(missing_id)
+        return original_solve_even(
+            even_players,
+            context=context,
+            sequential_search_max_players=sequential_search_max_players,
+            allow_heuristic_fallback=allow_heuristic_fallback,
+        )
+
+    monkeypatch.setattr(dutch, "_solve_even_players", wrapped_solve_even)
+
+    result = pair_bracket_exact(
+        players,
+        context=BracketContext(mdp_ids=frozenset({"m1"})),
+        allow_bye=False,
+    )
+
+    assert result.unpaired_ids == ("p21",)
+    assert seen_downfloaters == ["p21"]
+
+
 def test_pair_bracket_prevents_rematch_under_c0401_rule_2() -> None:
     # C.04.1 rule 2: players shall not meet the same opponent twice.
     players = (
