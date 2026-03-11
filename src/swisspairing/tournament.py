@@ -136,7 +136,7 @@ def _pair_bracket_with_optional_limit(
     initial_color: Color,
     allow_heuristic_fallback: bool = True,
 ) -> PairingResult:
-    if sequential_search_max_players is None:
+    if sequential_search_max_players is None and allow_heuristic_fallback:
         return pair_bracket(
             players,
             context=context,
@@ -144,11 +144,14 @@ def _pair_bracket_with_optional_limit(
             initial_color=initial_color,
             allow_heuristic_fallback=allow_heuristic_fallback,
         )
+    exact_or_explicit_limit = (
+        len(players) if sequential_search_max_players is None else sequential_search_max_players
+    )
     return pair_bracket(
         players,
         context=context,
         allow_bye=allow_bye,
-        sequential_search_max_players=sequential_search_max_players,
+        sequential_search_max_players=exact_or_explicit_limit,
         initial_color=initial_color,
         allow_heuristic_fallback=allow_heuristic_fallback,
     )
@@ -622,7 +625,8 @@ def pair_round_dutch_exact(
     This currently exposes the exact-search surface already implemented in the
     bracket and round pipeline. When the solver would need weighted or greedy
     approximations, it raises `PairingError` instead of silently switching
-    search policy.
+    search policy. When no explicit search limit is provided, exact mode uses
+    the current bracket size rather than the old public 12-player cap.
     """
     return pair_round_dutch(
         players,

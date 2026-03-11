@@ -120,6 +120,33 @@ def test_pair_bracket_exact_raises_when_current_solver_needs_heuristic_fallback(
         pair_bracket_exact(players)
 
 
+def test_pair_bracket_exact_ignores_public_sequence_cap_by_default() -> None:
+    players = tuple(
+        _player(
+            player_id=f"p{index}",
+            pairing_no=index,
+            score=3 if index <= 9 else 2,
+        )
+        for index in range(1, 14)
+    )
+    context = BracketContext(mdp_ids=frozenset({f"p{index}" for index in range(1, 10)}))
+
+    exact_result = pair_bracket_exact(
+        players,
+        context=context,
+        allow_bye=False,
+    )
+    explicit_result = pair_bracket(
+        players,
+        context=context,
+        allow_bye=False,
+        sequential_search_max_players=13,
+        allow_heuristic_fallback=False,
+    )
+
+    assert exact_result == explicit_result
+
+
 def test_pair_bracket_prevents_rematch_under_c0401_rule_2() -> None:
     # C.04.1 rule 2: players shall not meet the same opponent twice.
     players = (

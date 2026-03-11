@@ -2916,7 +2916,7 @@ def pair_bracket_exact(
     *,
     context: BracketContext | None = None,
     allow_bye: bool = True,
-    sequential_search_max_players: int = _SEQUENTIAL_SEARCH_MAX_PLAYERS,
+    sequential_search_max_players: int | None = None,
     initial_color: Color = "white",
 ) -> PairingResult:
     """Pair one bracket without heuristic fallback.
@@ -2925,12 +2925,15 @@ def pair_bracket_exact(
     current exact-search surface and raises `PairingError` when the solver
     would otherwise switch to weighted or greedy approximations.
     """
+    exact_search_max_players = (
+        len(players) if sequential_search_max_players is None else sequential_search_max_players
+    )
     try:
         return pair_bracket(
             players,
             context=context,
             allow_bye=allow_bye,
-            sequential_search_max_players=sequential_search_max_players,
+            sequential_search_max_players=exact_search_max_players,
             initial_color=initial_color,
             allow_heuristic_fallback=False,
         )

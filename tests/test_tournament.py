@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+import swisspairing.tournament as tournament
 from swisspairing.exceptions import PairingError
 from swisspairing.model import FloatAssignment, FloatKind, Pairing, PlayerState
 from swisspairing.tournament import (
@@ -80,6 +81,48 @@ def test_pair_round_dutch_exact_raises_when_current_solver_needs_heuristic_fallb
     assert result.unpaired_ids == ()
     with pytest.raises(PairingError, match="heuristic fallback"):
         pair_round_dutch_exact(players)
+
+
+def test_pair_round_dutch_exact_uses_bracket_size_when_no_explicit_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    players = tuple(
+        _player(player_id=f"p{index}", pairing_no=index, score=0) for index in range(1, 14)
+    )
+    captured: dict[str, int | bool | None] = {}
+
+    def fake_pair_bracket(
+        bracket_players: tuple[PlayerState, ...],
+        *,
+        context: object | None = None,
+        allow_bye: bool = True,
+        sequential_search_max_players: int = 12,
+        initial_color: str = "white",
+        allow_heuristic_fallback: bool = True,
+    ) -> tournament.PairingResult:
+        del context, allow_bye, initial_color
+        captured["count"] = len(bracket_players)
+        captured["limit"] = sequential_search_max_players
+        captured["allow_heuristic_fallback"] = allow_heuristic_fallback
+        return tournament.PairingResult(
+            pairings=tuple(
+                Pairing(white_id=f"p{index}", black_id=f"p{index + 6}") for index in range(1, 7)
+            )
+            + (Pairing(white_id="p13", black_id=None),),
+            unpaired_ids=(),
+            float_assignments=(),
+        )
+
+    monkeypatch.setattr(tournament, "pair_bracket", fake_pair_bracket)
+
+    result = pair_round_dutch_exact(players)
+
+    assert result.unpaired_ids == ()
+    assert captured == {
+        "count": 13,
+        "limit": 13,
+        "allow_heuristic_fallback": False,
+    }
 
 
 def test_pair_round_dutch_raises_when_last_bracket_cannot_be_fully_paired() -> None:
