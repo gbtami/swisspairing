@@ -214,9 +214,10 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     integrations can move from manual local wheel reinstalls to tagged
     TestPyPI / PyPI releases.
   - Extend the real-world OTB corpus beyond the current
-    Aeroflot/Prague/Budapest/Graz set. After switching the harness to
-    TRF-derived float history, no checked real-world TRF corpus currently
-    shows an unexplained `swisspairing` vs `bbpPairings` disagreement.
+    Aeroflot/Prague/Budapest/Graz/Budapest-Group-B set. After switching the
+    harness to TRF-derived float history, the new Budapest Group B corpus now
+    exposes one clean consensus-engine miss (round 8) plus split-reference
+    cases on rounds 4 / 5 / 9.
   - Deploy the pychess integration behind the existing backend switch, then
     evaluate the default-backend flip after production evidence rather than
     from more local soak expansion alone.

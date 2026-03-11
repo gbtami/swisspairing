@@ -95,6 +95,8 @@ Key fixture directories:
   Real-world OTB corpus from Prague International Chess Festival 2026 D.
 - `benchmarks/fixtures/chess_results/budapest_spring_festival_2026_group_a_2200`
   Real-world OTB corpus from Budapest Spring Festival 2026 Group A.
+- `benchmarks/fixtures/chess_results/budapest_spring_festival_2026_group_b_2250`
+  Real-world OTB corpus from Budapest Spring Festival 2026 Group B.
 - `benchmarks/fixtures/chess_results/international_chessopen_graz_2026_a`
   Real-world OTB corpus from International Chessopen Graz 2026 A.
 - `benchmarks/fixtures/lichess`
@@ -364,6 +366,7 @@ benchmarks/import_lichess_fixtures.sh
   `benchmarks/fixtures/chess_results/aeroflot_open_2026`,
   `benchmarks/fixtures/chess_results/prague_international_chess_festival_2026_d`,
   `benchmarks/fixtures/chess_results/budapest_spring_festival_2026_group_a_2200`,
+  `benchmarks/fixtures/chess_results/budapest_spring_festival_2026_group_b_2250`,
   and `benchmarks/fixtures/chess_results/international_chessopen_graz_2026_a`.
 - Aeroflot rounds 1-3 published-pairing regressions are already fixed and
   covered in `tests/test_chess_results.py`.
@@ -373,6 +376,11 @@ benchmarks/import_lichess_fixtures.sh
   float history is derived from the TRF instead of inherited from
   `py4swiss`; the earlier round-7 fast-mode-only `swisspairing` divergence is
   fixed.
+- On the checked Budapest Group B corpus, round 8 is the strongest new local
+  issue: `bbpPairings`, `py4swiss`, and `JaVaFo` agree there while
+  `swisspairing` currently disagrees with all three. Rounds 4 / 5 / 9 are
+  split-reference cases where `py4swiss` + `JaVaFo` agree with each other,
+  `bbpPairings` differs, and `swisspairing` currently matches neither side.
 - On the checked Graz corpus, `swisspairing` now matches `bbpPairings`,
   `py4swiss`, and `JaVaFo` on all 9 rounds, and the earlier round-1 runtime
   tail is closed out by the direct trivial-first-round bracket path.
@@ -424,6 +432,12 @@ Current practical default:
   derived from the TRF instead of inherited from `py4swiss`. In all of those
   cases, `py4swiss` and the checked public JaVaFo release still agree with
   each other on a different pairing.
+- Budapest Spring Festival 2026 Group B round 8 is the cleanest new
+  consensus-engine miss: `bbpPairings`, `py4swiss`, and the checked public
+  JaVaFo release all agree there while `swisspairing` currently differs.
+  Group B rounds 4 / 5 / 9 are also useful, but they are split-reference
+  cases: `py4swiss` + `JaVaFo` on one side, `bbpPairings` on the other, and
+  `swisspairing` currently matches neither side.
 - The public Lichess Swiss lineage is the `cyanfish/bbpPairings` fork
   (`https://github.com/cyanfish/bbpPairings`); its README says the fork is for
   use by Lichess on large Swiss tournaments. Treat Lichess fixture agreement as
