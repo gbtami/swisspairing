@@ -1,4 +1,4 @@
-"""Helpers for benchmark reporting, SLA checks, and runtime probing."""
+"""Helpers for benchmark reporting, regression guardrails, and runtime probing."""
 
 from __future__ import annotations
 
@@ -26,7 +26,12 @@ _LENIENT_TRF16_XXR_MODES = frozenset({"preserve", "bbp-next-round"})
 
 @dataclass(frozen=True, slots=True)
 class BenchmarkSLA:
-    """Optional SLA thresholds for benchmark summaries."""
+    """Optional benchmark guardrails for synthetic summary checks.
+
+    These thresholds are useful for spotting accidental runtime regressions in
+    the current pragmatic benchmark profiles. They are not a normative sign-off
+    for exact/FIDE correctness.
+    """
 
     min_fast_success_rate: float | None = None
     max_runner_error_rate: float | None = None
@@ -36,6 +41,10 @@ class BenchmarkSLA:
 
 
 RECURRING_SYNTHETIC_SLA_PRESETS: dict[str, dict[int, BenchmarkSLA]] = {
+    # Synthetic recurring presets are fast-path regression guardrails. Exact
+    # solver work should be evaluated primarily against checked rule/corpus
+    # behavior and real-world exact runtimes, not against holding these values
+    # constant forever.
     # Current recommended recurring synthetic baseline after bounding the
     # medium-size [C8] odd-refinement tails and keeping the p512 sweep.
     "post-bounded-c8-20260311": {

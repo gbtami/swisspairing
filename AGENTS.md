@@ -32,13 +32,16 @@ case as a likely upstream-report candidate.
 
 ## Current State
 
-As of 2026-03-10, the repo already has:
+As of 2026-03-11, the repo already has:
 
 - round-level Dutch pairing with bracket chaining
 - typed pychess adapter helpers
 - parity and benchmark harnesses against `py4swiss`, `bbpPairings`, and
   optional `JaVaFo`
 - checked-in synthetic, BBP-imported, and multiple real-world OTB fixture corpora
+- an explicit exact/FIDE mode boundary, with the current checked exact path
+  now handling the main real-world OTB stress cases without the earlier
+  timeout failures
 
 Current validation expectation:
 
@@ -288,9 +291,14 @@ Current default size sweep:
 
 - `16,32,64,128,256,512`
 
-Current checked-in SLA preset:
+Current checked-in synthetic guardrail preset:
 
 - `post-bounded-c8-20260311`
+
+Treat this preset as a regression alarm for the current pragmatic fast-path
+benchmark profile, not as a release gate for exact/FIDE mode. For exact-mode
+work, prefer real-world exact runtimes and checked rule/corpus behavior over
+holding an older synthetic fast-path SLA constant.
 
 Command:
 
@@ -414,6 +422,13 @@ Current practical default:
 
 - `fast` mode with cap `6`
 
+Current architectural direction:
+
+- exact/FIDE mode is the canonical solver target in this repo
+- `fast` remains an operational compatibility mode for downstream integration
+  and synthetic benchmark guardrails while the exact path is still being
+  cleaned up
+
 ## Known Reference Findings
 
 - `dutch_2025_C5` is the clearest local case where `bbpPairings` and
@@ -488,4 +503,6 @@ uv run pytest
 - If a performance-related change touches the fast path, also rerun the
   relevant benchmark or recurring baseline slice instead of assuming the old
   preset still describes current behavior.
+- For exact-mode work, prioritize checked real-world exact timings and solver
+  behavior over preserving synthetic fast-path numbers.
 - Do not move AGENTS-level workflow detail back into `README.md`.

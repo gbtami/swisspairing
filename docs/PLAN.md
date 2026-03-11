@@ -16,6 +16,9 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
 - Initial target scale: up to ~300 active players.
 - Architecture principle: staged optimization aligned with FIDE criterion
   priority ordering.
+- Current direction: exact/FIDE mode is the canonical target; synthetic
+  fast-path baselines are guardrails against accidental regressions, not the
+  main success metric.
 
 ## Milestones
 
@@ -45,7 +48,7 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
 - 2026-rule conformance suites driven from frozen tournament fixtures.
 - Performance profiling and bounded-time stress tests (200-300 player targets).
 
-## Progress Snapshot (2026-03-10)
+## Progress Snapshot (2026-03-11)
 
 - Completed:
   - [C5]-[C21] candidate key implemented in bracket solver.
@@ -208,8 +211,19 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     documented for downstream projects, and CI installs the built wheel into a
     fresh virtualenv and exercises a small import/pairing smoke test on Python
     3.12, 3.13, and 3.14.
+  - Exact/FIDE mode now has an explicit public boundary
+    (`pair_bracket_exact`, `pair_round_dutch_exact`) and no longer times out
+    on the checked Aeroflot/Graz/Budapest OTB stress cases.
+  - Recent exact-path work now caches sequence-independent pair penalties and
+    removes duplicate canonical exact candidates early, which cut the main
+    remaining Budapest Group B round-5 cold exact case from about `7.5s` to
+    about `2.2s`.
   - Extended unit-test coverage for criteria and sequence behavior.
 - Next:
+  - Keep exact/FIDE correctness as the primary target and treat recurring
+    synthetic fast-path SLAs as regression alarms only. Future exact work
+    should be judged mainly on rule conformance, checked corpus behavior, and
+    real-world exact runtimes.
   - Publish/package `swisspairing` for downstream consumption so downstream
     integrations can move from manual local wheel reinstalls to tagged
     TestPyPI / PyPI releases.

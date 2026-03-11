@@ -249,8 +249,8 @@ uv run python benchmarks/run_recurring_baselines.py \
   --timeout-seconds 120
 ```
 
-Apply the calibrated recurring synthetic SLA preset from the current checked-in
-`post-bounded-c8-20260311` baseline:
+Apply the calibrated recurring synthetic guardrail preset from the current
+checked-in `post-bounded-c8-20260311` baseline:
 
 ```bash
 uv run python benchmarks/run_recurring_baselines.py \
@@ -313,6 +313,10 @@ Output artifacts:
   pipeline. After a material pairing-path change, add a new checked-in
   baseline run plus a new preset name rather than silently retuning an older
   preset.
+- Treat recurring synthetic presets as fast-path regression guardrails, not as
+  release criteria for exact/FIDE mode. Exact-mode work may legitimately
+  relax or obsolete a fast-path preset if the checked rulebook/corpus behavior
+  improves and real-world exact runtimes stay practical.
 - Recurring baseline trend rows include run id, profile size, exported fixture
   counts, runner error rate, both-ok case counts, fast+strict success/equality
   rates, p50/p95 timings, ratios, calibrated SLA pass/fail status, and git
