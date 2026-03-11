@@ -301,10 +301,10 @@ def test_pair_bracket_exact_single_mdp_even_honors_next_bracket_validator(
 
     assert result is not None
     assert tuple(player.player_id for player in result.unresolved) == ("c", "d")
-    assert {
-        frozenset({left.player_id, right.player_id})
-        for left, right in result.pairings
-    } == {frozenset({"m", "b"}), frozenset({"a", "e"})}
+    assert {frozenset({left.player_id, right.player_id}) for left, right in result.pairings} == {
+        frozenset({"m", "b"}),
+        frozenset({"a", "e"}),
+    }
 
 
 def test_pair_bracket_exact_odd_scan_stops_after_lowest_score_group(

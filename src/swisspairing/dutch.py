@@ -1288,6 +1288,23 @@ def _solve_even_players_via_sequence_uncached(
     )
 
 
+@cache
+def _solve_even_players_via_sequence_with_context_cached(
+    players: tuple[PlayerState, ...],
+    initial_color: Color,
+    next_bracket_validator: NextBracketValidator | None,
+    next_bracket_key: NextBracketKeyFn | None,
+) -> _EvenPairingInternal | None:
+    return _solve_even_players_via_sequence_uncached(
+        players,
+        context=BracketContext(
+            initial_color=initial_color,
+            next_bracket_validator=next_bracket_validator,
+            next_bracket_key=next_bracket_key,
+        ),
+    )
+
+
 def _solve_even_players_via_sequence(
     players: Sequence[PlayerState],
     *,
@@ -1299,9 +1316,11 @@ def _solve_even_players_via_sequence(
             ordered_players,
             context.initial_color,
         )
-    return _solve_even_players_via_sequence_uncached(
+    return _solve_even_players_via_sequence_with_context_cached(
         ordered_players,
-        context=context,
+        context.initial_color,
+        context.next_bracket_validator,
+        context.next_bracket_key,
     )
 
 
@@ -2301,7 +2320,15 @@ def _next_bracket_c1_to_c7_violation(
     validator = context.next_bracket_validator
     if validator is None:
         return 0
-    return 0 if validator(downfloaters) else 1
+    return 0 if _next_bracket_validator_result(validator, downfloaters) else 1
+
+
+@cache
+def _next_bracket_validator_result(
+    validator: NextBracketValidator,
+    downfloaters: tuple[PlayerState, ...],
+) -> bool:
+    return validator(downfloaters)
 
 
 def _next_bracket_key(
@@ -2312,10 +2339,18 @@ def _next_bracket_key(
     key_fn = context.next_bracket_key
     if key_fn is None:
         return NextBracketKey()
-    key = key_fn(downfloaters)
+    key = _next_bracket_key_result(key_fn, downfloaters)
     if key is None:
         return NextBracketKey()
     return key
+
+
+@cache
+def _next_bracket_key_result(
+    key_fn: NextBracketKeyFn,
+    downfloaters: tuple[PlayerState, ...],
+) -> NextBracketKey | None:
+    return key_fn(downfloaters)
 
 
 def _collect_pair_quality_counts(
@@ -2842,6 +2877,25 @@ def _solve_even_players_via_single_mdp_exact_uncached(
     )
 
 
+@cache
+def _solve_even_players_via_single_mdp_exact_with_context_cached(
+    players: tuple[PlayerState, ...],
+    mdp_ids: frozenset[str],
+    initial_color: Color,
+    next_bracket_validator: NextBracketValidator | None,
+    next_bracket_key: NextBracketKeyFn | None,
+) -> _EvenPairingInternal | None:
+    return _solve_even_players_via_single_mdp_exact_uncached(
+        players,
+        context=BracketContext(
+            mdp_ids=mdp_ids,
+            initial_color=initial_color,
+            next_bracket_validator=next_bracket_validator,
+            next_bracket_key=next_bracket_key,
+        ),
+    )
+
+
 def _solve_even_players_via_single_mdp_exact(
     players: Sequence[PlayerState],
     *,
@@ -2854,9 +2908,12 @@ def _solve_even_players_via_single_mdp_exact(
             context.mdp_ids,
             context.initial_color,
         )
-    return _solve_even_players_via_single_mdp_exact_uncached(
+    return _solve_even_players_via_single_mdp_exact_with_context_cached(
         ordered_players,
-        context=context,
+        context.mdp_ids,
+        context.initial_color,
+        context.next_bracket_validator,
+        context.next_bracket_key,
     )
 
 
