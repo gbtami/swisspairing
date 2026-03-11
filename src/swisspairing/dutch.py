@@ -1144,10 +1144,31 @@ def _select_best_candidate(
     *,
     context: BracketContext,
 ) -> _CandidateInternal | None:
+    unique_candidates: dict[
+        tuple[tuple[tuple[str, str], ...], tuple[str, ...], str | None],
+        _CandidateInternal,
+    ] = {}
+    for candidate in candidates:
+        canonical_pairs = tuple(
+            sorted(
+                cast(
+                    tuple[str, str],
+                    tuple(sorted((left.player_id, right.player_id))),
+                )
+                for left, right in candidate.pairings
+            )
+        )
+        unresolved_ids = tuple(player.player_id for player in candidate.unresolved)
+        bye_id = None if candidate.bye_player is None else candidate.bye_player.player_id
+        shape_key = (canonical_pairs, unresolved_ids, bye_id)
+        current = unique_candidates.get(shape_key)
+        if current is None or candidate.sequence_no < current.sequence_no:
+            unique_candidates[shape_key] = candidate
+
     best_candidate: _CandidateInternal | None = None
     best_key: tuple[object, ...] | None = None
 
-    for candidate in candidates:
+    for candidate in unique_candidates.values():
         candidate_key = _candidate_quality_key(candidate=candidate, context=context)
         selection_key: tuple[object, ...]
         if len(context.mdp_ids) > 1 and not candidate.unresolved and candidate.bye_player is None:

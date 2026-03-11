@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from swisspairing.dutch import (
     BracketContext,
     _candidate_local_quality_key,
@@ -309,6 +311,70 @@ def test_single_mdp_heterogeneous_tie_keeps_article_sequence_order() -> None:
         )
         == article_first
     )
+
+
+def test_select_best_candidate_deduplicates_canonical_pair_shapes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first = _player(player_id="p1", pairing_no=1, score=3, color_history=())
+    second = _player(player_id="p2", pairing_no=2, score=3, color_history=())
+    third = _player(player_id="p3", pairing_no=3, score=3, color_history=())
+
+    earlier_duplicate = _CandidateInternal(
+        pairings=((first, second),),
+        unresolved=(third,),
+        bye_player=None,
+        sequence_no=1,
+    )
+    later_duplicate = _CandidateInternal(
+        pairings=((second, first),),
+        unresolved=(third,),
+        bye_player=None,
+        sequence_no=4,
+    )
+    scored_sequences: list[int] = []
+    original_quality_key = _candidate_local_quality_key
+
+    def tracking_quality_key(
+        candidate: _CandidateInternal,
+        mdp_ids: frozenset[str],
+        initial_color: Color,
+    ) -> tuple[
+        tuple[PlayerState, ...],
+        int,
+        int,
+        tuple[int, ...],
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        tuple[int, ...],
+        tuple[int, ...],
+        tuple[int, ...],
+        tuple[int, ...],
+        int,
+    ]:
+        scored_sequences.append(candidate.sequence_no)
+        return original_quality_key(candidate, mdp_ids, initial_color)
+
+    monkeypatch.setattr(
+        "swisspairing.dutch._candidate_local_quality_key",
+        tracking_quality_key,
+    )
+
+    assert (
+        _select_best_candidate(
+            (later_duplicate, earlier_duplicate),
+            context=BracketContext(),
+        )
+        == earlier_duplicate
+    )
+    assert scored_sequences == [1]
 
 
 def test_homogeneous_exact_search_budget_skips_10_player_explosion() -> None:
