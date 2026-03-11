@@ -459,12 +459,32 @@ def pair_round_dutch(
                 if ordered_downfloaters in next_bracket_key_cache_snapshot:
                     return next_bracket_key_cache_snapshot[ordered_downfloaters]
                 next_residents = tail_groups_snapshot[0]
-                next_tail_groups = tail_groups_snapshot[1:]
-                next_is_last_bracket = len(next_tail_groups) == 0
                 next_players = tuple(
                     sorted((*ordered_downfloaters, *next_residents), key=_player_rank_key)
                 )
                 next_mdp_ids = frozenset(player.player_id for player in ordered_downfloaters)
+
+                if not allow_heuristic_fallback:
+                    tail_solution = solve(tail_groups_snapshot, ordered_downfloaters)
+                    if tail_solution is None or tail_solution.first_result is None:
+                        next_bracket_key_cache_snapshot[ordered_downfloaters] = None
+                        return None
+                    next_key = NextBracketKey(
+                        local=pairing_result_next_bracket_local_key(
+                            players=next_players,
+                            result=tail_solution.first_result,
+                            context=BracketContext(
+                                mdp_ids=next_mdp_ids,
+                                initial_color=initial_color,
+                            ),
+                        ),
+                        future_game_counts=tail_solution.bracket_game_counts[1:],
+                    )
+                    next_bracket_key_cache_snapshot[ordered_downfloaters] = next_key
+                    return next_key
+
+                next_tail_groups = tail_groups_snapshot[1:]
+                next_is_last_bracket = len(next_tail_groups) == 0
 
                 if next_is_last_bracket:
                     try:

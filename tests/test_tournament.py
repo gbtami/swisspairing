@@ -148,6 +148,73 @@ def test_pair_round_dutch_exact_expands_medium_even_budget() -> None:
     assert {p1_pair.white_id, p1_pair.black_id} & {"p2", "p3", "p4", "p5"}
 
 
+def test_pair_round_dutch_exact_uses_full_tail_for_c8_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    players = (
+        _player(player_id="t1", pairing_no=1, score=3),
+        _player(player_id="t2", pairing_no=2, score=3),
+        _player(player_id="t3", pairing_no=3, score=3),
+        _player(player_id="m1", pairing_no=4, score=2),
+        _player(player_id="m2", pairing_no=5, score=2),
+        _player(player_id="m3", pairing_no=6, score=2),
+        _player(player_id="b1", pairing_no=7, score=1),
+        _player(player_id="b2", pairing_no=8, score=1),
+    )
+    observed: dict[str, tuple[int, ...] | None] = {}
+
+    def fake_pair_bracket(
+        bracket_players: tuple[PlayerState, ...],
+        *,
+        context: tournament.BracketContext | None = None,
+        allow_bye: bool = True,
+        sequential_search_max_players: int = 12,
+        initial_color: str = "white",
+        allow_heuristic_fallback: bool = True,
+    ) -> tournament.PairingResult:
+        del allow_bye, sequential_search_max_players, initial_color
+        ids = tuple(player.player_id for player in bracket_players)
+        if ids == ("t1", "t2", "t3"):
+            assert context is not None
+            assert context.next_bracket_key is not None
+            by_id = {player.player_id: player for player in bracket_players}
+            next_key = context.next_bracket_key((by_id["t3"],))
+            observed["future_game_counts"] = (
+                None if next_key is None else next_key.future_game_counts
+            )
+            return tournament.PairingResult(
+                pairings=(Pairing(white_id="t1", black_id="t2"),),
+                unpaired_ids=("t3",),
+                float_assignments=(),
+            )
+        if ids == ("t3", "m1", "m2", "m3"):
+            return tournament.PairingResult(
+                pairings=(Pairing(white_id="t3", black_id="m1"),),
+                unpaired_ids=("m2", "m3"),
+                float_assignments=(),
+            )
+        if ids == ("m2", "m3", "b1", "b2"):
+            return tournament.PairingResult(
+                pairings=(
+                    Pairing(white_id="m2", black_id="b1"),
+                    Pairing(white_id="m3", black_id="b2"),
+                ),
+                unpaired_ids=(),
+                float_assignments=(),
+            )
+        raise AssertionError(
+            "unexpected bracket call: "
+            f"ids={ids}, allow_heuristic_fallback={allow_heuristic_fallback}"
+        )
+
+    monkeypatch.setattr(tournament, "pair_bracket", fake_pair_bracket)
+
+    result = pair_round_dutch_exact(players)
+
+    assert result.unpaired_ids == ()
+    assert observed["future_game_counts"] == (2,)
+
+
 def test_pair_round_dutch_raises_when_last_bracket_cannot_be_fully_paired() -> None:
     blocked_players = (
         PlayerState(
