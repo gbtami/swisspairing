@@ -207,6 +207,12 @@ def _budapest_group_b_round_entry(round_number: int) -> dict[str, Any]:
     return _chess_results_round_entry("budapest_spring_festival_2026_group_b_2250", round_number)
 
 
+def _budapest_group_b_states_for_round(round_number: int) -> tuple[PlayerState, ...]:
+    return _chess_results_states_for_round(
+        "budapest_spring_festival_2026_group_b_2250", round_number
+    )
+
+
 def _graz_manifest_path() -> Path:
     return _chess_results_manifest_path("international_chessopen_graz_2026_a")
 
@@ -1288,6 +1294,26 @@ def test_graz_round_4_exact_pairs_full_round() -> None:
     round_entry = _graz_round_entry(4)
     trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
     states = _graz_states_for_round(4)
+
+    result = pair_round_dutch_exact(
+        states,
+        initial_color=build_trf_initial_color(trf),
+    )
+
+    assert result.unpaired_ids == ()
+    assert len(result.pairings) == (len(states) + 1) // 2
+    assert sum(int(pairing.black_id is None) for pairing in result.pairings) == 1
+
+
+@pytest.mark.skipif(
+    not _has_py4swiss_runtime(),
+    reason="active Python interpreter unavailable for Budapest Group B exact checks",
+)
+def test_budapest_group_b_round_5_exact_pairs_full_round() -> None:
+    manifest_path = _budapest_group_b_manifest_path()
+    round_entry = _budapest_group_b_round_entry(5)
+    trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
+    states = _budapest_group_b_states_for_round(5)
 
     result = pair_round_dutch_exact(
         states,
