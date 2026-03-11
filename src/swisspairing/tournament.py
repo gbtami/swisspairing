@@ -439,28 +439,21 @@ def pair_round_dutch(
                     break
                 continue
 
+            next_bracket_result_cache: dict[tuple[PlayerState, ...], PairingResult | None] = {}
             next_bracket_key_cache: dict[tuple[PlayerState, ...], NextBracketKey | None] = {}
 
-            def next_bracket_validator(
+            def _pair_immediate_next_bracket(
                 downfloaters: tuple[PlayerState, ...],
                 *,
                 tail_groups_snapshot: tuple[tuple[PlayerState, ...], ...] = tail_groups,
-            ) -> bool:
-                ordered_downfloaters = tuple(sorted(downfloaters, key=_player_rank_key))
-                return solve(tail_groups_snapshot, ordered_downfloaters) is not None
-
-            def next_bracket_key(
-                downfloaters: tuple[PlayerState, ...],
-                *,
-                tail_groups_snapshot: tuple[tuple[PlayerState, ...], ...] = tail_groups,
-                next_bracket_key_cache_snapshot: dict[
-                    tuple[PlayerState, ...], NextBracketKey | None
-                ] = next_bracket_key_cache,
-            ) -> NextBracketKey | None:
+                next_bracket_result_cache_snapshot: dict[
+                    tuple[PlayerState, ...], PairingResult | None
+                ] = next_bracket_result_cache,
+            ) -> PairingResult | None:
                 nonlocal unsupported_found
                 ordered_downfloaters = tuple(sorted(downfloaters, key=_player_rank_key))
-                if ordered_downfloaters in next_bracket_key_cache_snapshot:
-                    return next_bracket_key_cache_snapshot[ordered_downfloaters]
+                if ordered_downfloaters in next_bracket_result_cache_snapshot:
+                    return next_bracket_result_cache_snapshot[ordered_downfloaters]
                 next_residents = tail_groups_snapshot[0]
                 next_players = tuple(
                     sorted((*ordered_downfloaters, *next_residents), key=_player_rank_key)
@@ -485,19 +478,13 @@ def pair_round_dutch(
                         )
                     except ExactSearchUnavailableError:
                         unsupported_found = True
-                        next_bracket_key_cache_snapshot[ordered_downfloaters] = None
+                        next_bracket_result_cache_snapshot[ordered_downfloaters] = None
                         return None
                     except PairingError:
-                        next_bracket_key_cache_snapshot[ordered_downfloaters] = None
+                        next_bracket_result_cache_snapshot[ordered_downfloaters] = None
                         return None
-                    next_key = _build_next_bracket_key(
-                        players=next_players,
-                        result=next_result,
-                        mdp_ids=next_mdp_ids,
-                        initial_color=initial_color,
-                    )
-                    next_bracket_key_cache_snapshot[ordered_downfloaters] = next_key
-                    return next_key
+                    next_bracket_result_cache_snapshot[ordered_downfloaters] = next_result
+                    return next_result
 
                 def next_next_validator(next_downfloaters: tuple[PlayerState, ...]) -> bool:
                     ordered_next_downfloaters = tuple(
@@ -524,9 +511,49 @@ def pair_round_dutch(
                     )
                 except ExactSearchUnavailableError:
                     unsupported_found = True
-                    next_bracket_key_cache_snapshot[ordered_downfloaters] = None
+                    next_bracket_result_cache_snapshot[ordered_downfloaters] = None
                     return None
                 except PairingError:
+                    next_bracket_result_cache_snapshot[ordered_downfloaters] = None
+                    return None
+                next_bracket_result_cache_snapshot[ordered_downfloaters] = next_result
+                return next_result
+
+            def next_bracket_validator(
+                downfloaters: tuple[PlayerState, ...],
+                *,
+                tail_groups_snapshot: tuple[tuple[PlayerState, ...], ...] = tail_groups,
+            ) -> bool:
+                ordered_downfloaters = tuple(sorted(downfloaters, key=_player_rank_key))
+                return (
+                    _pair_immediate_next_bracket(
+                        ordered_downfloaters,
+                        tail_groups_snapshot=tail_groups_snapshot,
+                    )
+                    is not None
+                )
+
+            def next_bracket_key(
+                downfloaters: tuple[PlayerState, ...],
+                *,
+                tail_groups_snapshot: tuple[tuple[PlayerState, ...], ...] = tail_groups,
+                next_bracket_key_cache_snapshot: dict[
+                    tuple[PlayerState, ...], NextBracketKey | None
+                ] = next_bracket_key_cache,
+            ) -> NextBracketKey | None:
+                ordered_downfloaters = tuple(sorted(downfloaters, key=_player_rank_key))
+                if ordered_downfloaters in next_bracket_key_cache_snapshot:
+                    return next_bracket_key_cache_snapshot[ordered_downfloaters]
+                next_residents = tail_groups_snapshot[0]
+                next_players = tuple(
+                    sorted((*ordered_downfloaters, *next_residents), key=_player_rank_key)
+                )
+                next_mdp_ids = frozenset(player.player_id for player in ordered_downfloaters)
+                next_result = _pair_immediate_next_bracket(
+                    ordered_downfloaters,
+                    tail_groups_snapshot=tail_groups_snapshot,
+                )
+                if next_result is None:
                     next_bracket_key_cache_snapshot[ordered_downfloaters] = None
                     return None
                 next_key = _build_next_bracket_key(
