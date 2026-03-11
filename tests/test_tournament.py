@@ -125,6 +125,29 @@ def test_pair_round_dutch_exact_uses_bracket_size_when_no_explicit_limit(
     }
 
 
+def test_pair_round_dutch_exact_expands_medium_even_budget() -> None:
+    players = (
+        PlayerState(
+            player_id="p1",
+            pairing_no=1,
+            score=3,
+            opponents=frozenset({"p6", "p7", "p8", "p9", "p10"}),
+        ),
+        *tuple(
+            PlayerState(player_id=f"p{index}", pairing_no=index, score=3) for index in range(2, 11)
+        ),
+    )
+
+    result = pair_round_dutch_exact(players)
+
+    assert result.unpaired_ids == ()
+    p1_pair = next(
+        pairing for pairing in result.pairings if "p1" in {pairing.white_id, pairing.black_id}
+    )
+    assert p1_pair.black_id is not None
+    assert {p1_pair.white_id, p1_pair.black_id} & {"p2", "p3", "p4", "p5"}
+
+
 def test_pair_round_dutch_raises_when_last_bracket_cannot_be_fully_paired() -> None:
     blocked_players = (
         PlayerState(

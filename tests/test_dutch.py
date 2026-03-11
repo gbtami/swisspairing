@@ -147,6 +147,38 @@ def test_pair_bracket_exact_ignores_public_sequence_cap_by_default() -> None:
     assert exact_result == explicit_result
 
 
+def test_pair_bracket_exact_expands_medium_even_budget_without_weighted_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    players = (
+        _player(
+            player_id="p1",
+            pairing_no=1,
+            score=3,
+            opponents=frozenset({"p6", "p7", "p8", "p9", "p10"}),
+        ),
+        *tuple(_player(player_id=f"p{index}", pairing_no=index, score=3) for index in range(2, 11)),
+    )
+
+    def fail_weighted_fallback(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("exact mode should not use the homogeneous weighted fallback")
+
+    monkeypatch.setattr(
+        dutch,
+        "_solve_homogeneous_even_players_via_bipartite_fallback",
+        fail_weighted_fallback,
+    )
+
+    result = pair_bracket_exact(players)
+
+    assert result.unpaired_ids == ()
+    p1_pair = next(
+        pairing for pairing in result.pairings if "p1" in {pairing.white_id, pairing.black_id}
+    )
+    assert p1_pair.black_id is not None
+    assert {p1_pair.white_id, p1_pair.black_id} & {"p2", "p3", "p4", "p5"}
+
+
 def test_pair_bracket_prevents_rematch_under_c0401_rule_2() -> None:
     # C.04.1 rule 2: players shall not meet the same opponent twice.
     players = (

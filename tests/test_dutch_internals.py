@@ -240,6 +240,14 @@ def test_homogeneous_exact_search_budget_skips_10_player_explosion() -> None:
     assert _use_homogeneous_exact_search(9, sequential_search_max_players=12) is False
     assert _use_homogeneous_exact_search(10, sequential_search_max_players=12) is False
     assert _use_homogeneous_exact_search(12, sequential_search_max_players=12) is False
+    assert (
+        _use_homogeneous_exact_search(
+            10,
+            sequential_search_max_players=12,
+            exact_candidate_max=50_000,
+        )
+        is True
+    )
 
     assert _heterogeneous_exact_candidate_upper_bound(9, 2) == 2520
     assert _heterogeneous_exact_candidate_upper_bound(11, 1) == 151200
@@ -266,6 +274,15 @@ def test_homogeneous_exact_search_budget_skips_10_player_explosion() -> None:
             sequential_search_max_players=12,
         )
         is False
+    )
+    assert (
+        _use_heterogeneous_exact_search(
+            13,
+            mdp_count=9,
+            sequential_search_max_players=13,
+            exact_candidate_max=50_000,
+        )
+        is True
     )
 
 
