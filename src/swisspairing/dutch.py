@@ -439,6 +439,7 @@ _ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES = 20_000
 _ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES_WITH_NEXT_BRACKET = 1_000
 _ODD_FINAL_BYE_SCAN_MAX_PLAYERS = 20
 _ODD_HOMOGENEOUS_REFINEMENT_SCAN_MAX_PLAYERS = 34
+_ODD_HOMOGENEOUS_REFINEMENT_SKIP_MAX_PLAYERS_WITH_NEXT_BRACKET = 23
 _SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS = 24
 _SINGLE_MDP_REMAINDER_HOMOGENEOUS_REFINEMENT_MAX_PLAYERS = 54
 _SINGLE_MDP_ODD_REFINEMENT_SEARCH_MAX_PLAYERS = 6
@@ -1430,6 +1431,11 @@ def _refine_weighted_homogeneous_odd_candidate(
         return weighted_candidate
 
     ordered_players = tuple(sorted(players, key=_player_rank_key))
+    if (
+        context.next_bracket_validator is not None
+        and len(ordered_players) <= _ODD_HOMOGENEOUS_REFINEMENT_SKIP_MAX_PLAYERS_WITH_NEXT_BRACKET
+    ):
+        return weighted_candidate
     if len(ordered_players) > scan_max_players:
         return weighted_candidate
 
@@ -1556,6 +1562,9 @@ def _refine_weighted_single_mdp_odd_candidate(
     sequential_search_max_players: int,
 ) -> _CandidateInternal | None:
     """Refine small one-MDP odd brackets by scanning resident partners only."""
+    if context.next_bracket_validator is not None:
+        return None
+
     ordered_players = tuple(sorted(players, key=_player_rank_key))
     if len(ordered_players) > _SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS or len(context.mdp_ids) != 1:
         return None

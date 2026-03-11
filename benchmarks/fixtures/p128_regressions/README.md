@@ -38,10 +38,11 @@ Observed timings before the March 11 single-MDP heterogeneous refinement cut:
 - `sim0003_r07.trf`: fast about `1490.40ms`, strict about `1648.46ms`
 - `sim0005_r07.trf`: fast about `1629.82ms`, strict about `1645.54ms`
 
-Observed timings after the fix on the regenerated `p128` batch:
+Observed timings after the later March 11 bounded `[C8]` refinement cuts on
+the regenerated `p128` batch:
 
-- `sim0003_r07.trf`: fast about `391.38ms`, strict about `531.59ms`
-- `sim0005_r07.trf`: fast about `667.61ms`, strict about `687.16ms`
+- `sim0003_r07.trf`: fast about `250.57ms`, strict about `361.85ms`
+- `sim0005_r07.trf`: fast about `489.59ms`, strict about `515.74ms`
 
 Quick rerun command:
 

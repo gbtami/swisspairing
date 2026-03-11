@@ -370,6 +370,40 @@ def test_homogeneous_odd_refinement_skips_feasibility_only_next_bracket_checks(
     assert refined is weighted_candidate
 
 
+def test_homogeneous_odd_refinement_skips_medium_c8_scan(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    players = tuple(
+        _player(player_id=f"p{index}", pairing_no=index, score=2) for index in range(1, 12)
+    )
+    weighted_candidate = dutch._CandidateInternal(
+        pairings=tuple((players[index], players[index + 1]) for index in range(0, 10, 2)),
+        unresolved=(players[-1],),
+        bye_player=None,
+        sequence_no=0,
+    )
+
+    def _unexpected_even_solve(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("bounded C8 refinement should keep the weighted homogeneous candidate")
+
+    dutch._refine_weighted_homogeneous_odd_candidate.cache_clear()
+    monkeypatch.setattr(dutch, "_solve_even_players", _unexpected_even_solve)
+    try:
+        refined = dutch._refine_weighted_homogeneous_odd_candidate(
+            players,
+            context=BracketContext(
+                next_bracket_validator=lambda _: True,
+                next_bracket_key=lambda _: NextBracketKey(),
+            ),
+            weighted_candidate=weighted_candidate,
+            sequential_search_max_players=6,
+        )
+    finally:
+        dutch._refine_weighted_homogeneous_odd_candidate.cache_clear()
+
+    assert refined is weighted_candidate
+
+
 def test_heterogeneous_odd_refinement_uses_tighter_c8_candidate_budget(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -418,6 +452,32 @@ def test_heterogeneous_odd_refinement_uses_tighter_c8_candidate_budget(
         dutch._refine_weighted_heterogeneous_odd_candidate.cache_clear()
 
     assert refined is weighted_candidate
+
+
+def test_single_mdp_odd_refinement_skips_c8_branch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    players = (
+        _player(player_id="m1", pairing_no=1, score=3),
+        _player(player_id="p2", pairing_no=2, score=2),
+        _player(player_id="p3", pairing_no=3, score=2),
+    )
+
+    def _unexpected_remainder_solve(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("single-MDP C8 path should keep the existing weighted candidate")
+
+    monkeypatch.setattr(dutch, "_solve_without_bye_candidate", _unexpected_remainder_solve)
+
+    refined = dutch._refine_weighted_single_mdp_odd_candidate(
+        players,
+        context=BracketContext(
+            mdp_ids=frozenset({"m1"}),
+            next_bracket_validator=lambda _: True,
+        ),
+        sequential_search_max_players=6,
+    )
+
+    assert refined is None
 
 
 def test_heterogeneous_odd_refinement_skips_single_mdp_without_next_bracket(
