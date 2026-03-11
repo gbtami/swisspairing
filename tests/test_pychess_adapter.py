@@ -14,6 +14,7 @@ from swisspairing.pychess_adapter import (
     build_player_states_from_snapshots,
     map_plan_to_users,
     pair_snapshots_dutch,
+    pair_snapshots_dutch_exact,
 )
 
 
@@ -201,6 +202,49 @@ def test_pair_snapshots_dutch_strict_mode_disables_default_limit(
     assert captured["initial_color"] == "white"
 
 
+def test_pair_snapshots_dutch_exact_mode_uses_exact_round_solver(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshots = (
+        PychessPlayerSnapshot(username="p1", pairing_no=1, score=30),
+        PychessPlayerSnapshot(username="p2", pairing_no=2, score=20),
+    )
+    captured: dict[str, int | str | None] = {}
+
+    def unexpected_pair_round_dutch(
+        _states: tuple[object, ...],
+        *,
+        sequential_search_max_players: int | None = None,
+        initial_color: str = "white",
+    ) -> PairingResult:
+        del sequential_search_max_players, initial_color
+        raise AssertionError("exact mode should not route through pair_round_dutch")
+
+    def fake_pair_round_dutch_exact(
+        _states: tuple[object, ...],
+        *,
+        sequential_search_max_players: int | None = None,
+        initial_color: str = "white",
+    ) -> PairingResult:
+        captured["limit"] = sequential_search_max_players
+        captured["initial_color"] = initial_color
+        return PairingResult(
+            pairings=(Pairing(white_id="p1", black_id="p2"),),
+            unpaired_ids=(),
+        )
+
+    monkeypatch.delenv("SWISSPAIRING_SEQUENTIAL_SEARCH_MAX_PLAYERS", raising=False)
+    monkeypatch.setenv("SWISSPAIRING_PAIRING_MODE", "exact")
+    monkeypatch.setattr(pychess_adapter, "pair_round_dutch", unexpected_pair_round_dutch)
+    monkeypatch.setattr(pychess_adapter, "pair_round_dutch_exact", fake_pair_round_dutch_exact)
+
+    plan = pair_snapshots_dutch(snapshots)
+
+    assert captured["limit"] is None
+    assert captured["initial_color"] == "white"
+    assert plan.pairings == (("p1", "p2"),)
+
+
 def test_pair_snapshots_dutch_explicit_limit_overrides_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -286,6 +330,40 @@ def test_pair_snapshots_dutch_rejects_invalid_pairing_mode_env(
 
     with pytest.raises(ValueError, match="SWISSPAIRING_PAIRING_MODE"):
         pair_snapshots_dutch(snapshots)
+
+
+def test_pair_snapshots_dutch_exact_wrapper_uses_exact_round_solver(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshots = (
+        PychessPlayerSnapshot(username="p1", pairing_no=1, score=30),
+        PychessPlayerSnapshot(username="p2", pairing_no=2, score=20),
+    )
+    captured: dict[str, int | str | None] = {}
+
+    def fake_pair_round_dutch_exact(
+        _states: tuple[object, ...],
+        *,
+        sequential_search_max_players: int | None = None,
+        initial_color: str = "white",
+    ) -> PairingResult:
+        captured["limit"] = sequential_search_max_players
+        captured["initial_color"] = initial_color
+        return PairingResult(
+            pairings=(Pairing(white_id="p1", black_id="p2"),),
+            unpaired_ids=(),
+        )
+
+    monkeypatch.setattr(pychess_adapter, "pair_round_dutch_exact", fake_pair_round_dutch_exact)
+
+    plan = pair_snapshots_dutch_exact(
+        snapshots,
+        sequential_search_max_players=9,
+        initial_color="black",
+    )
+
+    assert captured == {"limit": 9, "initial_color": "black"}
+    assert plan.pairings == (("p1", "p2"),)
 
 
 def test_map_plan_to_users_maps_user_instances() -> None:

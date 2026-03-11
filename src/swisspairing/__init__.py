@@ -12,6 +12,7 @@ from swisspairing.pychess_adapter import (
     build_player_states_from_snapshots,
     map_plan_to_users,
     pair_snapshots_dutch,
+    pair_snapshots_dutch_exact,
     pairing_result_to_pychess_plan,
 )
 from swisspairing.synthetic import SyntheticConfig, SyntheticTournament, simulate_tournament
@@ -31,6 +32,7 @@ __all__ = [
     "build_player_states_from_snapshots",
     "map_plan_to_users",
     "pair_snapshots_dutch",
+    "pair_snapshots_dutch_exact",
     "pair_bracket",
     "pair_bracket_exact",
     "pair_round_dutch",

@@ -11,12 +11,13 @@ from dataclasses import dataclass, field
 from typing import Protocol
 
 from swisspairing.model import Color, FloatKind, PairingResult, PlayerState
-from swisspairing.tournament import pair_round_dutch
+from swisspairing.tournament import pair_round_dutch, pair_round_dutch_exact
 
 _PAIRING_MODE_ENV = "SWISSPAIRING_PAIRING_MODE"
 _SEQUENTIAL_SEARCH_MAX_PLAYERS_ENV = "SWISSPAIRING_SEQUENTIAL_SEARCH_MAX_PLAYERS"
 _PAIRING_MODE_FAST = "fast"
 _PAIRING_MODE_STRICT = "strict"
+_PAIRING_MODE_EXACT = "exact"
 _DEFAULT_FAST_SEQUENTIAL_SEARCH_MAX_PLAYERS = 6
 
 
@@ -77,16 +78,17 @@ def _pairing_mode_from_env() -> str:
     Accepted values:
     - `fast` (default): bounded sequence-search cap for practical runtime.
     - `strict`: keep full sequence-search behavior.
+    - `exact`: use the explicit heuristic-free Dutch solver.
     """
     raw = os.getenv(_PAIRING_MODE_ENV)
     if raw is None or not raw.strip():
         return _PAIRING_MODE_FAST
 
     mode = raw.strip().lower()
-    if mode not in (_PAIRING_MODE_FAST, _PAIRING_MODE_STRICT):
+    if mode not in (_PAIRING_MODE_FAST, _PAIRING_MODE_STRICT, _PAIRING_MODE_EXACT):
         raise ValueError(
-            f"{_PAIRING_MODE_ENV} must be '{_PAIRING_MODE_FAST}' or "
-            f"'{_PAIRING_MODE_STRICT}'; got {raw!r}"
+            f"{_PAIRING_MODE_ENV} must be '{_PAIRING_MODE_FAST}', "
+            f"'{_PAIRING_MODE_STRICT}', or '{_PAIRING_MODE_EXACT}'; got {raw!r}"
         )
     return mode
 
@@ -99,7 +101,8 @@ def _effective_sequential_search_limit(
     Precedence:
     1. explicit function argument,
     2. `SWISSPAIRING_SEQUENTIAL_SEARCH_MAX_PLAYERS`,
-    3. `SWISSPAIRING_PAIRING_MODE` (`fast` default -> cap=6, `strict` -> `None`).
+    3. `SWISSPAIRING_PAIRING_MODE`
+       (`fast` default -> cap=6, `strict` / `exact` -> `None`).
     """
     if explicit_limit is not None:
         return explicit_limit
@@ -108,7 +111,7 @@ def _effective_sequential_search_limit(
     if env_limit is not None:
         return env_limit
 
-    if _pairing_mode_from_env() == _PAIRING_MODE_STRICT:
+    if _pairing_mode_from_env() in (_PAIRING_MODE_STRICT, _PAIRING_MODE_EXACT):
         return None
     return _DEFAULT_FAST_SEQUENTIAL_SEARCH_MAX_PLAYERS
 
@@ -191,16 +194,42 @@ def pair_snapshots_dutch(
       exact article-4 sequence search.
     - When omitted, precedence is:
       1) `SWISSPAIRING_SEQUENTIAL_SEARCH_MAX_PLAYERS`,
-      2) `SWISSPAIRING_PAIRING_MODE` (`fast` default -> cap 6, `strict` -> no cap).
+      2) `SWISSPAIRING_PAIRING_MODE`
+         (`fast` default -> cap 6, `strict` -> no cap, `exact` -> exact solver).
     - Lower values usually improve speed for pathological states but can reduce
       strict parity with exhaustive sequence ordering in edge cases.
     """
     states = build_player_states_from_snapshots(snapshots)
     limit = _effective_sequential_search_limit(sequential_search_max_players)
+    if _pairing_mode_from_env() == _PAIRING_MODE_EXACT:
+        return pairing_result_to_pychess_plan(
+            pair_round_dutch_exact(
+                states,
+                sequential_search_max_players=limit,
+                initial_color=initial_color,
+            )
+        )
     return pairing_result_to_pychess_plan(
         pair_round_dutch(
             states,
             sequential_search_max_players=limit,
+            initial_color=initial_color,
+        )
+    )
+
+
+def pair_snapshots_dutch_exact(
+    snapshots: tuple[PychessPlayerSnapshot, ...],
+    *,
+    sequential_search_max_players: int | None = None,
+    initial_color: Color = "white",
+) -> PychessPairingPlan:
+    """Pair one round from pychess snapshots using the explicit exact solver."""
+    states = build_player_states_from_snapshots(snapshots)
+    return pairing_result_to_pychess_plan(
+        pair_round_dutch_exact(
+            states,
+            sequential_search_max_players=sequential_search_max_players,
             initial_color=initial_color,
         )
     )
