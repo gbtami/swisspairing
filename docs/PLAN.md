@@ -221,6 +221,9 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - Budapest Group B rounds 5 and 7 now have direct exact-mode regressions in
     `tests/test_chess_results.py`, so the current exact frontier is anchored
     on real OTB cold-runtime cases as well as behavior.
+  - Budapest Group B round 8 now matches the `py4swiss` / `bbpPairings`
+    consensus in exact mode too, after restoring article-order tie-breaks in
+    the odd one-MDP and odd homogeneous exact fallback paths.
   - Extended unit-test coverage for criteria and sequence behavior.
 - Next:
   - Keep exact/FIDE correctness as the primary target and treat recurring

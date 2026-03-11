@@ -384,12 +384,12 @@ benchmarks/import_lichess_fixtures.sh
   float history is derived from the TRF instead of inherited from
   `py4swiss`; the earlier round-7 fast-mode-only `swisspairing` divergence is
   fixed.
-- On the checked Budapest Group B corpus, round 8 is now fixed and matches
-  the `bbpPairings` / `py4swiss` / `JaVaFo` consensus. Rounds 5 and 7 are now
-  also covered by direct `pair_round_dutch_exact()` regressions in
-  `tests/test_chess_results.py`. Rounds 4 / 5 / 9 remain split-reference
-  cases where `py4swiss` + `JaVaFo` agree with each other, `bbpPairings`
-  differs, and `swisspairing` currently matches neither side.
+- On the checked Budapest Group B corpus, round 8 now matches the
+  `bbpPairings` / `py4swiss` / `JaVaFo` consensus in both fast and exact mode.
+  Rounds 5 / 7 / 8 are now covered by direct `pair_round_dutch_exact()`
+  regressions in `tests/test_chess_results.py`. Rounds 4 / 5 / 9 remain
+  split-reference cases where `py4swiss` + `JaVaFo` agree with each other,
+  `bbpPairings` differs, and `swisspairing` currently matches neither side.
 - On the checked Graz corpus, `swisspairing` now matches `bbpPairings`,
   `py4swiss`, and `JaVaFo` on all 9 rounds, and the earlier round-1 runtime
   tail is closed out by the direct trivial-first-round bracket path.
