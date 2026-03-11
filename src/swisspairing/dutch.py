@@ -1006,6 +1006,23 @@ def _candidate_pair_sort_key(
     return _player_rank_key(pair[0]), _player_rank_key(pair[1])
 
 
+def _canonical_candidate_shape(
+    candidate: _CandidateInternal,
+) -> tuple[tuple[tuple[str, str], ...], tuple[str, ...], str | None]:
+    canonical_pairs = tuple(
+        sorted(
+            cast(
+                tuple[str, str],
+                tuple(sorted((left.player_id, right.player_id))),
+            )
+            for left, right in candidate.pairings
+        )
+    )
+    unresolved_ids = tuple(player.player_id for player in candidate.unresolved)
+    bye_id = None if candidate.bye_player is None else candidate.bye_player.player_id
+    return canonical_pairs, unresolved_ids, bye_id
+
+
 def _homogeneous_article_order_key(
     *,
     players: Sequence[PlayerState],
@@ -1149,18 +1166,7 @@ def _select_best_candidate(
         _CandidateInternal,
     ] = {}
     for candidate in candidates:
-        canonical_pairs = tuple(
-            sorted(
-                cast(
-                    tuple[str, str],
-                    tuple(sorted((left.player_id, right.player_id))),
-                )
-                for left, right in candidate.pairings
-            )
-        )
-        unresolved_ids = tuple(player.player_id for player in candidate.unresolved)
-        bye_id = None if candidate.bye_player is None else candidate.bye_player.player_id
-        shape_key = (canonical_pairs, unresolved_ids, bye_id)
+        shape_key = _canonical_candidate_shape(candidate)
         current = unique_candidates.get(shape_key)
         if current is None or candidate.sequence_no < current.sequence_no:
             unique_candidates[shape_key] = candidate
@@ -1251,6 +1257,7 @@ def _iter_homogeneous_candidates_cached(
 
     bsn_by_player_id = {player.player_id: index + 1 for index, player in enumerate(ordered_players)}
     generated: list[_CandidateInternal] = []
+    seen_shapes: set[tuple[tuple[tuple[str, str], ...], tuple[str, ...], str | None]] = set()
     sequence_no = sequence_start
 
     for s1, s2 in _iter_resident_exchanges(ordered_players):
@@ -1264,14 +1271,16 @@ def _iter_homogeneous_candidates_cached(
                 continue
 
             unresolved = tuple(sorted(s2_transposition[len(s1) :], key=_player_rank_key))
-            generated.append(
-                _CandidateInternal(
-                    pairings=raw_pairs,
-                    unresolved=unresolved,
-                    bye_player=None,
-                    sequence_no=sequence_no,
-                )
+            candidate = _CandidateInternal(
+                pairings=raw_pairs,
+                unresolved=unresolved,
+                bye_player=None,
+                sequence_no=sequence_no,
             )
+            shape_key = _canonical_candidate_shape(candidate)
+            if shape_key not in seen_shapes:
+                seen_shapes.add(shape_key)
+                generated.append(candidate)
             sequence_no += 1
 
     return tuple(generated)

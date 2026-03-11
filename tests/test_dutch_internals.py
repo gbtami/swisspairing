@@ -17,6 +17,7 @@ from swisspairing.dutch import (
     _heterogeneous_structural_tie_key,
     _homogeneous_article_order_key,
     _homogeneous_exact_candidate_upper_bound,
+    _iter_homogeneous_candidates,
     _iter_pairable_mdp_sets,
     _pair_color_quality,
     _select_best_candidate,
@@ -213,6 +214,32 @@ def test_homogeneous_article_order_key_prefers_zero_exchange_candidate() -> None
         players=players,
         candidate=one_exchange,
     )
+
+
+def test_iter_homogeneous_candidates_deduplicates_pair_orientation() -> None:
+    players = tuple(
+        _player(player_id=f"p{i}", pairing_no=i, score=3, color_history=()) for i in range(1, 4)
+    )
+
+    candidates = _iter_homogeneous_candidates(players)
+
+    assert len(candidates) == 3
+    assert {
+        (
+            tuple(
+                sorted(
+                    tuple(sorted((left.player_id, right.player_id)))
+                    for left, right in candidate.pairings
+                )
+            ),
+            tuple(player.player_id for player in candidate.unresolved),
+        )
+        for candidate in candidates
+    } == {
+        ((("p1", "p2"),), ("p3",)),
+        ((("p1", "p3"),), ("p2",)),
+        ((("p2", "p3"),), ("p1",)),
+    }
 
 
 def test_heterogeneous_structural_tie_key_prefers_tighter_resident_remainder() -> None:
