@@ -39,6 +39,7 @@ from swisspairing.tournament import (
     _build_next_bracket_key,
     _group_residents_by_score,
     _pair_bracket_with_optional_limit,
+    pair_round_dutch_exact,
 )
 
 RUNNER_PATH = (
@@ -752,6 +753,26 @@ def test_aeroflot_fast_pairing_matches_published_round(round_number: int) -> Non
     assert isinstance(swisspairing, dict)
     pairings = cast(list[list[str | None]], swisspairing["pairings"])
     assert isinstance(pairings, list)
+    assert _normalize_manifest_pairings(pairings) == _normalize_manifest_pairings(
+        round_entry["published_pairings"]
+    )
+
+
+@pytest.mark.skipif(
+    not _has_py4swiss_runtime(),
+    reason="active Python interpreter unavailable for Aeroflot exact checks",
+)
+def test_aeroflot_round_2_exact_pairing_matches_published_round() -> None:
+    manifest_path = _aeroflot_manifest_path()
+    round_entry = _aeroflot_round_entry(2)
+    trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
+
+    result = pair_round_dutch_exact(
+        _aeroflot_states_for_round(2),
+        initial_color=build_trf_initial_color(trf),
+    )
+    pairings = [[pairing.white_id, pairing.black_id] for pairing in result.pairings]
+
     assert _normalize_manifest_pairings(pairings) == _normalize_manifest_pairings(
         round_entry["published_pairings"]
     )

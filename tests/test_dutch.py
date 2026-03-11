@@ -102,22 +102,18 @@ def test_pair_bracket_exact_matches_small_exact_bracket() -> None:
 
 def test_pair_bracket_exact_raises_when_current_solver_needs_heuristic_fallback() -> None:
     players = tuple(
-        _player(
-            player_id=f"p{index}",
-            pairing_no=index,
-            score=3,
-            opponents=(
-                frozenset({"p8"}) if index == 1 else frozenset({"p1"}) if index == 8 else None
-            ),
+        _player(player_id=f"p{index}", pairing_no=index, score=score)
+        for index, score in enumerate(
+            [65, *([60] * 11), 55, *([50] * 3), *([45] * 4), 40, 35],
+            start=1,
         )
-        for index in range(1, 15)
     )
-
-    result = pair_bracket(players)
-
-    assert result.unpaired_ids == ()
     with pytest.raises(PairingError, match="heuristic fallback"):
-        pair_bracket_exact(players)
+        pair_bracket_exact(
+            players,
+            context=BracketContext(mdp_ids=frozenset({"p1"})),
+            allow_bye=True,
+        )
 
 
 def test_pair_bracket_exact_ignores_public_sequence_cap_by_default() -> None:
@@ -177,6 +173,34 @@ def test_pair_bracket_exact_expands_medium_even_budget_without_weighted_fallback
     )
     assert p1_pair.black_id is not None
     assert {p1_pair.white_id, p1_pair.black_id} & {"p2", "p3", "p4", "p5"}
+
+
+def test_pair_bracket_exact_solves_large_homogeneous_even_zero_exchange_optimum(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    players = tuple(
+        _player(
+            player_id=f"p{index}",
+            pairing_no=index,
+            score=3,
+            color_history=("white",) if index <= 7 else ("black",),
+        )
+        for index in range(1, 15)
+    )
+
+    def fail_weighted_fallback(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("exact mode should not use the homogeneous weighted fallback")
+
+    monkeypatch.setattr(
+        dutch,
+        "_solve_homogeneous_even_players_via_bipartite_fallback",
+        fail_weighted_fallback,
+    )
+
+    result = pair_bracket_exact(players)
+
+    assert result.unpaired_ids == ()
+    assert len(result.pairings) == 7
 
 
 def test_pair_bracket_prevents_rematch_under_c0401_rule_2() -> None:

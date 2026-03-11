@@ -59,30 +59,6 @@ def test_pair_round_dutch_exact_matches_small_exact_round() -> None:
     assert pair_round_dutch_exact(players) == pair_round_dutch(players)
 
 
-def test_pair_round_dutch_exact_raises_when_current_solver_needs_heuristic_fallback() -> None:
-    players = tuple(
-        PlayerState(
-            player_id=f"p{index}",
-            pairing_no=index,
-            score=3,
-            opponents=(
-                frozenset({"p8"})
-                if index == 1
-                else frozenset({"p1"})
-                if index == 8
-                else frozenset()
-            ),
-        )
-        for index in range(1, 15)
-    )
-
-    result = pair_round_dutch(players)
-
-    assert result.unpaired_ids == ()
-    with pytest.raises(PairingError, match="heuristic fallback"):
-        pair_round_dutch_exact(players)
-
-
 def test_pair_round_dutch_exact_uses_bracket_size_when_no_explicit_limit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -213,6 +189,18 @@ def test_pair_round_dutch_exact_uses_full_tail_for_c8_key(
 
     assert result.unpaired_ids == ()
     assert observed["future_game_counts"] == (2,)
+
+
+def test_pair_round_dutch_exact_handles_collapsed_tail_c8_key() -> None:
+    scores = [70, 65, *([60] * 11), 55, *([50] * 3), *([45] * 4), 40, 35]
+    players = tuple(
+        PlayerState(player_id=str(index), pairing_no=index, score=score)
+        for index, score in enumerate(scores, start=1)
+    )
+
+    result = pair_round_dutch_exact(players)
+
+    assert result.unpaired_ids == ()
 
 
 def test_pair_round_dutch_raises_when_last_bracket_cannot_be_fully_paired() -> None:

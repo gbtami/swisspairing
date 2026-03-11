@@ -1263,6 +1263,210 @@ def _solve_even_players_via_sequence(
     )
 
 
+def _homogeneous_exact_pair_penalty(
+    left: PlayerState,
+    right: PlayerState,
+    *,
+    initial_color: Color,
+    pair_count: int,
+) -> int:
+    """Pack local [C10]-[C13] penalties for exact homogeneous matching shortcuts."""
+    white, black = _choose_color_order(left, right, initial_color=initial_color)
+    c10, c11, c12, c13 = _pair_color_quality(white=white, black=black)
+    radix = (2 * pair_count) + 1
+    return (((c10 * radix) + c11) * radix + c12) * radix + c13
+
+
+@cache
+def _homogeneous_zero_exchange_min_penalty(
+    s1: tuple[PlayerState, ...],
+    s2: tuple[PlayerState, ...],
+    *,
+    initial_color: Color,
+    pair_count: int,
+) -> int | None:
+    """Return the exact minimum [C10]-[C13] penalty inside one zero-exchange bucket."""
+    if len(s1) != len(s2):
+        return None
+    if not s1:
+        return 0
+
+    edge_weights: dict[tuple[str, str], int] = {}
+    by_id = {player.player_id: player for player in (*s1, *s2)}
+    for left in s1:
+        for right in s2:
+            if not _is_legal_pair(left, right):
+                continue
+            penalty = _homogeneous_exact_pair_penalty(
+                left,
+                right,
+                initial_color=initial_color,
+                pair_count=pair_count,
+            )
+            edge_weights[(left.player_id, right.player_id)] = -penalty
+
+    matching = compute_maximum_weight_matching(
+        node_ids=(player.player_id for player in (*s1, *s2)),
+        edge_weights=edge_weights,
+        max_cardinality=True,
+    )
+    if len(matching) != len(s1):
+        return None
+
+    total_penalty = 0
+    s1_ids = {player.player_id for player in s1}
+    for first_id, second_id in matching:
+        left_id, right_id = (first_id, second_id) if first_id in s1_ids else (second_id, first_id)
+        total_penalty += _homogeneous_exact_pair_penalty(
+            by_id[left_id],
+            by_id[right_id],
+            initial_color=initial_color,
+            pair_count=pair_count,
+        )
+    return total_penalty
+
+
+@cache
+def _homogeneous_global_min_penalty(
+    players: tuple[PlayerState, ...],
+    *,
+    initial_color: Color,
+) -> int | None:
+    """Return a lower bound on homogeneous exact penalties over all perfect matchings."""
+    if len(players) % 2 != 0:
+        return None
+    if not players:
+        return 0
+
+    pair_count = len(players) // 2
+    edge_weights: dict[tuple[str, str], int] = {}
+    by_id = {player.player_id: player for player in players}
+    for left, right in combinations(players, 2):
+        if not _is_legal_pair(left, right):
+            continue
+        penalty = _homogeneous_exact_pair_penalty(
+            left,
+            right,
+            initial_color=initial_color,
+            pair_count=pair_count,
+        )
+        edge_weights[(left.player_id, right.player_id)] = -penalty
+
+    matching = compute_maximum_weight_matching(
+        node_ids=(player.player_id for player in players),
+        edge_weights=edge_weights,
+        max_cardinality=True,
+    )
+    if len(matching) != pair_count:
+        return None
+
+    total_penalty = 0
+    for left_id, right_id in matching:
+        total_penalty += _homogeneous_exact_pair_penalty(
+            by_id[left_id],
+            by_id[right_id],
+            initial_color=initial_color,
+            pair_count=pair_count,
+        )
+    return total_penalty
+
+
+def _build_zero_exchange_earliest_optimal_pairs(
+    s1: tuple[PlayerState, ...],
+    s2: tuple[PlayerState, ...],
+    *,
+    initial_color: Color,
+    pair_count: int,
+    target_penalty: int,
+) -> tuple[tuple[PlayerState, PlayerState], ...] | None:
+    """Reconstruct the earliest article-4.2 optimum inside one zero-exchange bucket."""
+    if not s1:
+        return ()
+
+    left = s1[0]
+    remaining_s1 = s1[1:]
+    for index, right in enumerate(s2):
+        if not _is_legal_pair(left, right):
+            continue
+        pair_penalty = _homogeneous_exact_pair_penalty(
+            left,
+            right,
+            initial_color=initial_color,
+            pair_count=pair_count,
+        )
+        remaining_s2 = s2[:index] + s2[index + 1 :]
+        remaining_penalty = _homogeneous_zero_exchange_min_penalty(
+            remaining_s1,
+            remaining_s2,
+            initial_color=initial_color,
+            pair_count=pair_count,
+        )
+        if remaining_penalty is None or pair_penalty + remaining_penalty != target_penalty:
+            continue
+        tail = _build_zero_exchange_earliest_optimal_pairs(
+            remaining_s1,
+            remaining_s2,
+            initial_color=initial_color,
+            pair_count=pair_count,
+            target_penalty=remaining_penalty,
+        )
+        if tail is None:
+            continue
+        return ((left, right), *tail)
+    return None
+
+
+def _solve_homogeneous_even_players_via_zero_exchange_exact_shortcut(
+    players: Sequence[PlayerState],
+    *,
+    initial_color: Color,
+) -> _EvenPairingInternal | None:
+    """Solve large homogeneous even brackets exactly when zero-exchange is provably optimal.
+
+    Article 4.3 puts the zero-exchange bucket ahead of every exchanged bucket.
+    If the best zero-exchange transposition already reaches the global minimum
+    local [C10]-[C13] penalty across all legal perfect matchings, then that
+    bucket is exact-optimal and we only need the earliest article-4.2 optimum
+    inside it.
+    """
+    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    if not ordered_players or len(ordered_players) % 2 != 0:
+        return None
+
+    pair_count = len(ordered_players) // 2
+    s1 = ordered_players[:pair_count]
+    s2 = ordered_players[pair_count:]
+    zero_exchange_penalty = _homogeneous_zero_exchange_min_penalty(
+        s1,
+        s2,
+        initial_color=initial_color,
+        pair_count=pair_count,
+    )
+    if zero_exchange_penalty is None:
+        return None
+
+    global_penalty = _homogeneous_global_min_penalty(
+        ordered_players,
+        initial_color=initial_color,
+    )
+    if global_penalty is None or zero_exchange_penalty != global_penalty:
+        return None
+
+    earliest_pairs = _build_zero_exchange_earliest_optimal_pairs(
+        s1,
+        s2,
+        initial_color=initial_color,
+        pair_count=pair_count,
+        target_penalty=zero_exchange_penalty,
+    )
+    if earliest_pairs is None:
+        return None
+    return _EvenPairingInternal(
+        pairings=tuple(sorted(earliest_pairs, key=_candidate_pair_sort_key)),
+        unresolved=(),
+    )
+
+
 def _matching_to_candidate(
     matching: set[tuple[str, str]],
     *,
@@ -1781,6 +1985,14 @@ def _solve_even_players(
     exact_candidate_max = _exact_sequence_candidate_limit(
         allow_heuristic_fallback=allow_heuristic_fallback
     )
+
+    if not context.mdp_ids and not allow_heuristic_fallback:
+        exact_shortcut = _solve_homogeneous_even_players_via_zero_exchange_exact_shortcut(
+            players,
+            initial_color=context.initial_color,
+        )
+        if exact_shortcut is not None:
+            return exact_shortcut
 
     if context.mdp_ids and _use_heterogeneous_exact_search(
         len(players),

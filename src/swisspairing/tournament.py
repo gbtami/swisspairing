@@ -42,6 +42,7 @@ class _RoundTailSolution:
 
     pairings: tuple[Pairing, ...]
     first_result: PairingResult | None
+    first_players: tuple[PlayerState, ...] | None
     bracket_game_counts: tuple[int, ...]
     solution_key: tuple[object, ...]
 
@@ -371,6 +372,7 @@ def pair_round_dutch(
             return _RoundTailSolution(
                 pairings=(),
                 first_result=None,
+                first_players=None,
                 bracket_game_counts=(),
                 solution_key=(),
             )
@@ -426,6 +428,7 @@ def pair_round_dutch(
                 candidate_solution = _RoundTailSolution(
                     pairings=bracket_result.pairings,
                     first_result=bracket_result,
+                    first_players=bracket_players,
                     bracket_game_counts=(_paired_game_count(bracket_result.pairings),),
                     solution_key=(*bye_key, collapse_size, local_key),
                 )
@@ -471,7 +474,7 @@ def pair_round_dutch(
                         return None
                     next_key = NextBracketKey(
                         local=pairing_result_next_bracket_local_key(
-                            players=next_players,
+                            players=tail_solution.first_players or next_players,
                             result=tail_solution.first_result,
                             context=BracketContext(
                                 mdp_ids=next_mdp_ids,
@@ -596,6 +599,7 @@ def pair_round_dutch(
             candidate_solution = _RoundTailSolution(
                 pairings=(*current_pairings, *tail_solution.pairings),
                 first_result=bracket_result,
+                first_players=bracket_players,
                 bracket_game_counts=(
                     _paired_game_count(current_pairings),
                     *tail_solution.bracket_game_counts,
