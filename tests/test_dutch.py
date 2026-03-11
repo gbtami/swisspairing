@@ -222,6 +222,91 @@ def test_pair_bracket_exact_solves_large_single_mdp_even_bracket() -> None:
     assert mdp_pair.black_id is not None
 
 
+def test_pair_bracket_exact_single_mdp_even_honors_next_bracket_validator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    players = (
+        _player(
+            player_id="m",
+            pairing_no=1,
+            score=2,
+            forbidden_opponents=frozenset({"c", "d", "e"}),
+        ),
+        _player(
+            player_id="a",
+            pairing_no=2,
+            score=1,
+            forbidden_opponents=frozenset({"c", "d", "e"}),
+        ),
+        _player(
+            player_id="b",
+            pairing_no=3,
+            score=1,
+            forbidden_opponents=frozenset({"c", "d", "e"}),
+        ),
+        _player(
+            player_id="c",
+            pairing_no=4,
+            score=1,
+            forbidden_opponents=frozenset({"a", "b", "m"}),
+        ),
+        _player(
+            player_id="d",
+            pairing_no=5,
+            score=1,
+            forbidden_opponents=frozenset({"a", "b", "m"}),
+        ),
+        _player(
+            player_id="e",
+            pairing_no=6,
+            score=1,
+            forbidden_opponents=frozenset({"a", "b", "m"}),
+        ),
+    )
+    by_id = {player.player_id: player for player in players}
+
+    def fake_solve_even(
+        even_players: Sequence[PlayerState],
+        *,
+        context: BracketContext,
+        sequential_search_max_players: int = 12,
+        allow_heuristic_fallback: bool = True,
+    ) -> dutch._EvenPairingInternal:
+        del context, sequential_search_max_players, allow_heuristic_fallback
+        ids = tuple(player.player_id for player in even_players)
+        if ids == ("a", "c", "d", "e"):
+            return dutch._EvenPairingInternal(
+                pairings=((by_id["a"], by_id["e"]),),
+                unresolved=(by_id["c"], by_id["d"]),
+            )
+        if ids == ("b", "c", "d", "e"):
+            return dutch._EvenPairingInternal(
+                pairings=((by_id["b"], by_id["c"]),),
+                unresolved=(by_id["d"], by_id["e"]),
+            )
+        raise AssertionError(f"unexpected remainder ids: {ids}")
+
+    monkeypatch.setattr(dutch, "_solve_even_players", fake_solve_even)
+
+    def validator(downfloaters: tuple[PlayerState, ...]) -> bool:
+        return tuple(player.player_id for player in downfloaters) == ("c", "d")
+
+    result = dutch._solve_even_players_via_single_mdp_exact(
+        players,
+        context=BracketContext(
+            mdp_ids=frozenset({"m"}),
+            next_bracket_validator=validator,
+        ),
+    )
+
+    assert result is not None
+    assert tuple(player.player_id for player in result.unresolved) == ("c", "d")
+    assert {
+        frozenset({left.player_id, right.player_id})
+        for left, right in result.pairings
+    } == {frozenset({"m", "b"}), frozenset({"a", "e"})}
+
+
 def test_pair_bracket_exact_odd_scan_stops_after_lowest_score_group(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

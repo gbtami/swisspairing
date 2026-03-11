@@ -1271,14 +1271,37 @@ def _solve_even_players_via_sequence_cached(
     )
 
 
+def _solve_even_players_via_sequence_uncached(
+    players: tuple[PlayerState, ...],
+    *,
+    context: BracketContext,
+) -> _EvenPairingInternal | None:
+    best_candidate = _select_best_candidate(
+        _iter_homogeneous_candidates(players),
+        context=context,
+    )
+    if best_candidate is None:
+        return None
+    return _EvenPairingInternal(
+        pairings=tuple(sorted(best_candidate.pairings, key=_candidate_pair_sort_key)),
+        unresolved=best_candidate.unresolved,
+    )
+
+
 def _solve_even_players_via_sequence(
     players: Sequence[PlayerState],
     *,
     context: BracketContext,
 ) -> _EvenPairingInternal | None:
-    return _solve_even_players_via_sequence_cached(
-        tuple(sorted(players, key=_player_rank_key)),
-        context.initial_color,
+    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    if context.next_bracket_validator is None and context.next_bracket_key is None:
+        return _solve_even_players_via_sequence_cached(
+            ordered_players,
+            context.initial_color,
+        )
+    return _solve_even_players_via_sequence_uncached(
+        ordered_players,
+        context=context,
     )
 
 
@@ -2742,15 +2765,98 @@ def _solve_even_players_via_single_mdp_exact_cached(
     )
 
 
+def _solve_even_players_via_single_mdp_exact_uncached(
+    players: tuple[PlayerState, ...],
+    *,
+    context: BracketContext,
+) -> _EvenPairingInternal | None:
+    """Solve one-MDP even brackets exactly while honoring live next-bracket criteria."""
+    if len(players) % 2 != 0 or len(context.mdp_ids) != 1:
+        return None
+
+    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    mdps, residents = _split_mdps_and_residents(ordered_players, context=context)
+    if len(mdps) != 1 or not residents:
+        return None
+
+    mdp = mdps[0]
+    remainder_context = BracketContext(
+        initial_color=context.initial_color,
+        next_bracket_validator=context.next_bracket_validator,
+        next_bracket_key=context.next_bracket_key,
+    )
+    bsn_by_player_id = {player.player_id: index + 1 for index, player in enumerate(ordered_players)}
+    best_candidate: _CandidateInternal | None = None
+    best_key: tuple[object, ...] | None = None
+    unsupported_found = False
+
+    for sequence_no, s2_transposition in enumerate(
+        _iter_s2_transpositions(
+            s1=(mdp,),
+            s2=residents,
+            bsn_by_player_id=bsn_by_player_id,
+        )
+    ):
+        resident = s2_transposition[0]
+        if not _is_legal_pair(mdp, resident, context=context):
+            continue
+
+        remainder_players = tuple(sorted(s2_transposition[1:], key=_player_rank_key))
+        try:
+            remainder_result = _solve_even_players(
+                remainder_players,
+                context=remainder_context,
+                sequential_search_max_players=len(remainder_players),
+                allow_heuristic_fallback=False,
+            )
+        except ExactSearchUnavailableError:
+            unsupported_found = True
+            continue
+
+        candidate = _CandidateInternal(
+            pairings=tuple(
+                sorted(
+                    (*remainder_result.pairings, (mdp, resident)),
+                    key=_candidate_pair_sort_key,
+                )
+            ),
+            unresolved=remainder_result.unresolved,
+            bye_player=None,
+            sequence_no=sequence_no,
+        )
+        candidate_key = _candidate_quality_key(candidate=candidate, context=context)
+        if best_key is None or candidate_key < best_key:
+            best_key = candidate_key
+            best_candidate = candidate
+
+    if best_candidate is None:
+        if unsupported_found:
+            raise ExactSearchUnavailableError(
+                "exact Dutch mode currently requires heuristic fallback for this even bracket"
+            )
+        return None
+
+    return _EvenPairingInternal(
+        pairings=best_candidate.pairings,
+        unresolved=best_candidate.unresolved,
+    )
+
+
 def _solve_even_players_via_single_mdp_exact(
     players: Sequence[PlayerState],
     *,
     context: BracketContext,
 ) -> _EvenPairingInternal | None:
-    return _solve_even_players_via_single_mdp_exact_cached(
-        tuple(sorted(players, key=_player_rank_key)),
-        context.mdp_ids,
-        context.initial_color,
+    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    if context.next_bracket_validator is None and context.next_bracket_key is None:
+        return _solve_even_players_via_single_mdp_exact_cached(
+            ordered_players,
+            context.mdp_ids,
+            context.initial_color,
+        )
+    return _solve_even_players_via_single_mdp_exact_uncached(
+        ordered_players,
+        context=context,
     )
 
 
