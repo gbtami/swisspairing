@@ -1323,3 +1323,23 @@ def test_budapest_group_b_round_5_exact_pairs_full_round() -> None:
     assert result.unpaired_ids == ()
     assert len(result.pairings) == (len(states) + 1) // 2
     assert sum(int(pairing.black_id is None) for pairing in result.pairings) == 1
+
+
+@pytest.mark.skipif(
+    not _has_py4swiss_runtime(),
+    reason="active Python interpreter unavailable for Budapest Group B exact checks",
+)
+def test_budapest_group_b_round_7_exact_pairs_full_round() -> None:
+    manifest_path = _budapest_group_b_manifest_path()
+    round_entry = _budapest_group_b_round_entry(7)
+    trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
+    states = _budapest_group_b_states_for_round(7)
+
+    result = pair_round_dutch_exact(
+        states,
+        initial_color=build_trf_initial_color(trf),
+    )
+
+    assert result.unpaired_ids == ()
+    assert len(result.pairings) == (len(states) + 1) // 2
+    assert sum(int(pairing.black_id is None) for pairing in result.pairings) == 1
