@@ -6,7 +6,11 @@ import pytest
 
 from swisspairing.exceptions import PairingError
 from swisspairing.model import FloatAssignment, FloatKind, Pairing, PlayerState
-from swisspairing.tournament import pair_round_dutch, pair_round_dutch_fast
+from swisspairing.tournament import (
+    pair_round_dutch,
+    pair_round_dutch_exact,
+    pair_round_dutch_fast,
+)
 
 
 def _player(
@@ -41,6 +45,41 @@ def test_pair_round_dutch_empty_input() -> None:
     result = pair_round_dutch(())
     assert result.pairings == ()
     assert result.unpaired_ids == ()
+
+
+def test_pair_round_dutch_exact_matches_small_exact_round() -> None:
+    players = (
+        _player(player_id="a1", pairing_no=1, score=3),
+        _player(player_id="a2", pairing_no=2, score=3),
+        _player(player_id="b1", pairing_no=3, score=2),
+        _player(player_id="b2", pairing_no=4, score=2),
+    )
+
+    assert pair_round_dutch_exact(players) == pair_round_dutch(players)
+
+
+def test_pair_round_dutch_exact_raises_when_current_solver_needs_heuristic_fallback() -> None:
+    players = tuple(
+        PlayerState(
+            player_id=f"p{index}",
+            pairing_no=index,
+            score=3,
+            opponents=(
+                frozenset({"p8"})
+                if index == 1
+                else frozenset({"p1"})
+                if index == 8
+                else frozenset()
+            ),
+        )
+        for index in range(1, 15)
+    )
+
+    result = pair_round_dutch(players)
+
+    assert result.unpaired_ids == ()
+    with pytest.raises(PairingError, match="heuristic fallback"):
+        pair_round_dutch_exact(players)
 
 
 def test_pair_round_dutch_raises_when_last_bracket_cannot_be_fully_paired() -> None:

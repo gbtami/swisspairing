@@ -13,7 +13,7 @@ from math import comb, perm
 from typing import TYPE_CHECKING, cast
 
 from swisspairing._matching import compute_maximum_weight_matching
-from swisspairing.exceptions import PairingError
+from swisspairing.exceptions import ExactSearchUnavailableError, PairingError
 from swisspairing.model import (
     Color,
     FloatAssignment,
@@ -1760,6 +1760,7 @@ def _solve_even_players(
     *,
     context: BracketContext,
     sequential_search_max_players: int = _SEQUENTIAL_SEARCH_MAX_PLAYERS,
+    allow_heuristic_fallback: bool = True,
 ) -> _EvenPairingInternal:
     """Compute one maximum-cardinality matching for an even-sized set."""
     if len(players) % 2 != 0:
@@ -1781,6 +1782,11 @@ def _solve_even_players(
         sequence_result = _solve_even_players_via_sequence(players, context=context)
         if sequence_result is not None:
             return sequence_result
+
+    if not allow_heuristic_fallback:
+        raise ExactSearchUnavailableError(
+            "exact Dutch mode currently requires heuristic fallback for this even bracket"
+        )
 
     if context.mdp_ids:
         fallback_result = _solve_even_players_via_heterogeneous_weighted_steps(
@@ -2393,6 +2399,7 @@ def _solve_without_bye_candidate_uncached(
     *,
     context: BracketContext,
     sequential_search_max_players: int,
+    allow_heuristic_fallback: bool,
 ) -> _CandidateInternal:
     """Return best candidate for a bracket that cannot assign a pairing bye."""
     ordered_players = players
@@ -2404,6 +2411,7 @@ def _solve_without_bye_candidate_uncached(
             ordered_players,
             context=context,
             sequential_search_max_players=sequential_search_max_players,
+            allow_heuristic_fallback=allow_heuristic_fallback,
         )
         return _CandidateInternal(
             pairings=even_result.pairings,
@@ -2437,7 +2445,7 @@ def _solve_without_bye_candidate_uncached(
         if best_candidate is not None:
             return best_candidate
 
-    if (
+    if allow_heuristic_fallback and (
         len(ordered_players) > sequential_search_max_players
         or (context.mdp_ids and not use_exact_heterogeneous)
         or (not context.mdp_ids and not use_exact_homogeneous)
@@ -2483,6 +2491,7 @@ def _solve_without_bye_candidate_uncached(
 
     generated: list[_CandidateInternal] = []
     sequence_no = 0
+    unsupported_found = False
     for downfloater in ordered_players:
         rest = tuple(
             player for player in ordered_players if player.player_id != downfloater.player_id
@@ -2509,11 +2518,16 @@ def _solve_without_bye_candidate_uncached(
         ):
             remainder_candidates = _iter_homogeneous_candidates(rest)
         else:
-            even_result = _solve_even_players(
-                rest,
-                context=adjusted_context,
-                sequential_search_max_players=sequential_search_max_players,
-            )
+            try:
+                even_result = _solve_even_players(
+                    rest,
+                    context=adjusted_context,
+                    sequential_search_max_players=sequential_search_max_players,
+                    allow_heuristic_fallback=allow_heuristic_fallback,
+                )
+            except ExactSearchUnavailableError:
+                unsupported_found = True
+                continue
             remainder_candidates = (
                 _CandidateInternal(
                     pairings=even_result.pairings,
@@ -2537,6 +2551,10 @@ def _solve_without_bye_candidate_uncached(
 
     best_candidate = _select_best_candidate(generated, context=context)
     if best_candidate is None:
+        if unsupported_found and not allow_heuristic_fallback:
+            raise ExactSearchUnavailableError(
+                "exact Dutch mode currently requires heuristic fallback for this odd bracket"
+            )
         raise PairingError("internal failure selecting downfloater candidate")
     return best_candidate
 
@@ -2547,11 +2565,13 @@ def _solve_without_bye_candidate_cached(
     mdp_ids: frozenset[str],
     sequential_search_max_players: int,
     initial_color: Color,
+    allow_heuristic_fallback: bool,
 ) -> _CandidateInternal:
     return _solve_without_bye_candidate_uncached(
         players,
         context=BracketContext(mdp_ids=mdp_ids, initial_color=initial_color),
         sequential_search_max_players=sequential_search_max_players,
+        allow_heuristic_fallback=allow_heuristic_fallback,
     )
 
 
@@ -2560,6 +2580,7 @@ def _solve_without_bye_candidate(
     *,
     context: BracketContext,
     sequential_search_max_players: int = _SEQUENTIAL_SEARCH_MAX_PLAYERS,
+    allow_heuristic_fallback: bool = True,
 ) -> _CandidateInternal:
     ordered_players = tuple(sorted(players, key=_player_rank_key))
     if context.next_bracket_validator is None and context.next_bracket_key is None:
@@ -2568,11 +2589,13 @@ def _solve_without_bye_candidate(
             context.mdp_ids,
             sequential_search_max_players,
             context.initial_color,
+            allow_heuristic_fallback,
         )
     return _solve_without_bye_candidate_uncached(
         ordered_players,
         context=context,
         sequential_search_max_players=sequential_search_max_players,
+        allow_heuristic_fallback=allow_heuristic_fallback,
     )
 
 
@@ -2715,6 +2738,7 @@ def pair_bracket(
     allow_bye: bool = True,
     sequential_search_max_players: int = _SEQUENTIAL_SEARCH_MAX_PLAYERS,
     initial_color: Color = "white",
+    allow_heuristic_fallback: bool = True,
 ) -> PairingResult:
     """Pair one bracket and return pairings plus unresolved player ids.
 
@@ -2741,6 +2765,7 @@ def pair_bracket(
             ordered_players,
             context=local_context,
             sequential_search_max_players=sequential_search_max_players,
+            allow_heuristic_fallback=allow_heuristic_fallback,
         )
         pairings: list[Pairing] = []
         for left, right in candidate.pairings:
@@ -2764,6 +2789,7 @@ def pair_bracket(
             ordered_players,
             context=local_context,
             sequential_search_max_players=sequential_search_max_players,
+            allow_heuristic_fallback=allow_heuristic_fallback,
         )
         pairings: list[Pairing] = []
         for left, right in even_result.pairings:
@@ -2812,14 +2838,17 @@ def pair_bracket(
         if best_candidate is None:
             raise PairingError("no legal bye candidate available under C2 constraints")
     else:
-        best_candidate = _select_large_final_bye_candidate_via_weighted_steps(
-            ordered_players,
-            context=local_context,
-            bye_candidates=bye_candidates,
-            sequential_search_max_players=sequential_search_max_players,
-        )
+        best_candidate = None
+        if allow_heuristic_fallback:
+            best_candidate = _select_large_final_bye_candidate_via_weighted_steps(
+                ordered_players,
+                context=local_context,
+                bye_candidates=bye_candidates,
+                sequential_search_max_players=sequential_search_max_players,
+            )
         if best_candidate is None:
             best_key: tuple[object, ...] | None = None
+            unsupported_found = False
 
             # Exact odd-bracket generation already yields article sequence
             # order. Keep the fallback scan aligned with that direction so
@@ -2831,11 +2860,16 @@ def pair_bracket(
                     for player in ordered_players
                     if player.player_id != bye_candidate.player_id
                 )
-                even_result = _solve_even_players(
-                    rest,
-                    context=local_context,
-                    sequential_search_max_players=sequential_search_max_players,
-                )
+                try:
+                    even_result = _solve_even_players(
+                        rest,
+                        context=local_context,
+                        sequential_search_max_players=sequential_search_max_players,
+                        allow_heuristic_fallback=allow_heuristic_fallback,
+                    )
+                except ExactSearchUnavailableError:
+                    unsupported_found = True
+                    continue
                 candidate = _CandidateInternal(
                     pairings=even_result.pairings,
                     unresolved=even_result.unresolved,
@@ -2846,6 +2880,10 @@ def pair_bracket(
                 if best_key is None or candidate_key < best_key:
                     best_key = candidate_key
                     best_candidate = candidate
+            if best_candidate is None and unsupported_found and not allow_heuristic_fallback:
+                raise ExactSearchUnavailableError(
+                    "exact Dutch mode currently requires heuristic fallback for this final bracket"
+                )
 
     if best_candidate is None:
         raise PairingError("internal failure selecting bye candidate")
@@ -2871,3 +2909,30 @@ def pair_bracket(
             unpaired_ids=unresolved_ids,
         ),
     )
+
+
+def pair_bracket_exact(
+    players: Sequence[PlayerState],
+    *,
+    context: BracketContext | None = None,
+    allow_bye: bool = True,
+    sequential_search_max_players: int = _SEQUENTIAL_SEARCH_MAX_PLAYERS,
+    initial_color: Color = "white",
+) -> PairingResult:
+    """Pair one bracket without heuristic fallback.
+
+    This is the first step toward a normative Dutch mode. It uses only the
+    current exact-search surface and raises `PairingError` when the solver
+    would otherwise switch to weighted or greedy approximations.
+    """
+    try:
+        return pair_bracket(
+            players,
+            context=context,
+            allow_bye=allow_bye,
+            sequential_search_max_players=sequential_search_max_players,
+            initial_color=initial_color,
+            allow_heuristic_fallback=False,
+        )
+    except ExactSearchUnavailableError as exc:
+        raise PairingError(str(exc)) from exc

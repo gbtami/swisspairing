@@ -16,7 +16,7 @@ from swisspairing.dutch import (
     pair_bracket,
     pairing_result_next_bracket_local_key,
 )
-from swisspairing.exceptions import PairingError
+from swisspairing.exceptions import ExactSearchUnavailableError, PairingError
 from swisspairing.model import Color, Pairing, PairingResult, PlayerState
 
 _COLLAPSE_SEARCH_MAX_PLAYERS = 80
@@ -134,6 +134,7 @@ def _pair_bracket_with_optional_limit(
     allow_bye: bool,
     sequential_search_max_players: int | None,
     initial_color: Color,
+    allow_heuristic_fallback: bool = True,
 ) -> PairingResult:
     if sequential_search_max_players is None:
         return pair_bracket(
@@ -141,6 +142,7 @@ def _pair_bracket_with_optional_limit(
             context=context,
             allow_bye=allow_bye,
             initial_color=initial_color,
+            allow_heuristic_fallback=allow_heuristic_fallback,
         )
     return pair_bracket(
         players,
@@ -148,6 +150,7 @@ def _pair_bracket_with_optional_limit(
         allow_bye=allow_bye,
         sequential_search_max_players=sequential_search_max_players,
         initial_color=initial_color,
+        allow_heuristic_fallback=allow_heuristic_fallback,
     )
 
 
@@ -156,6 +159,7 @@ def _pair_round_dutch_greedy(
     *,
     sequential_search_max_players: int | None = None,
     initial_color: Color = "white",
+    allow_heuristic_fallback: bool = True,
 ) -> tuple[Pairing, ...] | None:
     """Pair one round without global collapse backtracking (fast-path for large events)."""
     all_pairings: list[Pairing] = []
@@ -190,6 +194,7 @@ def _pair_round_dutch_greedy(
                         allow_bye=True,
                         sequential_search_max_players=sequential_search_max_players,
                         initial_color=initial_color,
+                        allow_heuristic_fallback=allow_heuristic_fallback,
                     )
                 except PairingError:
                     continue
@@ -234,6 +239,7 @@ def _pair_round_dutch_greedy(
                         allow_bye=allow_bye_next,
                         sequential_search_max_players=sequential_search_max_players,
                         initial_color=initial_color,
+                        allow_heuristic_fallback=allow_heuristic_fallback,
                     )
                 except PairingError:
                     next_bracket_cache_snapshot[ordered_downfloaters] = False
@@ -279,6 +285,7 @@ def _pair_round_dutch_greedy(
                     allow_bye=False,
                     sequential_search_max_players=sequential_search_max_players,
                     initial_color=initial_color,
+                    allow_heuristic_fallback=allow_heuristic_fallback,
                 )
             except PairingError:
                 continue
@@ -303,6 +310,7 @@ def pair_round_dutch(
     *,
     sequential_search_max_players: int | None = None,
     initial_color: Color = "white",
+    allow_heuristic_fallback: bool = True,
 ) -> PairingResult:
     """Pair one full round with bracket chaining over scoregroups.
 
@@ -327,13 +335,14 @@ def pair_round_dutch(
 
     # Collapse backtracking improves parity in rare edge cases, but its search
     # space can grow quickly. For larger tournaments, keep a bounded fast path.
-    if len(ordered_players) > _collapse_search_max_players(
+    if allow_heuristic_fallback and len(ordered_players) > _collapse_search_max_players(
         sequential_search_max_players=sequential_search_max_players
     ):
         pairings = _pair_round_dutch_greedy(
             scoregroups,
             sequential_search_max_players=sequential_search_max_players,
             initial_color=initial_color,
+            allow_heuristic_fallback=allow_heuristic_fallback,
         )
         if pairings is None:
             raise PairingError("round cannot be fully paired under current absolute constraints")
@@ -352,6 +361,7 @@ def pair_round_dutch(
         remaining_groups: tuple[tuple[PlayerState, ...], ...],
         carried_mdps: tuple[PlayerState, ...],
     ) -> _RoundTailSolution | None:
+        nonlocal unsupported_found
         if not remaining_groups:
             if carried_mdps:
                 return None
@@ -395,7 +405,11 @@ def pair_round_dutch(
                         allow_bye=True,
                         sequential_search_max_players=sequential_search_max_players,
                         initial_color=initial_color,
+                        allow_heuristic_fallback=allow_heuristic_fallback,
                     )
+                except ExactSearchUnavailableError:
+                    unsupported_found = True
+                    continue
                 except PairingError:
                     continue
                 if bracket_result.unpaired_ids:
@@ -437,6 +451,7 @@ def pair_round_dutch(
                     tuple[PlayerState, ...], NextBracketKey | None
                 ] = next_bracket_key_cache,
             ) -> NextBracketKey | None:
+                nonlocal unsupported_found
                 ordered_downfloaters = tuple(sorted(downfloaters, key=_player_rank_key))
                 if ordered_downfloaters in next_bracket_key_cache_snapshot:
                     return next_bracket_key_cache_snapshot[ordered_downfloaters]
@@ -459,7 +474,12 @@ def pair_round_dutch(
                             allow_bye=True,
                             sequential_search_max_players=sequential_search_max_players,
                             initial_color=initial_color,
+                            allow_heuristic_fallback=allow_heuristic_fallback,
                         )
+                    except ExactSearchUnavailableError:
+                        unsupported_found = True
+                        next_bracket_key_cache_snapshot[ordered_downfloaters] = None
+                        return None
                     except PairingError:
                         next_bracket_key_cache_snapshot[ordered_downfloaters] = None
                         return None
@@ -492,7 +512,12 @@ def pair_round_dutch(
                         allow_bye=False,
                         sequential_search_max_players=sequential_search_max_players,
                         initial_color=initial_color,
+                        allow_heuristic_fallback=allow_heuristic_fallback,
                     )
+                except ExactSearchUnavailableError:
+                    unsupported_found = True
+                    next_bracket_key_cache_snapshot[ordered_downfloaters] = None
+                    return None
                 except PairingError:
                     next_bracket_key_cache_snapshot[ordered_downfloaters] = None
                     return None
@@ -517,7 +542,11 @@ def pair_round_dutch(
                     allow_bye=False,
                     sequential_search_max_players=sequential_search_max_players,
                     initial_color=initial_color,
+                    allow_heuristic_fallback=allow_heuristic_fallback,
                 )
+            except ExactSearchUnavailableError:
+                unsupported_found = True
+                continue
             except PairingError:
                 continue
 
@@ -563,8 +592,13 @@ def pair_round_dutch(
 
         return best_solution
 
+    unsupported_found = False
     solution = solve(scoregroups, ())
     if solution is None:
+        if unsupported_found and not allow_heuristic_fallback:
+            raise PairingError(
+                "exact Dutch mode currently requires heuristic fallback for this round"
+            )
         raise PairingError("round cannot be fully paired under current absolute constraints")
     return PairingResult(
         pairings=solution.pairings,
@@ -574,6 +608,27 @@ def pair_round_dutch(
             pairings=solution.pairings,
             unpaired_ids=(),
         ),
+    )
+
+
+def pair_round_dutch_exact(
+    players: tuple[PlayerState, ...],
+    *,
+    sequential_search_max_players: int | None = None,
+    initial_color: Color = "white",
+) -> PairingResult:
+    """Pair one full round without heuristic fallback.
+
+    This currently exposes the exact-search surface already implemented in the
+    bracket and round pipeline. When the solver would need weighted or greedy
+    approximations, it raises `PairingError` instead of silently switching
+    search policy.
+    """
+    return pair_round_dutch(
+        players,
+        sequential_search_max_players=sequential_search_max_players,
+        initial_color=initial_color,
+        allow_heuristic_fallback=False,
     )
 
 

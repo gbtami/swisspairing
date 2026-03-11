@@ -9,7 +9,13 @@ from typing import Any
 import pytest
 
 import swisspairing.dutch as dutch
-from swisspairing.dutch import BracketContext, NextBracketKey, NextBracketLocalKey, pair_bracket
+from swisspairing.dutch import (
+    BracketContext,
+    NextBracketKey,
+    NextBracketLocalKey,
+    pair_bracket,
+    pair_bracket_exact,
+)
 from swisspairing.exceptions import PairingError
 from swisspairing.model import Color, FloatAssignment, FloatKind, Pairing, PlayerState
 
@@ -81,6 +87,37 @@ def test_pair_bracket_even_pairs_all_players_when_legal_edges_exist() -> None:
         pairing.black_id for pairing in result.pairings if pairing.black_id is not None
     }
     assert seen_ids == {"p1", "p2", "p3", "p4"}
+
+
+def test_pair_bracket_exact_matches_small_exact_bracket() -> None:
+    players = (
+        _player(player_id="p1", pairing_no=1, score=3),
+        _player(player_id="p2", pairing_no=2, score=3),
+        _player(player_id="p3", pairing_no=3, score=2),
+        _player(player_id="p4", pairing_no=4, score=2),
+    )
+
+    assert pair_bracket_exact(players) == pair_bracket(players)
+
+
+def test_pair_bracket_exact_raises_when_current_solver_needs_heuristic_fallback() -> None:
+    players = tuple(
+        _player(
+            player_id=f"p{index}",
+            pairing_no=index,
+            score=3,
+            opponents=(
+                frozenset({"p8"}) if index == 1 else frozenset({"p1"}) if index == 8 else None
+            ),
+        )
+        for index in range(1, 15)
+    )
+
+    result = pair_bracket(players)
+
+    assert result.unpaired_ids == ()
+    with pytest.raises(PairingError, match="heuristic fallback"):
+        pair_bracket_exact(players)
 
 
 def test_pair_bracket_prevents_rematch_under_c0401_rule_2() -> None:
