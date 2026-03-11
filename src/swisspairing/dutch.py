@@ -2948,6 +2948,48 @@ def _solve_without_bye_candidate_uncached(
                     next_bracket_validator=context.next_bracket_validator,
                     next_bracket_key=context.next_bracket_key,
                 )
+            feasibility_validator: NextBracketValidator | None = None
+            if not allow_heuristic_fallback and adjusted_context.next_bracket_validator is not None:
+
+                def wrapped_feasibility_validator(
+                    remainder_downfloaters: tuple[PlayerState, ...],
+                    *,
+                    chosen_downfloater: PlayerState = downfloater,
+                    validator: NextBracketValidator = adjusted_context.next_bracket_validator,
+                ) -> bool:
+                    full_downfloaters = tuple(
+                        sorted(
+                            (*remainder_downfloaters, chosen_downfloater),
+                            key=_player_rank_key,
+                        )
+                    )
+                    return validator(full_downfloaters)
+
+                feasibility_validator = wrapped_feasibility_validator
+
+            if (
+                not allow_heuristic_fallback
+                and feasibility_validator is not None
+                and len(adjusted_context.mdp_ids) == 1
+            ):
+                try:
+                    is_feasible = bracket_is_feasible_exact(
+                        rest,
+                        context=BracketContext(
+                            mdp_ids=adjusted_context.mdp_ids,
+                            initial_color=adjusted_context.initial_color,
+                            next_bracket_validator=feasibility_validator,
+                        ),
+                        allow_bye=False,
+                        sequential_search_max_players=sequential_search_max_players,
+                        initial_color=adjusted_context.initial_color,
+                    )
+                except ExactSearchUnavailableError:
+                    unsupported_found = True
+                    continue
+                if not is_feasible:
+                    continue
+
             remainder_context = BracketContext(
                 mdp_ids=adjusted_context.mdp_ids,
                 initial_color=adjusted_context.initial_color,
