@@ -218,6 +218,9 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     removes duplicate canonical exact candidates early, which cut the main
     remaining Budapest Group B round-5 cold exact case from about `7.5s` to
     about `2.2s`.
+  - Budapest Group B rounds 5 and 7 now have direct exact-mode regressions in
+    `tests/test_chess_results.py`, so the current exact frontier is anchored
+    on real OTB cold-runtime cases as well as behavior.
   - Extended unit-test coverage for criteria and sequence behavior.
 - Next:
   - Keep exact/FIDE correctness as the primary target and treat recurring
