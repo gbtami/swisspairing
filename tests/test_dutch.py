@@ -420,6 +420,43 @@ def test_heterogeneous_odd_refinement_uses_tighter_c8_candidate_budget(
     assert refined is weighted_candidate
 
 
+def test_heterogeneous_odd_refinement_skips_single_mdp_without_next_bracket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    players = (
+        _player(player_id="m1", pairing_no=1, score=3),
+        _player(player_id="p2", pairing_no=2, score=2),
+        _player(player_id="p3", pairing_no=3, score=2),
+    )
+    weighted_candidate = dutch._CandidateInternal(
+        pairings=((players[0], players[1]),),
+        unresolved=(players[2],),
+        bye_player=None,
+        sequence_no=0,
+    )
+
+    def _unexpected_exact_candidates(
+        players: Sequence[PlayerState],
+        *,
+        context: BracketContext,
+    ) -> tuple[dutch._CandidateInternal, ...]:
+        del players, context
+        raise AssertionError("single-MDP no-C8 refinement should keep the existing candidate")
+
+    dutch._refine_weighted_heterogeneous_odd_candidate.cache_clear()
+    monkeypatch.setattr(dutch, "_iter_heterogeneous_candidates", _unexpected_exact_candidates)
+    try:
+        refined = dutch._refine_weighted_heterogeneous_odd_candidate(
+            players,
+            context=BracketContext(mdp_ids=frozenset({"m1"})),
+            weighted_candidate=weighted_candidate,
+        )
+    finally:
+        dutch._refine_weighted_heterogeneous_odd_candidate.cache_clear()
+
+    assert refined is weighted_candidate
+
+
 def test_pair_bracket_uses_c9_unplayed_games_for_bye_tie_break() -> None:
     players = (
         _player(player_id="p1", pairing_no=1, score=2, unplayed_games=3),

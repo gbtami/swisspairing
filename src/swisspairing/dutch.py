@@ -1523,6 +1523,9 @@ def _refine_weighted_heterogeneous_odd_candidate(
     reuse the exact sequence search as a narrow refinement instead of trusting
     the weighted approximation's downfloater choice.
     """
+    if len(context.mdp_ids) == 1 and context.next_bracket_validator is None:
+        return weighted_candidate
+
     ordered_players = tuple(sorted(players, key=_player_rank_key))
     exact_upper_bound = _heterogeneous_exact_candidate_upper_bound(
         len(ordered_players),

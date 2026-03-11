@@ -301,6 +301,8 @@ Output artifacts:
   cases for 64-player fast-mode runtime work.
 - `benchmarks/fixtures/p32_regressions` contains checked-in synthetic tail
   cases for the current midsize `[C8]` runtime work.
+- `benchmarks/fixtures/p128_regressions` contains checked-in synthetic tail
+  cases for the current late-round one-MDP runtime work.
 - Synthetic batch generation uses the greedy round pipeline with a lower
   sequential-search cap to avoid pathological exact-search runtimes.
 - The default recurring sweep now includes `p512`. That profile is still
