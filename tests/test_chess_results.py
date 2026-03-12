@@ -916,10 +916,6 @@ def test_aeroflot_round_5_score_10_bracket_refines_single_mdp_partner() -> None:
         "active Python interpreter or bbpPairings runtime unavailable for Aeroflot reference checks"
     ),
 )
-@pytest.mark.xfail(
-    reason="exact mode still diverges from the BBP-backed Aeroflot round-5 tail",
-    strict=True,
-)
 def test_aeroflot_round_5_matches_bbp_reference() -> None:
     manifest_path = _aeroflot_manifest_path()
     round_entry = _aeroflot_round_entry(5)

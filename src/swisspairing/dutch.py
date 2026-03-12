@@ -507,7 +507,8 @@ def _edge_penalty_components_cached(
 
 # Exact article-4.x sequence expansion grows factorially by S2 size.
 _SEQUENTIAL_SEARCH_MAX_PLAYERS = 12
-_MAX_EXACT_SEQUENCE_CANDIDATES = 50_000
+_MAX_HOMOGENEOUS_EXACT_SEQUENCE_CANDIDATES = 700_000
+_MAX_HETEROGENEOUS_EXACT_SEQUENCE_CANDIDATES = 50_000
 _SINGLE_MDP_ODD_EXACT_MAX_PLAYERS = 24
 
 
@@ -556,7 +557,7 @@ def _use_homogeneous_exact_search(
     player_count: int,
     *,
     sequential_search_max_players: int,
-    exact_candidate_max: int = _MAX_EXACT_SEQUENCE_CANDIDATES,
+    exact_candidate_max: int = _MAX_HOMOGENEOUS_EXACT_SEQUENCE_CANDIDATES,
 ) -> bool:
     return (
         player_count <= sequential_search_max_players
@@ -569,7 +570,7 @@ def _use_heterogeneous_exact_search(
     *,
     mdp_count: int,
     sequential_search_max_players: int,
-    exact_candidate_max: int = _MAX_EXACT_SEQUENCE_CANDIDATES,
+    exact_candidate_max: int = _MAX_HETEROGENEOUS_EXACT_SEQUENCE_CANDIDATES,
 ) -> bool:
     return (
         player_count <= sequential_search_max_players
@@ -729,6 +730,23 @@ def _canonical_candidate_shape(
     unresolved_ids = tuple(player.pairing_no for player in candidate.unresolved)
     bye_id = None if candidate.bye_player is None else candidate.bye_player.pairing_no
     return canonical_pairs, unresolved_ids, bye_id
+
+
+@cache
+def _single_mdp_article_order_tie_key(
+    candidate: _CandidateInternal,
+) -> tuple[int, int, tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
+    """Return a stable article-order tie-break for one-MDP candidates."""
+    players_by_id: dict[str, PlayerState] = {}
+    for left, right in candidate.pairings:
+        players_by_id[left.player_id] = left
+        players_by_id[right.player_id] = right
+    for player in candidate.unresolved:
+        players_by_id[player.player_id] = player
+    if candidate.bye_player is not None:
+        players_by_id[candidate.bye_player.player_id] = candidate.bye_player
+    ordered_players = tuple(sorted(players_by_id.values(), key=_player_rank_key))
+    return _homogeneous_article_order_key(players=ordered_players, candidate=candidate)
 
 
 @cache
@@ -893,16 +911,28 @@ def _select_best_candidate(
         candidate_key = _candidate_quality_key(candidate=candidate, context=context)
         selection_key: tuple[object, ...]
         if len(context.mdp_ids) > 1 and not candidate.unresolved and candidate.bye_player is None:
-            selection_key = (
-                *candidate_key[:-1],
-                _heterogeneous_structural_tie_key(
-                    candidate=candidate,
-                    mdp_ids=context.mdp_ids,
+            selection_key = cast(
+                tuple[object, ...],
+                (
+                    *candidate_key[:-1],
+                    _heterogeneous_structural_tie_key(
+                        candidate=candidate,
+                        mdp_ids=context.mdp_ids,
+                    ),
+                    candidate_key[-1],
                 ),
-                candidate_key[-1],
+            )
+        elif len(context.mdp_ids) == 1 and candidate.bye_player is None:
+            selection_key = cast(
+                tuple[object, ...],
+                (
+                    *candidate_key[:-1],
+                    _single_mdp_article_order_tie_key(candidate),
+                    candidate_key[-1],
+                ),
             )
         else:
-            selection_key = candidate_key
+            selection_key = cast(tuple[object, ...], candidate_key)
 
         if best_key is None or selection_key < best_key:
             best_key = selection_key
@@ -969,7 +999,7 @@ def _iter_exact_final_bye_candidates(
     *,
     context: BracketContext,
     sequential_search_max_players: int,
-    exact_candidate_max: int = _MAX_EXACT_SEQUENCE_CANDIDATES,
+    exact_candidate_max: int = _MAX_HETEROGENEOUS_EXACT_SEQUENCE_CANDIDATES,
 ) -> tuple[_CandidateInternal, ...]:
     """Generate exact odd-bracket bye candidates in article sequence order."""
 
@@ -988,7 +1018,7 @@ def _iter_exact_final_bye_candidates(
     elif (not context.mdp_ids) and _use_homogeneous_exact_search(
         len(ordered_players),
         sequential_search_max_players=sequential_search_max_players,
-        exact_candidate_max=exact_candidate_max,
+        exact_candidate_max=_MAX_HOMOGENEOUS_EXACT_SEQUENCE_CANDIDATES,
     ):
         raw_candidates = _iter_homogeneous_candidates(ordered_players)
 
@@ -1461,7 +1491,6 @@ def _solve_even_players(
     if len(players) % 2 != 0:
         raise PairingError("internal even solver received odd player count")
 
-    exact_candidate_max = _MAX_EXACT_SEQUENCE_CANDIDATES
     exact_search_attempted = False
 
     if not context.mdp_ids:
@@ -1482,7 +1511,7 @@ def _solve_even_players(
         len(players),
         mdp_count=len(context.mdp_ids),
         sequential_search_max_players=sequential_search_max_players,
-        exact_candidate_max=exact_candidate_max,
+        exact_candidate_max=_MAX_HETEROGENEOUS_EXACT_SEQUENCE_CANDIDATES,
     ):
         exact_search_attempted = True
         sequence_result = _solve_even_players_via_heterogeneous_sequence(players, context=context)
@@ -1492,7 +1521,7 @@ def _solve_even_players(
     if not context.mdp_ids and _use_homogeneous_exact_search(
         len(players),
         sequential_search_max_players=sequential_search_max_players,
-        exact_candidate_max=exact_candidate_max,
+        exact_candidate_max=_MAX_HOMOGENEOUS_EXACT_SEQUENCE_CANDIDATES,
     ):
         exact_search_attempted = True
         sequence_result = _solve_even_players_via_sequence(players, context=context)
@@ -2258,8 +2287,6 @@ def _solve_without_bye_candidate_uncached(
     if not ordered_players:
         return _CandidateInternal(pairings=(), unresolved=(), bye_player=None, sequence_no=0)
 
-    exact_candidate_max = _MAX_EXACT_SEQUENCE_CANDIDATES
-
     if len(ordered_players) % 2 == 0:
         even_result = _solve_even_players(
             ordered_players,
@@ -2277,7 +2304,7 @@ def _solve_without_bye_candidate_uncached(
         len(ordered_players),
         mdp_count=len(context.mdp_ids),
         sequential_search_max_players=sequential_search_max_players,
-        exact_candidate_max=exact_candidate_max,
+        exact_candidate_max=_MAX_HETEROGENEOUS_EXACT_SEQUENCE_CANDIDATES,
     )
     if len(context.mdp_ids) == 1:
         use_exact_heterogeneous = False
@@ -2292,7 +2319,7 @@ def _solve_without_bye_candidate_uncached(
     use_exact_homogeneous = (not context.mdp_ids) and _use_homogeneous_exact_search(
         len(ordered_players),
         sequential_search_max_players=sequential_search_max_players,
-        exact_candidate_max=exact_candidate_max,
+        exact_candidate_max=_MAX_HOMOGENEOUS_EXACT_SEQUENCE_CANDIDATES,
     )
     if use_exact_homogeneous:
         best_candidate = _select_best_candidate(
@@ -2379,7 +2406,7 @@ def _solve_without_bye_candidate_uncached(
                 len(rest),
                 mdp_count=len(remainder_context.mdp_ids),
                 sequential_search_max_players=sequential_search_max_players,
-                exact_candidate_max=exact_candidate_max,
+                exact_candidate_max=_MAX_HETEROGENEOUS_EXACT_SEQUENCE_CANDIDATES,
             ):
                 remainder_candidates = _iter_heterogeneous_candidates(
                     rest,
@@ -2408,7 +2435,7 @@ def _solve_without_bye_candidate_uncached(
             elif _use_homogeneous_exact_search(
                 len(rest),
                 sequential_search_max_players=sequential_search_max_players,
-                exact_candidate_max=exact_candidate_max,
+                exact_candidate_max=_MAX_HOMOGENEOUS_EXACT_SEQUENCE_CANDIDATES,
             ):
                 remainder_candidates = _iter_homogeneous_candidates(rest)
                 preselect_fixed_downfloater_homogeneous = True
@@ -2744,7 +2771,7 @@ def _pair_bracket_impl(
         ordered_players,
         context=local_context,
         sequential_search_max_players=sequential_search_max_players,
-        exact_candidate_max=_MAX_EXACT_SEQUENCE_CANDIDATES,
+        exact_candidate_max=_MAX_HETEROGENEOUS_EXACT_SEQUENCE_CANDIDATES,
     )
     legal_exact_bye_candidates = tuple(
         candidate
@@ -2840,6 +2867,19 @@ def bracket_is_feasible_exact(
     )
 
     if not allow_bye:
+        if len(ordered_players) % 2 == 0:
+            even_result = _solve_even_players(
+                ordered_players,
+                context=local_context,
+                sequential_search_max_players=effective_search_limit,
+            )
+            validator = local_context.next_bracket_validator
+            if validator is not None and not validator(
+                tuple(sorted(even_result.unresolved, key=_player_rank_key))
+            ):
+                return False
+            return True
+
         unsupported_found = False
         score_groups_desc: list[tuple[PlayerState, ...]] = []
         current_score_group: list[PlayerState] = []

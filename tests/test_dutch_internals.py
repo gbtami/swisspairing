@@ -27,6 +27,7 @@ from swisspairing.dutch import (
     _select_best_homogeneous_odd_candidate,
     _use_heterogeneous_exact_search,
     _use_homogeneous_exact_search,
+    bracket_is_feasible_exact,
     pairing_result_next_bracket_local_key,
 )
 from swisspairing.model import Color, FloatKind, Pairing, PairingResult, PlayerState
@@ -514,6 +515,37 @@ def test_select_best_candidate_deduplicates_canonical_pair_shapes(
     assert scored_sequences == [1]
 
 
+def test_bracket_is_feasible_exact_handles_even_no_bye_with_next_bracket_validator() -> None:
+    players = tuple(
+        _player(
+            player_id=player_id,
+            pairing_no=pairing_no,
+            score=score,
+            color_history=(),
+        )
+        for player_id, pairing_no, score in (
+            ("p1", 1, 2),
+            ("p2", 2, 1),
+            ("p3", 3, 1),
+            ("p4", 4, 1),
+        )
+    )
+
+    assert (
+        bracket_is_feasible_exact(
+            players,
+            context=BracketContext(
+                mdp_ids=frozenset({"p1"}),
+                next_bracket_validator=lambda unresolved: unresolved == (),
+            ),
+            allow_bye=False,
+            sequential_search_max_players=6,
+            initial_color="white",
+        )
+        is True
+    )
+
+
 def test_homogeneous_exact_search_budget_obeys_candidate_cap() -> None:
     assert _homogeneous_exact_candidate_upper_bound(8) == 1680
     assert _homogeneous_exact_candidate_upper_bound(9) == 15120
@@ -523,12 +555,20 @@ def test_homogeneous_exact_search_budget_obeys_candidate_cap() -> None:
     assert _use_homogeneous_exact_search(8, sequential_search_max_players=12) is True
     assert _use_homogeneous_exact_search(9, sequential_search_max_players=12) is True
     assert _use_homogeneous_exact_search(10, sequential_search_max_players=12) is True
-    assert _use_homogeneous_exact_search(12, sequential_search_max_players=12) is False
+    assert _use_homogeneous_exact_search(12, sequential_search_max_players=12) is True
     assert (
         _use_homogeneous_exact_search(
             10,
             sequential_search_max_players=12,
             exact_candidate_max=30_000,
+        )
+        is False
+    )
+    assert (
+        _use_homogeneous_exact_search(
+            12,
+            sequential_search_max_players=12,
+            exact_candidate_max=600_000,
         )
         is False
     )

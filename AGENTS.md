@@ -419,8 +419,8 @@ benchmarks/import_lichess_fixtures.sh
   and `benchmarks/fixtures/chess_results/international_chessopen_graz_2026_a`.
 - Aeroflot rounds 1-3 published-pairing regressions are already fixed and
   covered in `tests/test_chess_results.py`.
-- Aeroflot round 5 is the main real-world BBP-backed Dutch regression and is
-  also covered in `tests/test_chess_results.py`.
+- Aeroflot round 5 now matches `bbpPairings` again in exact mode and is
+  covered in `tests/test_chess_results.py`.
 - On the checked Budapest corpus, round 5 now matches `bbpPairings` once
   float history is derived from the TRF instead of inherited from
   `py4swiss`; the earlier round-7 `swisspairing` divergence is
@@ -458,19 +458,23 @@ Current solver contract:
 
 - `dutch_2025_C5` is the clearest local case where `bbpPairings` and
   `swisspairing` agree while `py4swiss` disagrees
-- Aeroflot round 5 is still the main remaining BBP-backed exact-mode split on
-  the checked OTB corpus
+- Aeroflot round 5 is now back on the `bbpPairings` side in exact mode;
+  the remaining Aeroflot disagreement is published pairings vs consensus
+  engines on rounds 4 / 6 / 7 / 8 / 9.
 - On the checked public JaVaFo release, Aeroflot round 5 aligns with the
   `py4swiss` side rather than the BBP/2026 side. Treat that as Swiss-Manager
   lineage evidence, not as stronger normative evidence than FIDE + BBP.
 - International Chessopen Graz 2026 A is now a clean consensus corpus:
   `swisspairing`, `bbpPairings`, `py4swiss`, and the checked JaVaFo release
   all agree there, and the earlier round-1 runtime tail is fixed.
-- Budapest Spring Festival 2026 Group A round 5 and all three checked Lichess
-  fixtures now align `swisspairing` with `bbpPairings` once float history is
-  derived from the TRF instead of inherited from `py4swiss`. In all of those
-  cases, `py4swiss` and the checked public JaVaFo release still agree with
-  each other on a different pairing.
+- Budapest Spring Festival 2026 Group A round 5 and the checked Lichess
+  `cY3wR140` / `KQYWuizM` fixtures now align `swisspairing` with
+  `bbpPairings` once float history is derived from the TRF instead of
+  inherited from `py4swiss`. In those cases, `py4swiss` and the checked
+  public JaVaFo release still agree with each other on a different pairing.
+- The checked Lichess bullet-increment fixture (`7TYuxURK`) is currently a
+  strict exact-mode `xfail`: `swisspairing` reaches a deterministic legal
+  tail, but still diverges from the BBP-backed line there.
 - Budapest Spring Festival 2026 Group B round 8 is now closed: `swisspairing`
   matches `bbpPairings`, `py4swiss`, and the checked public JaVaFo release
   there. Group B rounds 4 / 5 / 9 remain useful split-reference cases:

@@ -224,6 +224,10 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - Budapest Group B round 8 now matches the `py4swiss` / `bbpPairings`
     consensus in exact mode too, after restoring article-order tie-breaks in
     the odd one-MDP and odd homogeneous exact fallback paths.
+  - Two checked Lichess fixtures (`cY3wR140`, `KQYWuizM`) still align
+    `swisspairing` with `bbpPairings`, while the bullet-increment fixture
+    (`7TYuxURK`) is currently a strict `xfail`: the exact solver finds a
+    deterministic legal tail, but still diverges from the BBP-backed line.
   - The checked exact runtime corpus now explicitly includes Prague D rounds
     2 / 3 / 4 as the current large cold-runtime outliers, alongside the
     Budapest Group B and Graz stress cases.
