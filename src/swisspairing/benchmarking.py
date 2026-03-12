@@ -44,6 +44,8 @@ RECURRING_SYNTHETIC_SLA_PRESETS: dict[str, dict[int, BenchmarkSLA]] = {
     # Synthetic recurring presets are regression guardrails. Exact solver work
     # should be evaluated primarily against checked rule/corpus behavior and
     # real-world exact runtimes, not against holding these values constant.
+    # The checked-in `post-bounded-c8-20260311` artifacts are historical
+    # py4swiss-compare data from before the exact-only cleanup.
     "post-bounded-c8-20260311": {
         16: BenchmarkSLA(
             min_success_rate=1.0,

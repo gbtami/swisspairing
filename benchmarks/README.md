@@ -256,6 +256,12 @@ uv run python benchmarks/run_recurring_baselines.py \
   --sla-preset post-bounded-c8-20260311
 ```
 
+Those checked-in recurring artifacts are historical py4swiss-compare data from
+before the exact-only cleanup. They remain useful as runtime-smoke context,
+but exact/FIDE solver work should be judged primarily on real-world exact
+fixtures and rule/corpus behavior, not on reproducing the old synthetic p95
+shape.
+
 Output artifacts:
 
 - `benchmarks/results/recurring/<run_id>/run_summary.json`

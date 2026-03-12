@@ -93,6 +93,10 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - Refreshed checked-in recurring baselines culminating in
     `post-bounded-c8-20260311`, with calibrated SLA presets and per-profile
     pass/fail tracking in recurring baseline outputs.
+  - After the exact-only cleanup, a fresh rerun of that older synthetic
+    py4swiss-compare sweep was intentionally not adopted as the new baseline:
+    it is still useful for spotting runtime blowups, but it is no longer a
+    good canonical performance target for the exact solver.
   - Local `bbpPairings` build now works as a second external oracle, and the
     benchmark harness can run three-way TRF comparisons across
     `swisspairing`, `py4swiss`, and `bbpPairings`.

@@ -299,6 +299,12 @@ a release gate for exact/FIDE mode. For exact-mode work, prefer real-world
 exact runtimes and checked rule/corpus behavior over holding an older
 synthetic SLA constant.
 
+The checked-in `post-bounded-c8-20260311` artifacts are historical
+py4swiss-compare data from before the exact-only cleanup. Do not assume a
+fresh exact-only rerun over that same synthetic sweep should still fit those
+old p95 numbers; it is useful mainly for spotting pathological runtime
+blowups, not for signing off the canonical solver.
+
 Command:
 
 ```bash

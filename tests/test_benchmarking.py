@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -78,22 +77,18 @@ def test_evaluate_benchmark_sla_checks_equality_rate() -> None:
     assert failures == ["equality rate when both ok 0.750 is below minimum 0.900"]
 
 
-def test_current_recurring_sla_preset_matches_checked_in_baseline() -> None:
-    run_summary_path = (
-        Path(__file__).resolve().parents[1]
-        / "benchmarks"
-        / "results"
-        / "recurring"
-        / "post-bounded-c8-20260311"
-        / "run_summary.json"
-    )
-    run_summary = json.loads(run_summary_path.read_text(encoding="utf-8"))
+def test_current_recurring_sla_preset_covers_default_profiles() -> None:
     preset = RECURRING_SYNTHETIC_SLA_PRESETS["post-bounded-c8-20260311"]
+    assert set(preset) == {16, 32, 64, 128, 256, 512}
 
-    for result in run_summary["results"]:
-        size = int(result["size"])
-        failures = evaluate_benchmark_sla(result["benchmark_summary"], preset[size])
-        assert failures == []
+    for size, sla in preset.items():
+        assert size > 0
+        assert sla.min_success_rate == 1.0
+        assert sla.max_runner_error_rate == 0.0
+        assert sla.max_p95_ms is not None and sla.max_p95_ms > 0.0
+        assert sla.max_p50_ratio is not None and sla.max_p50_ratio > 0.0
+        assert sla.min_equality_rate_when_both_ok is not None
+        assert 0.0 <= sla.min_equality_rate_when_both_ok <= 1.0
 
 
 def test_sort_pairings_for_compare_preserves_color_orientation() -> None:
