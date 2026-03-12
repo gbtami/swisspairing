@@ -224,6 +224,10 @@ def _graz_states_for_round(round_number: int) -> tuple[PlayerState, ...]:
     return _chess_results_states_for_round("international_chessopen_graz_2026_a", round_number)
 
 
+def _spring_chesshouse_manifest_path() -> Path:
+    return _chess_results_manifest_path("spring_2026_chesshouse")
+
+
 def _player(
     starting_number: int,
     *,
@@ -395,6 +399,17 @@ def test_validate_round_player_numbers_rejects_paginated_starting_list_inputs() 
 
     with pytest.raises(ValueError, match="Show complete list|zeilen=99999"):
         _validate_round_player_numbers(players=players, rounds=rounds)
+
+
+def test_spring_2026_chesshouse_fixture_manifest_shape() -> None:
+    manifest = _load_chess_results_manifest("spring_2026_chesshouse")
+
+    assert _spring_chesshouse_manifest_path().exists()
+    assert manifest["tournament_name"] == "Spring 2026 / ChessHouse"
+    assert len(manifest["source_files"]) == 10
+    assert len(manifest["rounds"]) == 9
+    assert manifest["rounds"][0]["trf"] == "spring_2026_chesshouse_r01.trf"
+    assert len(manifest["rounds"][0]["published_pairings"]) == 89
 
 
 def test_published_pairings_for_round_normalizes_games_and_byes() -> None:

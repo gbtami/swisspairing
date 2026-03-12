@@ -416,7 +416,8 @@ benchmarks/import_lichess_fixtures.sh
   `benchmarks/fixtures/chess_results/prague_international_chess_festival_2026_d`,
   `benchmarks/fixtures/chess_results/budapest_spring_festival_2026_group_a_2200`,
   `benchmarks/fixtures/chess_results/budapest_spring_festival_2026_group_b_2250`,
-  and `benchmarks/fixtures/chess_results/international_chessopen_graz_2026_a`.
+  `benchmarks/fixtures/chess_results/international_chessopen_graz_2026_a`,
+  and `benchmarks/fixtures/chess_results/spring_2026_chesshouse`.
 - Aeroflot rounds 1-3 published-pairing regressions are already fixed and
   covered in `tests/test_chess_results.py`.
 - Aeroflot round 5 now matches `bbpPairings` again in exact mode and is
@@ -467,6 +468,13 @@ Current solver contract:
 - International Chessopen Graz 2026 A is now a clean consensus corpus:
   `swisspairing`, `bbpPairings`, `py4swiss`, and the checked JaVaFo release
   all agree there, and the earlier round-1 runtime tail is fixed.
+- Spring 2026 / ChessHouse is also a clean consensus corpus on the completed
+  compare cases: rounds 1 / 2 / 3 / 5 / 6 / 7 / 8 / 9 all matched across
+  `swisspairing`, `bbpPairings`, `py4swiss`, and the checked JaVaFo release.
+  It is mainly useful as an exact-runtime stress corpus: round 4 timed out
+  under the current 30-second compare-runner limit, and direct exact timings
+  were about `47.7s` for round 4, `13.0s` for round 7, and `15.7s` for
+  round 8.
 - Budapest Spring Festival 2026 Group A round 5 and the checked Lichess
   `cY3wR140` / `KQYWuizM` fixtures now align `swisspairing` with
   `bbpPairings` once float history is derived from the TRF instead of

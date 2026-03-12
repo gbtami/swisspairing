@@ -231,6 +231,12 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - The checked exact runtime corpus now explicitly includes Prague D rounds
     2 / 3 / 4 as the current large cold-runtime outliers, alongside the
     Budapest Group B and Graz stress cases.
+  - Imported another Chess-Results OTB corpus, Spring 2026 / ChessHouse
+    (`176` players, `9` rounds). It is clean four-engine consensus on the
+    completed compare cases, but it now stands out as the worst unchecked
+    exact-runtime hotspot: round 4 timed out under the current `30s`
+    compare-runner limit, and direct exact timings were about `47.7s`
+    on round 4, `13.0s` on round 7, and `15.7s` on round 8.
   - Extended unit-test coverage for criteria and sequence behavior.
 - Next:
   - Keep exact/FIDE correctness as the primary target and treat recurring
