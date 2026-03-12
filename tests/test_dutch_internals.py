@@ -317,14 +317,32 @@ def test_select_best_homogeneous_odd_candidate_skips_article_order_for_losing_qu
     )
     seen_article_order_candidates: list[str] = []
 
-    def fake_candidate_quality_key(
-        *,
+    def fake_local_quality_key(
         candidate: _CandidateInternal,
-        context: BracketContext,
-    ) -> tuple[int, int]:
-        del context
+        mdp_ids: frozenset[str],
+        initial_color: Color,
+    ) -> tuple[object, ...]:
+        del mdp_ids, initial_color
+        downfloaters = candidate.unresolved
         return (
-            (0, candidate.sequence_no) if candidate is candidate_a else (1, candidate.sequence_no)
+            downfloaters,
+            0 if candidate is candidate_a else 1,
+            0,
+            (),
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            (),
+            (),
+            (),
+            (),
+            candidate.sequence_no,
         )
 
     def fake_homogeneous_article_order_key(
@@ -336,7 +354,20 @@ def test_select_best_homogeneous_odd_candidate_skips_article_order_for_losing_qu
         seen_article_order_candidates.append(candidate.pairings[0][1].player_id)
         return (candidate.sequence_no,)
 
-    monkeypatch.setattr(dutch_module, "_candidate_quality_key", fake_candidate_quality_key)
+    def fake_c8_violation(
+        *,
+        downfloaters: tuple[PlayerState, ...],
+        context: BracketContext,
+    ) -> int:
+        del downfloaters, context
+        return 0
+
+    monkeypatch.setattr(dutch_module, "_candidate_local_quality_key", fake_local_quality_key)
+    monkeypatch.setattr(
+        dutch_module,
+        "_next_bracket_c1_to_c7_violation",
+        fake_c8_violation,
+    )
     monkeypatch.setattr(
         dutch_module,
         "_homogeneous_article_order_key",
@@ -351,6 +382,71 @@ def test_select_best_homogeneous_odd_candidate_skips_article_order_for_losing_qu
 
     assert result is candidate_a
     assert seen_article_order_candidates == ["p2"]
+
+
+def test_select_best_homogeneous_odd_candidate_skips_c8_for_worse_c5_to_c7(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    players = tuple(
+        _player(player_id=f"p{i}", pairing_no=i, score=3, color_history=()) for i in range(1, 4)
+    )
+    candidate_a = _CandidateInternal(
+        pairings=((players[0], players[1]),),
+        unresolved=(players[2],),
+        bye_player=None,
+        sequence_no=0,
+    )
+    candidate_b = _CandidateInternal(
+        pairings=((players[0], players[2]),),
+        unresolved=(players[1],),
+        bye_player=None,
+        sequence_no=1,
+    )
+    c8_calls: list[str] = []
+
+    def fake_local_quality_key(
+        candidate: _CandidateInternal,
+        mdp_ids: frozenset[str],
+        initial_color: Color,
+    ) -> tuple[object, ...]:
+        del mdp_ids, initial_color
+        downfloaters = candidate.unresolved
+        c5 = 0 if candidate is candidate_a else 1
+        return (downfloaters, c5, 0, (), 0, 0, 0, 0, 0, 0, 0, 0, 0, (), (), (), (), 0)
+
+    def fake_c8_violation(
+        *,
+        downfloaters: tuple[PlayerState, ...],
+        context: BracketContext,
+    ) -> int:
+        del context
+        c8_calls.append(downfloaters[0].player_id)
+        return 0
+
+    def fake_homogeneous_article_order_key(
+        *,
+        players: tuple[PlayerState, ...],
+        candidate: _CandidateInternal,
+    ) -> tuple[int]:
+        del players
+        return (candidate.sequence_no,)
+
+    monkeypatch.setattr(dutch_module, "_candidate_local_quality_key", fake_local_quality_key)
+    monkeypatch.setattr(dutch_module, "_next_bracket_c1_to_c7_violation", fake_c8_violation)
+    monkeypatch.setattr(
+        dutch_module,
+        "_homogeneous_article_order_key",
+        fake_homogeneous_article_order_key,
+    )
+
+    result = _select_best_homogeneous_odd_candidate(
+        players,
+        (candidate_a, candidate_b),
+        context=BracketContext(initial_color="white"),
+    )
+
+    assert result is candidate_a
+    assert c8_calls == ["p3"]
 
 
 def test_heterogeneous_structural_tie_key_prefers_tighter_resident_remainder() -> None:

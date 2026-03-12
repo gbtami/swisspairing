@@ -66,7 +66,6 @@ def compute_maximum_weight_matching_total(
     )
 
     total_weight = sum(
-        int(graph.get_edge_data(left_index, right_index))
-        for left_index, right_index in matched
+        int(graph.get_edge_data(left_index, right_index)) for left_index, right_index in matched
     )
     return (len(matched), total_weight)

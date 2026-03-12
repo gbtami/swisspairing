@@ -950,12 +950,34 @@ def _select_best_homogeneous_odd_candidate(
     ordered_players = tuple(sorted(players, key=_player_rank_key))
     best_candidate: _CandidateInternal | None = None
     best_key_without_generation: tuple[object, ...] | None = None
+    best_c5_to_c7: tuple[object, ...] | None = None
+    best_c5_to_c8: tuple[object, ...] | None = None
     best_article_order_key: tuple[object, ...] | None = None
     best_sequence_no: int | None = None
 
     for candidate in candidates:
-        candidate_key = _candidate_quality_key(candidate=candidate, context=context)
-        key_without_generation = candidate_key[:-1]
+        local_key = _candidate_local_quality_key(
+            candidate,
+            context.mdp_ids,
+            context.initial_color,
+        )
+        downfloaters = local_key[0]
+        c5_to_c7 = cast(tuple[object, ...], local_key[1:4])
+        if best_c5_to_c7 is not None and c5_to_c7 > best_c5_to_c7:
+            continue
+        c8 = _next_bracket_c1_to_c7_violation(downfloaters=downfloaters, context=context)
+        c5_to_c8 = cast(tuple[object, ...], (*c5_to_c7, c8))
+        if best_c5_to_c8 is not None and c5_to_c8 > best_c5_to_c8:
+            continue
+        c8_key = (
+            _EMPTY_NEXT_BRACKET_KEY
+            if c8 or context.next_bracket_key is None
+            else _next_bracket_key(downfloaters=downfloaters, context=context)
+        )
+        key_without_generation = cast(
+            tuple[object, ...],
+            (*c5_to_c8, c8_key, *local_key[4:-1]),
+        )
         sequence_no = candidate.sequence_no
 
         if (
@@ -963,6 +985,8 @@ def _select_best_homogeneous_odd_candidate(
             or key_without_generation < best_key_without_generation
         ):
             best_key_without_generation = key_without_generation
+            best_c5_to_c7 = c5_to_c7
+            best_c5_to_c8 = c5_to_c8
             best_article_order_key = _homogeneous_article_order_key(
                 players=ordered_players,
                 candidate=candidate,
@@ -1206,6 +1230,7 @@ def _homogeneous_exact_pair_penalty_cached(
     c10, c11, c12, c13 = _pair_color_quality_cached(white, black)
     radix = (2 * pair_count) + 1
     return (((c10 * radix) + c11) * radix + c12) * radix + c13
+
 
 @cache
 def _homogeneous_legal_exact_pair_penalty(
@@ -1807,10 +1832,7 @@ def pairing_result_next_bracket_local_key(
             key=lambda player_id: _player_rank_key(by_id[player_id]),
         )
     )
-    unresolved_scores = tuple(
-        by_id[player_id].score
-        for player_id in unresolved_ids
-    )
+    unresolved_scores = tuple(by_id[player_id].score for player_id in unresolved_ids)
     return NextBracketLocalKey(
         c5=bye_score,
         c6=-paired_games,
