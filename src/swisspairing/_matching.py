@@ -20,9 +20,9 @@ def compute_maximum_weight_matching(
     - Edge weights are expected to be safe C/Rust integers for rustworkx.
     """
     graph = rx.PyGraph()
-    ids = list(node_ids)
-    id_to_index = {node_id: graph.add_node(node_id) for node_id in ids}
-    index_to_id = {index: node_id for node_id, index in id_to_index.items()}
+    ids = tuple(node_ids)
+    id_to_index = {node_id: index for index, node_id in enumerate(ids)}
+    graph.add_nodes_from([None] * len(ids))
 
     for (left_id, right_id), weight in edge_weights.items():
         left_index = id_to_index[left_id]
@@ -32,14 +32,14 @@ def compute_maximum_weight_matching(
     matched = rx.max_weight_matching(
         graph,
         max_cardinality=max_cardinality,
-        weight_fn=lambda edge_weight: edge_weight,
+        weight_fn=int,
         default_weight=1,
     )
 
     normalized: set[tuple[str, str]] = set()
     for left_index, right_index in matched:
-        left_id = index_to_id[left_index]
-        right_id = index_to_id[right_index]
+        left_id = ids[left_index]
+        right_id = ids[right_index]
         if left_id <= right_id:
             normalized.add((left_id, right_id))
         else:
