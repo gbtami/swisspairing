@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import pytest
 
+import swisspairing.dutch as dutch_module
 from swisspairing.dutch import (
     BracketContext,
     _candidate_local_quality_key,
@@ -19,8 +20,10 @@ from swisspairing.dutch import (
     _homogeneous_exact_candidate_upper_bound,
     _iter_homogeneous_candidates,
     _iter_pairable_mdp_sets,
+    _iter_s2_transpositions,
     _pair_color_quality,
     _select_best_candidate,
+    _select_best_homogeneous_odd_candidate,
     _use_heterogeneous_exact_search,
     _use_homogeneous_exact_search,
 )
@@ -242,6 +245,85 @@ def test_iter_homogeneous_candidates_deduplicates_pair_orientation() -> None:
     }
 
 
+def test_iter_s2_transpositions_preserves_article_prefix_order() -> None:
+    players = tuple(
+        _player(player_id=f"p{i}", pairing_no=i, score=3, color_history=()) for i in range(1, 6)
+    )
+
+    transpositions = _iter_s2_transpositions(
+        s1=(players[0], players[1]),
+        s2=(players[2], players[3], players[4]),
+        bsn_by_player_id={player.player_id: player.pairing_no for player in players},
+    )
+
+    assert [
+        tuple(player.player_id for player in transposition) for transposition in transpositions
+    ] == [
+        ("p3", "p4", "p5"),
+        ("p3", "p5", "p4"),
+        ("p4", "p3", "p5"),
+        ("p4", "p5", "p3"),
+        ("p5", "p3", "p4"),
+        ("p5", "p4", "p3"),
+    ]
+
+
+def test_select_best_homogeneous_odd_candidate_skips_article_order_for_losing_quality(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    players = tuple(
+        _player(player_id=f"p{i}", pairing_no=i, score=3, color_history=()) for i in range(1, 4)
+    )
+    candidate_a = _CandidateInternal(
+        pairings=((players[0], players[1]),),
+        unresolved=(players[2],),
+        bye_player=None,
+        sequence_no=0,
+    )
+    candidate_b = _CandidateInternal(
+        pairings=((players[0], players[2]),),
+        unresolved=(players[1],),
+        bye_player=None,
+        sequence_no=1,
+    )
+    seen_article_order_candidates: list[str] = []
+
+    def fake_candidate_quality_key(
+        *,
+        candidate: _CandidateInternal,
+        context: BracketContext,
+    ) -> tuple[int, int]:
+        del context
+        return (
+            (0, candidate.sequence_no) if candidate is candidate_a else (1, candidate.sequence_no)
+        )
+
+    def fake_homogeneous_article_order_key(
+        *,
+        players: tuple[PlayerState, ...],
+        candidate: _CandidateInternal,
+    ) -> tuple[int]:
+        del players
+        seen_article_order_candidates.append(candidate.pairings[0][1].player_id)
+        return (candidate.sequence_no,)
+
+    monkeypatch.setattr(dutch_module, "_candidate_quality_key", fake_candidate_quality_key)
+    monkeypatch.setattr(
+        dutch_module,
+        "_homogeneous_article_order_key",
+        fake_homogeneous_article_order_key,
+    )
+
+    result = _select_best_homogeneous_odd_candidate(
+        players,
+        (candidate_a, candidate_b),
+        context=BracketContext(initial_color="white"),
+    )
+
+    assert result is candidate_a
+    assert seen_article_order_candidates == ["p2"]
+
+
 def test_heterogeneous_structural_tie_key_prefers_tighter_resident_remainder() -> None:
     players = tuple(
         _player(player_id=f"p{i}", pairing_no=i, score=score, color_history=())
@@ -404,23 +486,23 @@ def test_select_best_candidate_deduplicates_canonical_pair_shapes(
     assert scored_sequences == [1]
 
 
-def test_homogeneous_exact_search_budget_skips_10_player_explosion() -> None:
+def test_homogeneous_exact_search_budget_obeys_candidate_cap() -> None:
     assert _homogeneous_exact_candidate_upper_bound(8) == 1680
     assert _homogeneous_exact_candidate_upper_bound(9) == 15120
     assert _homogeneous_exact_candidate_upper_bound(10) == 30240
     assert _homogeneous_exact_candidate_upper_bound(12) == 665280
 
     assert _use_homogeneous_exact_search(8, sequential_search_max_players=12) is True
-    assert _use_homogeneous_exact_search(9, sequential_search_max_players=12) is False
-    assert _use_homogeneous_exact_search(10, sequential_search_max_players=12) is False
+    assert _use_homogeneous_exact_search(9, sequential_search_max_players=12) is True
+    assert _use_homogeneous_exact_search(10, sequential_search_max_players=12) is True
     assert _use_homogeneous_exact_search(12, sequential_search_max_players=12) is False
     assert (
         _use_homogeneous_exact_search(
             10,
             sequential_search_max_players=12,
-            exact_candidate_max=50_000,
+            exact_candidate_max=30_000,
         )
-        is True
+        is False
     )
 
     assert _heterogeneous_exact_candidate_upper_bound(9, 2) == 2520
@@ -438,8 +520,17 @@ def test_homogeneous_exact_search_budget_skips_10_player_explosion() -> None:
             9,
             mdp_count=1,
             sequential_search_max_players=12,
+            exact_candidate_max=5_000,
         )
         is False
+    )
+    assert (
+        _use_heterogeneous_exact_search(
+            9,
+            mdp_count=1,
+            sequential_search_max_players=12,
+        )
+        is True
     )
     assert (
         _use_heterogeneous_exact_search(

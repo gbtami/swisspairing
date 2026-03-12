@@ -657,9 +657,10 @@ def _canonical_candidate_shape(
     return canonical_pairs, unresolved_ids, bye_id
 
 
+@cache
 def _homogeneous_article_order_key(
     *,
-    players: Sequence[PlayerState],
+    players: tuple[PlayerState, ...],
     candidate: _CandidateInternal,
 ) -> tuple[int, int, tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
     """Approximate article-4.x candidate order for large homogeneous brackets.
@@ -669,7 +670,7 @@ def _homogeneous_article_order_key(
     composition, then earlier S2 transposition order. It is used only as a
     tie-break after all quality criteria except generation order are equal.
     """
-    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    ordered_players = players
     split_size = len(ordered_players) // 2
     original_s1_ids = {player.player_id for player in ordered_players[:split_size]}
     original_s2_ids = {player.player_id for player in ordered_players[split_size:]}
@@ -845,10 +846,6 @@ def _select_best_homogeneous_odd_candidate(
     for candidate in candidates:
         candidate_key = _candidate_quality_key(candidate=candidate, context=context)
         key_without_generation = candidate_key[:-1]
-        article_order_key = _homogeneous_article_order_key(
-            players=ordered_players,
-            candidate=candidate,
-        )
         sequence_no = candidate.sequence_no
 
         if (
@@ -856,7 +853,10 @@ def _select_best_homogeneous_odd_candidate(
             or key_without_generation < best_key_without_generation
         ):
             best_key_without_generation = key_without_generation
-            best_article_order_key = article_order_key
+            best_article_order_key = _homogeneous_article_order_key(
+                players=ordered_players,
+                candidate=candidate,
+            )
             best_sequence_no = sequence_no
             best_candidate = candidate
             continue
@@ -864,6 +864,10 @@ def _select_best_homogeneous_odd_candidate(
         if key_without_generation > best_key_without_generation:
             continue
 
+        article_order_key = _homogeneous_article_order_key(
+            players=ordered_players,
+            candidate=candidate,
+        )
         if best_article_order_key is None or article_order_key < best_article_order_key:
             best_article_order_key = article_order_key
             best_sequence_no = sequence_no
