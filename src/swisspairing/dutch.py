@@ -976,6 +976,13 @@ def _iter_homogeneous_candidates_cached(
         )
 
     bsn_by_player_id = {player.player_id: index + 1 for index, player in enumerate(ordered_players)}
+    legal_pair_keys = {
+        (left.pairing_no, right.pairing_no)
+        if left.pairing_no <= right.pairing_no
+        else (right.pairing_no, left.pairing_no)
+        for left, right in combinations(ordered_players, 2)
+        if _is_legal_pair(left, right)
+    }
     generated: list[_CandidateInternal] = []
     seen_shapes: set[tuple[tuple[tuple[int, int], ...], tuple[int, ...], int | None]] = set()
     sequence_no = sequence_start
@@ -987,20 +994,44 @@ def _iter_homogeneous_candidates_cached(
             bsn_by_player_id=bsn_by_player_id,
         ):
             raw_pairs = tuple(zip(s1, s2_transposition[: len(s1)], strict=True))
-            if any(not _is_legal_pair(left, right) for left, right in raw_pairs):
+            illegal_pair_found = False
+            for left, right in raw_pairs:
+                pair_key = (
+                    (left.pairing_no, right.pairing_no)
+                    if left.pairing_no <= right.pairing_no
+                    else (right.pairing_no, left.pairing_no)
+                )
+                if pair_key not in legal_pair_keys:
+                    illegal_pair_found = True
+                    break
+            if illegal_pair_found:
                 continue
 
             unresolved = tuple(sorted(s2_transposition[len(s1) :], key=_player_rank_key))
-            candidate = _CandidateInternal(
-                pairings=raw_pairs,
-                unresolved=unresolved,
-                bye_player=None,
-                sequence_no=sequence_no,
+            shape_key = (
+                tuple(
+                    sorted(
+                        (
+                            (left.pairing_no, right.pairing_no)
+                            if left.pairing_no <= right.pairing_no
+                            else (right.pairing_no, left.pairing_no)
+                        )
+                        for left, right in raw_pairs
+                    )
+                ),
+                tuple(player.pairing_no for player in unresolved),
+                None,
             )
-            shape_key = _canonical_candidate_shape(candidate)
             if shape_key not in seen_shapes:
                 seen_shapes.add(shape_key)
-                generated.append(candidate)
+                generated.append(
+                    _CandidateInternal(
+                        pairings=raw_pairs,
+                        unresolved=unresolved,
+                        bye_player=None,
+                        sequence_no=sequence_no,
+                    )
+                )
             sequence_no += 1
 
     return tuple(generated)
