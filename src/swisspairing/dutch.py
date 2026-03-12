@@ -552,13 +552,14 @@ def _exchange_sort_key(
     )
 
 
-def _iter_resident_exchanges(
-    players: Sequence[PlayerState],
+@cache
+def _iter_resident_exchanges_cached(
+    players: tuple[PlayerState, ...],
     *,
     max_exchange_size: int | None = None,
-) -> Sequence[tuple[tuple[PlayerState, ...], tuple[PlayerState, ...]]]:
+) -> tuple[tuple[tuple[PlayerState, ...], tuple[PlayerState, ...]], ...]:
     """Yield `(S1, S2)` compositions in article-4.3 exchange order."""
-    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    ordered_players = players
     split = len(ordered_players) // 2
     original_s1 = ordered_players[:split]
     original_s2 = ordered_players[split:]
@@ -604,7 +605,19 @@ def _iter_resident_exchanges(
             )
         )
 
-    return generated
+    return tuple(generated)
+
+
+def _iter_resident_exchanges(
+    players: Sequence[PlayerState],
+    *,
+    max_exchange_size: int | None = None,
+) -> Sequence[tuple[tuple[PlayerState, ...], tuple[PlayerState, ...]]]:
+    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    return _iter_resident_exchanges_cached(
+        ordered_players,
+        max_exchange_size=max_exchange_size,
+    )
 
 
 def _iter_s2_transpositions(
@@ -620,18 +633,32 @@ def _iter_s2_transpositions(
     """
     n1 = len(s1)
     s2_ordered = tuple(s2)
-    transpositions: list[tuple[tuple[int, ...], tuple[int, ...], tuple[PlayerState, ...]]] = []
+    s2_bsns = tuple(bsn_by_player_id[player.player_id] for player in s2_ordered)
+    orderings = _iter_s2_transposition_orders(n1=n1, s2_bsns=s2_bsns)
+    return [tuple(s2_ordered[index] for index in ordering) for ordering in orderings]
 
-    for prefix in permutations(s2_ordered, n1):
-        prefix_ids = frozenset(player.player_id for player in prefix)
-        tail = tuple(player for player in s2_ordered if player.player_id not in prefix_ids)
+
+@cache
+def _iter_s2_transposition_orders(
+    *,
+    n1: int,
+    s2_bsns: tuple[int, ...],
+) -> tuple[tuple[int, ...], ...]:
+    """Return article-4.2 S2 transposition orders as index tuples."""
+
+    transpositions: list[tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...]]] = []
+    s2_indices = tuple(range(len(s2_bsns)))
+
+    for prefix in permutations(s2_indices, n1):
+        prefix_set = frozenset(prefix)
+        tail = tuple(index for index in s2_indices if index not in prefix_set)
         candidate = tuple((*prefix, *tail))
-        prefix_key = tuple(bsn_by_player_id[player.player_id] for player in prefix)
-        full_key = tuple(bsn_by_player_id[player.player_id] for player in candidate)
+        prefix_key = tuple(s2_bsns[index] for index in prefix)
+        full_key = tuple(s2_bsns[index] for index in candidate)
         transpositions.append((prefix_key, full_key, candidate))
 
     transpositions.sort(key=lambda entry: (entry[0], entry[1]))
-    return [entry[2] for entry in transpositions]
+    return tuple(entry[2] for entry in transpositions)
 
 
 def _candidate_pair_sort_key(
