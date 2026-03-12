@@ -1,9 +1,6 @@
-"""Swiss pairing package based on rustworkx.
+"""Swiss pairing package with exact FIDE Dutch pairing helpers."""
 
-The package currently exposes a first Dutch-oriented bracket pairing API.
-"""
-
-from swisspairing.dutch import BracketContext, pair_bracket, pair_bracket_exact
+from swisspairing.dutch import BracketContext, pair_bracket
 from swisspairing.exceptions import PairingError
 from swisspairing.model import Color, Pairing, PairingResult, PlayerState
 from swisspairing.pychess_adapter import (
@@ -12,11 +9,10 @@ from swisspairing.pychess_adapter import (
     build_player_states_from_snapshots,
     map_plan_to_users,
     pair_snapshots_dutch,
-    pair_snapshots_dutch_exact,
     pairing_result_to_pychess_plan,
 )
 from swisspairing.synthetic import SyntheticConfig, SyntheticTournament, simulate_tournament
-from swisspairing.tournament import pair_round_dutch, pair_round_dutch_exact
+from swisspairing.tournament import pair_round_dutch
 
 __all__ = [
     "Color",
@@ -32,11 +28,8 @@ __all__ = [
     "build_player_states_from_snapshots",
     "map_plan_to_users",
     "pair_snapshots_dutch",
-    "pair_snapshots_dutch_exact",
     "pair_bracket",
-    "pair_bracket_exact",
     "pair_round_dutch",
-    "pair_round_dutch_exact",
     "pairing_result_to_pychess_plan",
     "simulate_tournament",
 ]

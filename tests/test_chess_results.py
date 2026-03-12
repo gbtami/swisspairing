@@ -40,7 +40,7 @@ from swisspairing.tournament import (
     _build_next_bracket_key,
     _group_residents_by_score,
     _pair_bracket_with_optional_limit,
-    pair_round_dutch_exact,
+    pair_round_dutch,
 )
 
 RUNNER_PATH = (
@@ -772,7 +772,7 @@ def test_aeroflot_round_2_exact_pairing_matches_published_round() -> None:
     round_entry = _aeroflot_round_entry(2)
     trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
 
-    result = pair_round_dutch_exact(
+    result = pair_round_dutch(
         _aeroflot_states_for_round(2),
         initial_color=build_trf_initial_color(trf),
     )
@@ -792,7 +792,7 @@ def test_aeroflot_round_3_exact_pairs_full_round() -> None:
     round_entry = _aeroflot_round_entry(3)
     trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
 
-    result = pair_round_dutch_exact(
+    result = pair_round_dutch(
         _aeroflot_states_for_round(3),
         initial_color=build_trf_initial_color(trf),
     )
@@ -811,7 +811,7 @@ def test_aeroflot_round_5_exact_pairs_full_round() -> None:
     trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
     states = _aeroflot_states_for_round(5)
 
-    result = pair_round_dutch_exact(
+    result = pair_round_dutch(
         states,
         initial_color=build_trf_initial_color(trf),
     )
@@ -1089,12 +1089,12 @@ def test_budapest_group_b_exact_round_8_matches_engine_consensus() -> None:
     compare = _run_reference_compare(manifest_path.parent / cast(str, round_entry["trf"]))
     assert compare["reference_pairings_equal"] is True
 
-    exact_result = pair_round_dutch_exact(
+    result = pair_round_dutch(
         _budapest_group_b_states_for_round(8),
         initial_color=build_trf_initial_color(trf),
     )
     exact_pairings = sort_pairings_for_compare(
-        [[pairing.white_id, pairing.black_id] for pairing in exact_result.pairings]
+        [[pairing.white_id, pairing.black_id] for pairing in result.pairings]
     )
     py4_pairings = cast(
         list[list[str | None]],
@@ -1330,7 +1330,7 @@ def test_graz_round_4_exact_pairs_full_round() -> None:
     trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
     states = _graz_states_for_round(4)
 
-    result = pair_round_dutch_exact(
+    result = pair_round_dutch(
         states,
         initial_color=build_trf_initial_color(trf),
     )
@@ -1350,7 +1350,7 @@ def test_budapest_group_b_round_5_exact_pairs_full_round() -> None:
     trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
     states = _budapest_group_b_states_for_round(5)
 
-    result = pair_round_dutch_exact(
+    result = pair_round_dutch(
         states,
         initial_color=build_trf_initial_color(trf),
     )
@@ -1370,7 +1370,7 @@ def test_budapest_group_b_round_7_exact_pairs_full_round() -> None:
     trf = TrfParser.parse(manifest_path.parent / cast(str, round_entry["trf"]))
     states = _budapest_group_b_states_for_round(7)
 
-    result = pair_round_dutch_exact(
+    result = pair_round_dutch(
         states,
         initial_color=build_trf_initial_color(trf),
     )

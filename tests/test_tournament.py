@@ -7,10 +7,7 @@ import pytest
 import swisspairing.tournament as tournament
 from swisspairing.exceptions import PairingError
 from swisspairing.model import FloatAssignment, FloatKind, Pairing, PlayerState
-from swisspairing.tournament import (
-    pair_round_dutch,
-    pair_round_dutch_exact,
-)
+from swisspairing.tournament import pair_round_dutch
 
 
 def _player(
@@ -47,7 +44,7 @@ def test_pair_round_dutch_empty_input() -> None:
     assert result.unpaired_ids == ()
 
 
-def test_pair_round_dutch_exact_matches_small_exact_round() -> None:
+def test_pair_round_dutch_pairs_small_exact_round() -> None:
     players = (
         _player(player_id="a1", pairing_no=1, score=3),
         _player(player_id="a2", pairing_no=2, score=3),
@@ -55,10 +52,10 @@ def test_pair_round_dutch_exact_matches_small_exact_round() -> None:
         _player(player_id="b2", pairing_no=4, score=2),
     )
 
-    assert pair_round_dutch_exact(players) == pair_round_dutch(players)
+    assert pair_round_dutch(players).unpaired_ids == ()
 
 
-def test_pair_round_dutch_exact_uses_bracket_size_when_no_explicit_limit(
+def test_pair_round_dutch_uses_bracket_size_when_no_explicit_limit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     players = tuple(
@@ -73,12 +70,10 @@ def test_pair_round_dutch_exact_uses_bracket_size_when_no_explicit_limit(
         allow_bye: bool = True,
         sequential_search_max_players: int = 12,
         initial_color: str = "white",
-        allow_heuristic_fallback: bool = True,
     ) -> tournament.PairingResult:
         del context, allow_bye, initial_color
         captured["count"] = len(bracket_players)
         captured["limit"] = sequential_search_max_players
-        captured["allow_heuristic_fallback"] = allow_heuristic_fallback
         return tournament.PairingResult(
             pairings=tuple(
                 Pairing(white_id=f"p{index}", black_id=f"p{index + 6}") for index in range(1, 7)
@@ -90,17 +85,16 @@ def test_pair_round_dutch_exact_uses_bracket_size_when_no_explicit_limit(
 
     monkeypatch.setattr(tournament, "pair_bracket", fake_pair_bracket)
 
-    result = pair_round_dutch_exact(players)
+    result = pair_round_dutch(players)
 
     assert result.unpaired_ids == ()
     assert captured == {
         "count": 13,
         "limit": 13,
-        "allow_heuristic_fallback": False,
     }
 
 
-def test_pair_round_dutch_exact_expands_medium_even_budget() -> None:
+def test_pair_round_dutch_expands_medium_even_budget() -> None:
     players = (
         PlayerState(
             player_id="p1",
@@ -113,7 +107,7 @@ def test_pair_round_dutch_exact_expands_medium_even_budget() -> None:
         ),
     )
 
-    result = pair_round_dutch_exact(players)
+    result = pair_round_dutch(players)
 
     assert result.unpaired_ids == ()
     p1_pair = next(
@@ -123,7 +117,7 @@ def test_pair_round_dutch_exact_expands_medium_even_budget() -> None:
     assert {p1_pair.white_id, p1_pair.black_id} & {"p2", "p3", "p4", "p5"}
 
 
-def test_pair_round_dutch_exact_uses_immediate_next_bracket_key(
+def test_pair_round_dutch_uses_immediate_next_bracket_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     players = (
@@ -145,7 +139,6 @@ def test_pair_round_dutch_exact_uses_immediate_next_bracket_key(
         allow_bye: bool = True,
         sequential_search_max_players: int = 12,
         initial_color: str = "white",
-        allow_heuristic_fallback: bool = True,
     ) -> tournament.PairingResult:
         del allow_bye, sequential_search_max_players, initial_color
         ids = tuple(player.player_id for player in bracket_players)
@@ -177,27 +170,24 @@ def test_pair_round_dutch_exact_uses_immediate_next_bracket_key(
                 unpaired_ids=(),
                 float_assignments=(),
             )
-        raise AssertionError(
-            "unexpected bracket call: "
-            f"ids={ids}, allow_heuristic_fallback={allow_heuristic_fallback}"
-        )
+        raise AssertionError(f"unexpected bracket call: ids={ids}")
 
     monkeypatch.setattr(tournament, "pair_bracket", fake_pair_bracket)
 
-    result = pair_round_dutch_exact(players)
+    result = pair_round_dutch(players)
 
     assert result.unpaired_ids == ()
     assert observed["future_game_counts"] == ()
 
 
-def test_pair_round_dutch_exact_handles_collapsed_tail_c8_key() -> None:
+def test_pair_round_dutch_handles_collapsed_tail_c8_key() -> None:
     scores = [70, 65, *([60] * 11), 55, *([50] * 3), *([45] * 4), 40, 35]
     players = tuple(
         PlayerState(player_id=str(index), pairing_no=index, score=score)
         for index, score in enumerate(scores, start=1)
     )
 
-    result = pair_round_dutch_exact(players)
+    result = pair_round_dutch(players)
 
     assert result.unpaired_ids == ()
 

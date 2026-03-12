@@ -119,15 +119,6 @@ def pair_snapshots_dutch(
     return pairing_result_to_pychess_plan(pair_round_dutch(states, initial_color=initial_color))
 
 
-def pair_snapshots_dutch_exact(
-    snapshots: tuple[PychessPlayerSnapshot, ...],
-    *,
-    initial_color: Color = "white",
-) -> PychessPairingPlan:
-    """Alias for the canonical snapshot-based exact Dutch solver."""
-    return pair_snapshots_dutch(snapshots, initial_color=initial_color)
-
-
 def map_plan_to_users[UserT: _UsernameCarrier](
     plan: PychessPairingPlan,
     users: tuple[UserT, ...],

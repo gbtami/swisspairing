@@ -14,7 +14,6 @@ from swisspairing.dutch import (
     NextBracketKey,
     NextBracketLocalKey,
     pair_bracket,
-    pair_bracket_exact,
 )
 from swisspairing.exceptions import PairingError
 from swisspairing.model import Color, FloatAssignment, FloatKind, Pairing, PlayerState
@@ -89,7 +88,7 @@ def test_pair_bracket_even_pairs_all_players_when_legal_edges_exist() -> None:
     assert seen_ids == {"p1", "p2", "p3", "p4"}
 
 
-def test_pair_bracket_exact_matches_small_exact_bracket() -> None:
+def test_pair_bracket_pairs_small_exact_bracket() -> None:
     players = (
         _player(player_id="p1", pairing_no=1, score=3),
         _player(player_id="p2", pairing_no=2, score=3),
@@ -97,10 +96,13 @@ def test_pair_bracket_exact_matches_small_exact_bracket() -> None:
         _player(player_id="p4", pairing_no=4, score=2),
     )
 
-    assert pair_bracket_exact(players) == pair_bracket(players)
+    result = pair_bracket(players)
+
+    assert result.unpaired_ids == ()
+    assert len(result.pairings) == 2
 
 
-def test_pair_bracket_exact_raises_when_current_solver_needs_heuristic_fallback() -> None:
+def test_pair_bracket_raises_when_current_solver_needs_heuristic_fallback() -> None:
     players = tuple(
         _player(player_id=f"p{index}", pairing_no=index, score=score)
         for index, score in enumerate(
@@ -109,14 +111,14 @@ def test_pair_bracket_exact_raises_when_current_solver_needs_heuristic_fallback(
         )
     )
     with pytest.raises(PairingError, match="heuristic fallback"):
-        pair_bracket_exact(
+        pair_bracket(
             players,
             context=BracketContext(mdp_ids=frozenset({"p1", "p2"})),
             allow_bye=True,
         )
 
 
-def test_pair_bracket_exact_ignores_public_sequence_cap_by_default() -> None:
+def test_pair_bracket_ignores_public_sequence_cap_by_default() -> None:
     players = tuple(
         _player(
             player_id=f"p{index}",
@@ -127,12 +129,12 @@ def test_pair_bracket_exact_ignores_public_sequence_cap_by_default() -> None:
     )
     context = BracketContext(mdp_ids=frozenset({f"p{index}" for index in range(1, 10)}))
 
-    exact_result = pair_bracket_exact(
+    result = pair_bracket(
         players,
         context=context,
         allow_bye=False,
     )
-    explicit_result = pair_bracket(
+    explicit_result = dutch._pair_bracket_impl(
         players,
         context=context,
         allow_bye=False,
@@ -140,10 +142,10 @@ def test_pair_bracket_exact_ignores_public_sequence_cap_by_default() -> None:
         allow_heuristic_fallback=False,
     )
 
-    assert exact_result == explicit_result
+    assert result == explicit_result
 
 
-def test_pair_bracket_exact_expands_medium_even_budget_without_weighted_fallback(
+def test_pair_bracket_expands_medium_even_budget_without_weighted_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     players = (
@@ -165,7 +167,7 @@ def test_pair_bracket_exact_expands_medium_even_budget_without_weighted_fallback
         fail_weighted_fallback,
     )
 
-    result = pair_bracket_exact(players)
+    result = pair_bracket(players)
 
     assert result.unpaired_ids == ()
     p1_pair = next(
@@ -175,7 +177,7 @@ def test_pair_bracket_exact_expands_medium_even_budget_without_weighted_fallback
     assert {p1_pair.white_id, p1_pair.black_id} & {"p2", "p3", "p4", "p5"}
 
 
-def test_pair_bracket_exact_solves_large_homogeneous_even_zero_exchange_optimum(
+def test_pair_bracket_solves_large_homogeneous_even_zero_exchange_optimum(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     players = tuple(
@@ -197,19 +199,19 @@ def test_pair_bracket_exact_solves_large_homogeneous_even_zero_exchange_optimum(
         fail_weighted_fallback,
     )
 
-    result = pair_bracket_exact(players)
+    result = pair_bracket(players)
 
     assert result.unpaired_ids == ()
     assert len(result.pairings) == 7
 
 
-def test_pair_bracket_exact_solves_large_single_mdp_even_bracket() -> None:
+def test_pair_bracket_solves_large_single_mdp_even_bracket() -> None:
     players = (
         _player(player_id="m1", pairing_no=1, score=4),
         *tuple(_player(player_id=f"p{index}", pairing_no=index, score=3) for index in range(2, 49)),
     )
 
-    result = pair_bracket_exact(
+    result = pair_bracket(
         players,
         context=BracketContext(mdp_ids=frozenset({"m1"})),
         allow_bye=False,
@@ -222,7 +224,7 @@ def test_pair_bracket_exact_solves_large_single_mdp_even_bracket() -> None:
     assert mdp_pair.black_id is not None
 
 
-def test_pair_bracket_exact_single_mdp_even_honors_next_bracket_validator(
+def test_pair_bracket_single_mdp_even_honors_next_bracket_validator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     players = (
@@ -307,7 +309,7 @@ def test_pair_bracket_exact_single_mdp_even_honors_next_bracket_validator(
     }
 
 
-def test_pair_bracket_exact_odd_scan_stops_after_lowest_score_group(
+def test_pair_bracket_odd_scan_stops_after_lowest_score_group(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     players = (
@@ -342,7 +344,7 @@ def test_pair_bracket_exact_odd_scan_stops_after_lowest_score_group(
 
     monkeypatch.setattr(dutch, "_solve_even_players", wrapped_solve_even)
 
-    result = pair_bracket_exact(
+    result = pair_bracket(
         players,
         context=BracketContext(mdp_ids=frozenset({"m1"})),
         allow_bye=False,
@@ -827,17 +829,6 @@ def test_pair_bracket_uses_generation_order_when_criteria_are_equal() -> None:
     assert ("p3", None) in pairs
 
 
-def test_pair_bracket_weighted_fallback_uses_generation_order_when_criteria_are_equal() -> None:
-    players = (
-        _player(player_id="p1", pairing_no=1, score=2, unplayed_games=0),
-        _player(player_id="p2", pairing_no=2, score=2, unplayed_games=0),
-        _player(player_id="p3", pairing_no=3, score=2, unplayed_games=0),
-    )
-    result = pair_bracket(players, sequential_search_max_players=0)
-    pairs = _to_pairs(result.pairings)
-    assert ("p3", None) in pairs
-
-
 def test_pair_bracket_uses_odd_sequence_order_after_c9_rejects_first_bye() -> None:
     players = (
         _player(player_id="p3", pairing_no=3, score=0, color_history=("black",), unplayed_games=1),
@@ -846,22 +837,6 @@ def test_pair_bracket_uses_odd_sequence_order_after_c9_rejects_first_bye() -> No
     )
 
     result = pair_bracket(players)
-    pairs = _to_pairs(result.pairings)
-
-    assert ("p3", "p5") in pairs
-    assert ("p4", None) in pairs
-
-
-def test_pair_bracket_weighted_fallback_uses_odd_sequence_order_after_c9_rejects_first_bye() -> (
-    None
-):
-    players = (
-        _player(player_id="p3", pairing_no=3, score=0, color_history=("black",), unplayed_games=1),
-        _player(player_id="p4", pairing_no=4, score=0, color_history=("white",), unplayed_games=1),
-        _player(player_id="p5", pairing_no=5, score=0, unplayed_games=2),
-    )
-
-    result = pair_bracket(players, sequential_search_max_players=0)
     pairs = _to_pairs(result.pairings)
 
     assert ("p3", "p5") in pairs
@@ -938,35 +913,6 @@ def test_pair_bracket_initial_homogeneous_large_odd_bypasses_weighted_bye_path(
 
     assert ("p21", None) in _to_pairs(result.pairings)
     assert result.unpaired_ids == ()
-
-
-def test_pair_bracket_large_weighted_final_bye_avoids_scanning_every_legal_bye(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    players = tuple(
-        _player(
-            player_id=f"p{index}",
-            pairing_no=index,
-            score=0,
-            float_history=(FloatKind.UP,) if index == 1 else (),
-        )
-        for index in range(1, 22)
-    )
-
-    call_count = 0
-    original_solve_even_players = dutch._solve_even_players
-
-    def wrapped_solve_even_players(*args: Any, **kwargs: Any):
-        nonlocal call_count
-        call_count += 1
-        return original_solve_even_players(*args, **kwargs)
-
-    monkeypatch.setattr(dutch, "_solve_even_players", wrapped_solve_even_players)
-
-    result = dutch.pair_bracket(players, sequential_search_max_players=0)
-
-    assert ("p21", None) in _to_pairs(result.pairings)
-    assert call_count == 1
 
 
 def test_pair_bracket_uses_c14_for_resident_downfloat_history() -> None:
@@ -1073,27 +1019,6 @@ def test_pair_bracket_large_heterogeneous_fallback_avoids_mdp_vs_mdp() -> None:
         assert not ({pairing.white_id, pairing.black_id} <= mdp_ids)
 
 
-def test_pair_bracket_large_heterogeneous_fallback_prefers_lowest_bsn_residents() -> None:
-    players = (
-        _player(player_id="m1", pairing_no=1, score=5),
-        _player(player_id="m2", pairing_no=2, score=5),
-        _player(player_id="m3", pairing_no=3, score=5),
-        _player(player_id="r1", pairing_no=4, score=4),
-        _player(player_id="r2", pairing_no=5, score=4),
-        _player(player_id="r3", pairing_no=6, score=4),
-    )
-
-    result = pair_bracket(
-        players,
-        context=BracketContext(mdp_ids=frozenset({"m1", "m2", "m3"})),
-        allow_bye=False,
-        sequential_search_max_players=2,
-    )
-
-    assert result.unpaired_ids == ()
-    assert _normalized_pairs(result.pairings) == {("m1", "r1"), ("m2", "r2"), ("m3", "r3")}
-
-
 def test_pair_bracket_small_odd_heterogeneous_exact_sequence_matches_resident_remainder_order() -> (
     None
 ):
@@ -1158,45 +1083,3 @@ def test_pair_bracket_small_odd_heterogeneous_exact_sequence_matches_resident_re
 
     assert result.unpaired_ids == ("r5",)
     assert _to_pairs(result.pairings) == {("r2", "m1"), ("r4", "r1"), ("r6", "r3")}
-
-
-def test_pair_bracket_large_homogeneous_fallback_stays_in_s1_s2_space() -> None:
-    players = tuple(_player(player_id=f"p{i}", pairing_no=i, score=3) for i in range(1, 15))
-    result = pair_bracket(players, sequential_search_max_players=2)
-
-    assert result.unpaired_ids == ()
-    top_half = {f"p{i}" for i in range(1, 8)}
-    bottom_half = {f"p{i}" for i in range(8, 15)}
-
-    for pairing in result.pairings:
-        assert pairing.black_id is not None
-        pair_ids = {pairing.white_id, pairing.black_id}
-        assert len(pair_ids & top_half) == 1
-        assert len(pair_ids & bottom_half) == 1
-
-
-def test_pair_bracket_large_homogeneous_fallback_uses_one_exchange_when_needed() -> None:
-    players = (
-        _player(
-            player_id="p1",
-            pairing_no=1,
-            score=3,
-            opponents=frozenset({"p5", "p6", "p7", "p8"}),
-        ),
-        _player(player_id="p2", pairing_no=2, score=3),
-        _player(player_id="p3", pairing_no=3, score=3),
-        _player(player_id="p4", pairing_no=4, score=3),
-        _player(player_id="p5", pairing_no=5, score=3),
-        _player(player_id="p6", pairing_no=6, score=3),
-        _player(player_id="p7", pairing_no=7, score=3),
-        _player(player_id="p8", pairing_no=8, score=3),
-    )
-
-    result = pair_bracket(players, sequential_search_max_players=2)
-
-    assert result.unpaired_ids == ()
-    p1_pair = next(
-        pairing for pairing in result.pairings if "p1" in {pairing.white_id, pairing.black_id}
-    )
-    assert p1_pair.black_id is not None
-    assert {p1_pair.white_id, p1_pair.black_id} & {"p2", "p3", "p4"}

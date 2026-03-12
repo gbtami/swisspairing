@@ -2241,6 +2241,7 @@ def _solve_even_players(
     exact_candidate_max = _exact_sequence_candidate_limit(
         allow_heuristic_fallback=allow_heuristic_fallback
     )
+    exact_search_attempted = False
 
     if not context.mdp_ids and not allow_heuristic_fallback:
         exact_shortcut = _solve_homogeneous_even_players_via_zero_exchange_exact_shortcut_cached(
@@ -2251,6 +2252,7 @@ def _solve_even_players(
             return exact_shortcut
 
     if len(context.mdp_ids) == 1 and not allow_heuristic_fallback:
+        exact_search_attempted = True
         single_mdp_exact = _solve_even_players_via_single_mdp_exact(players, context=context)
         if single_mdp_exact is not None:
             return single_mdp_exact
@@ -2261,6 +2263,7 @@ def _solve_even_players(
         sequential_search_max_players=sequential_search_max_players,
         exact_candidate_max=exact_candidate_max,
     ):
+        exact_search_attempted = True
         sequence_result = _solve_even_players_via_heterogeneous_sequence(players, context=context)
         if sequence_result is not None:
             return sequence_result
@@ -2270,11 +2273,17 @@ def _solve_even_players(
         sequential_search_max_players=sequential_search_max_players,
         exact_candidate_max=exact_candidate_max,
     ):
+        exact_search_attempted = True
         sequence_result = _solve_even_players_via_sequence(players, context=context)
         if sequence_result is not None:
             return sequence_result
 
     if not allow_heuristic_fallback:
+        if exact_search_attempted:
+            return _EvenPairingInternal(
+                pairings=(),
+                unresolved=tuple(sorted(players, key=_player_rank_key)),
+            )
         raise ExactSearchUnavailableError(
             "exact Dutch mode currently requires heuristic fallback for this even bracket"
         )
@@ -3613,7 +3622,7 @@ def _pair_trivial_initial_homogeneous_bracket(
     )
 
 
-def pair_bracket(
+def _pair_bracket_impl(
     players: Sequence[PlayerState],
     *,
     context: BracketContext | None = None,
@@ -3622,7 +3631,7 @@ def pair_bracket(
     initial_color: Color = "white",
     allow_heuristic_fallback: bool = True,
 ) -> PairingResult:
-    """Pair one bracket and return pairings plus unresolved player ids.
+    """Internal bracket solver with optional heuristic fallback control.
 
     The function remains deterministic for a fixed input state and context.
     `allow_bye=False` is used for non-final brackets where unresolved players
@@ -3960,7 +3969,7 @@ def bracket_is_feasible_exact(
     return False
 
 
-def pair_bracket_exact(
+def pair_bracket(
     players: Sequence[PlayerState],
     *,
     context: BracketContext | None = None,
@@ -3968,17 +3977,17 @@ def pair_bracket_exact(
     sequential_search_max_players: int | None = None,
     initial_color: Color = "white",
 ) -> PairingResult:
-    """Pair one bracket without heuristic fallback.
+    """Pair one bracket with the canonical exact Dutch solver.
 
-    This is the first step toward a normative Dutch mode. It uses only the
-    current exact-search surface and raises `PairingError` when the solver
-    would otherwise switch to weighted or greedy approximations.
+    This uses only the current exact-search surface and raises `PairingError`
+    when the solver would otherwise switch to weighted or greedy
+    approximations.
     """
     exact_search_max_players = (
         len(players) if sequential_search_max_players is None else sequential_search_max_players
     )
     try:
-        return pair_bracket(
+        return _pair_bracket_impl(
             players,
             context=context,
             allow_bye=allow_bye,

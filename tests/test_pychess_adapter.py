@@ -14,7 +14,6 @@ from swisspairing.pychess_adapter import (
     build_player_states_from_snapshots,
     map_plan_to_users,
     pair_snapshots_dutch,
-    pair_snapshots_dutch_exact,
 )
 
 
@@ -131,34 +130,6 @@ def test_pair_snapshots_dutch_forwards_initial_color(
     pair_snapshots_dutch(snapshots, initial_color="black")
 
     assert captured["initial_color"] == "black"
-
-
-def test_pair_snapshots_dutch_exact_wrapper_uses_canonical_solver(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    snapshots = (
-        PychessPlayerSnapshot(username="p1", pairing_no=1, score=30),
-        PychessPlayerSnapshot(username="p2", pairing_no=2, score=20),
-    )
-    captured: dict[str, str | None] = {}
-
-    def fake_pair_round_dutch(
-        _states: tuple[object, ...],
-        *,
-        initial_color: str = "white",
-    ) -> PairingResult:
-        captured["initial_color"] = initial_color
-        return PairingResult(
-            pairings=(Pairing(white_id="p1", black_id="p2"),),
-            unpaired_ids=(),
-        )
-
-    monkeypatch.setattr(pychess_adapter, "pair_round_dutch", fake_pair_round_dutch)
-
-    plan = pair_snapshots_dutch_exact(snapshots, initial_color="black")
-
-    assert captured == {"initial_color": "black"}
-    assert plan.pairings == (("p1", "p2"),)
 
 
 def test_map_plan_to_users_maps_user_instances() -> None:

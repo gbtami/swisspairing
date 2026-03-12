@@ -124,16 +124,7 @@ def _pair_bracket_with_optional_limit(
     allow_bye: bool,
     sequential_search_max_players: int | None,
     initial_color: Color,
-    allow_heuristic_fallback: bool = True,
 ) -> PairingResult:
-    if sequential_search_max_players is None and allow_heuristic_fallback:
-        return pair_bracket(
-            players,
-            context=context,
-            allow_bye=allow_bye,
-            initial_color=initial_color,
-            allow_heuristic_fallback=allow_heuristic_fallback,
-        )
     exact_or_explicit_limit = (
         len(players) if sequential_search_max_players is None else sequential_search_max_players
     )
@@ -143,7 +134,6 @@ def _pair_bracket_with_optional_limit(
         allow_bye=allow_bye,
         sequential_search_max_players=exact_or_explicit_limit,
         initial_color=initial_color,
-        allow_heuristic_fallback=allow_heuristic_fallback,
     )
 
 
@@ -221,7 +211,6 @@ def pair_round_dutch(
                         allow_bye=True,
                         sequential_search_max_players=sequential_search_max_players,
                         initial_color=initial_color,
-                        allow_heuristic_fallback=False,
                     )
                 except ExactSearchUnavailableError:
                     unsupported_found = True
@@ -286,7 +275,6 @@ def pair_round_dutch(
                             allow_bye=True,
                             sequential_search_max_players=sequential_search_max_players,
                             initial_color=initial_color,
-                            allow_heuristic_fallback=False,
                         )
                     except ExactSearchUnavailableError:
                         unsupported_found = True
@@ -372,7 +360,6 @@ def pair_round_dutch(
                         allow_bye=False,
                         sequential_search_max_players=sequential_search_max_players,
                         initial_color=initial_color,
-                        allow_heuristic_fallback=False,
                     )
                 except ExactSearchUnavailableError:
                     unsupported_found = True
@@ -442,7 +429,6 @@ def pair_round_dutch(
                     allow_bye=False,
                     sequential_search_max_players=sequential_search_max_players,
                     initial_color=initial_color,
-                    allow_heuristic_fallback=False,
                 )
             except ExactSearchUnavailableError:
                 unsupported_found = True
@@ -509,18 +495,4 @@ def pair_round_dutch(
             pairings=solution.pairings,
             unpaired_ids=(),
         ),
-    )
-
-
-def pair_round_dutch_exact(
-    players: tuple[PlayerState, ...],
-    *,
-    sequential_search_max_players: int | None = None,
-    initial_color: Color = "white",
-) -> PairingResult:
-    """Alias for the canonical exact Dutch round solver."""
-    return pair_round_dutch(
-        players,
-        sequential_search_max_players=sequential_search_max_players,
-        initial_color=initial_color,
     )
