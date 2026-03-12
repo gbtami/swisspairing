@@ -17,8 +17,11 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
 - Architecture principle: staged optimization aligned with FIDE criterion
   priority ordering.
 - Current direction: exact/FIDE mode is the canonical target; synthetic
-  fast-path baselines are guardrails against accidental regressions, not the
-  main success metric.
+  baselines are guardrails against accidental regressions, not the main
+  success metric.
+- Current API direction: `pair_round_dutch()` and `pair_snapshots_dutch()` now
+  point at the exact/FIDE solver; the old public fast-mode path is being
+  retired rather than preserved for compatibility.
 
 ## Milestones
 
@@ -111,6 +114,9 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     sweep still holds fast/strict parity there, fast mode stays at about
     `0.47x` py4swiss `p50`, and the main added cost is synthetic export time.
   - Checked-in 64-player regression TRFs added for the slow fast-mode tail.
+  - Historical note: those adapter/runtime-mode bullets describe the earlier
+    two-mode phase. The current public direction is exact/FIDE-first, with the
+    old fast-mode API being removed rather than preserved.
   - `PlayerState` now precomputes color-preference state, reducing repeated
     candidate-scoring overhead in large benchmark cases.
   - Current golden parity suite has no xfail fixtures.

@@ -13,11 +13,10 @@ from typing import Literal
 
 from swisspairing.exceptions import PairingError
 from swisspairing.model import Color, FloatKind, Pairing, PlayerState
-from swisspairing.tournament import pair_round_dutch_fast
+from swisspairing.tournament import pair_round_dutch
 
 GameResult = Literal["win", "loss", "draw"]
 OutcomeKind = Literal["game", "bye", "absent"]
-_SYNTHETIC_SEQUENTIAL_SEARCH_MAX_PLAYERS = 6
 
 
 def _new_opponents() -> set[str]:
@@ -241,12 +240,7 @@ def simulate_tournament(config: SyntheticConfig, *, rng: random.Random) -> Synth
 
 def _pair_active_players(active_players: tuple[_MutablePlayer, ...]) -> tuple[Pairing, ...]:
     states = _build_states_for_pairing(active_players)
-    # Synthetic fixture generation favors bounded runtime over collapse-search
-    # parity. Always use the fast greedy round pipeline here.
-    return pair_round_dutch_fast(
-        states,
-        sequential_search_max_players=_SYNTHETIC_SEQUENTIAL_SEARCH_MAX_PLAYERS,
-    ).pairings
+    return pair_round_dutch(states).pairings
 
 
 def _build_states_for_pairing(

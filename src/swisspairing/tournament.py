@@ -20,21 +20,9 @@ from swisspairing.dutch import (
 from swisspairing.exceptions import ExactSearchUnavailableError, PairingError
 from swisspairing.model import Color, Pairing, PairingResult, PlayerState
 
-_COLLAPSE_SEARCH_MAX_PLAYERS = 80
-_FAST_COLLAPSE_SEARCH_MAX_PLAYERS = 40
-
 
 def _player_rank_key(player: PlayerState) -> tuple[int, int]:
     return (-player.score, player.pairing_no)
-
-
-def _collapse_search_max_players(
-    *,
-    sequential_search_max_players: int | None,
-) -> int:
-    if sequential_search_max_players is None:
-        return _COLLAPSE_SEARCH_MAX_PLAYERS
-    return min(_COLLAPSE_SEARCH_MAX_PLAYERS, _FAST_COLLAPSE_SEARCH_MAX_PLAYERS)
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,165 +147,13 @@ def _pair_bracket_with_optional_limit(
     )
 
 
-def _pair_round_dutch_greedy(
-    scoregroups: tuple[tuple[PlayerState, ...], ...],
-    *,
-    sequential_search_max_players: int | None = None,
-    initial_color: Color = "white",
-    allow_heuristic_fallback: bool = True,
-) -> tuple[Pairing, ...] | None:
-    """Pair one round without global collapse backtracking (fast-path for large events)."""
-    all_pairings: list[Pairing] = []
-    carried_mdps: tuple[PlayerState, ...] = ()
-    index = 0
-
-    while index < len(scoregroups):
-        solved = False
-
-        # Keep the large-event path greedy, but allow forward collapse when the
-        # immediate scoregroup boundary makes the next bracket unsatisfiable.
-        for collapse_size in range(1, len(scoregroups) - index + 1):
-            residents = tuple(
-                sorted(
-                    (
-                        player
-                        for group in scoregroups[index : index + collapse_size]
-                        for player in group
-                    ),
-                    key=_player_rank_key,
-                )
-            )
-            bracket_players = tuple(sorted((*carried_mdps, *residents), key=_player_rank_key))
-            mdp_ids = frozenset(player.player_id for player in carried_mdps)
-            is_last_bracket = index + collapse_size == len(scoregroups)
-
-            if is_last_bracket:
-                try:
-                    bracket_result = _pair_bracket_with_optional_limit(
-                        bracket_players,
-                        context=BracketContext(mdp_ids=mdp_ids, initial_color=initial_color),
-                        allow_bye=True,
-                        sequential_search_max_players=sequential_search_max_players,
-                        initial_color=initial_color,
-                        allow_heuristic_fallback=allow_heuristic_fallback,
-                    )
-                except PairingError:
-                    continue
-                if bracket_result.unpaired_ids:
-                    continue
-                all_pairings.extend(bracket_result.pairings)
-                return tuple(all_pairings)
-
-            next_residents = scoregroups[index + collapse_size]
-            next_is_last_bracket = index + collapse_size == len(scoregroups) - 1
-            next_bracket_cache: dict[tuple[PlayerState, ...], bool] = {}
-            next_bracket_key_cache: dict[tuple[PlayerState, ...], NextBracketKey] = {}
-
-            def next_bracket_validator(
-                downfloaters: tuple[PlayerState, ...],
-                *,
-                next_residents_snapshot: tuple[PlayerState, ...] = next_residents,
-                allow_bye_next: bool = next_is_last_bracket,
-                next_bracket_cache_snapshot: dict[
-                    tuple[PlayerState, ...], bool
-                ] = next_bracket_cache,
-                next_bracket_key_cache_snapshot: dict[
-                    tuple[PlayerState, ...], NextBracketKey
-                ] = next_bracket_key_cache,
-            ) -> bool:
-                ordered_downfloaters = tuple(sorted(downfloaters, key=_player_rank_key))
-                cached = next_bracket_cache_snapshot.get(ordered_downfloaters)
-                if cached is not None:
-                    return cached
-
-                next_players = tuple(
-                    sorted((*ordered_downfloaters, *next_residents_snapshot), key=_player_rank_key)
-                )
-                next_mdp_ids = frozenset(player.player_id for player in ordered_downfloaters)
-                try:
-                    next_result = _pair_bracket_with_optional_limit(
-                        next_players,
-                        context=BracketContext(
-                            mdp_ids=next_mdp_ids,
-                            initial_color=initial_color,
-                        ),
-                        allow_bye=allow_bye_next,
-                        sequential_search_max_players=sequential_search_max_players,
-                        initial_color=initial_color,
-                        allow_heuristic_fallback=allow_heuristic_fallback,
-                    )
-                except PairingError:
-                    next_bracket_cache_snapshot[ordered_downfloaters] = False
-                    return False
-                next_bracket_key_cache_snapshot[ordered_downfloaters] = _build_next_bracket_key(
-                    players=next_players,
-                    result=next_result,
-                    mdp_ids=next_mdp_ids,
-                    initial_color=initial_color,
-                )
-                next_bracket_cache_snapshot[ordered_downfloaters] = True
-                return True
-
-            def next_bracket_key(
-                downfloaters: tuple[PlayerState, ...],
-                *,
-                next_bracket_cache_snapshot: dict[
-                    tuple[PlayerState, ...], bool
-                ] = next_bracket_cache,
-                next_bracket_key_cache_snapshot: dict[
-                    tuple[PlayerState, ...], NextBracketKey
-                ] = next_bracket_key_cache,
-            ) -> NextBracketKey | None:
-                ordered_downfloaters = tuple(sorted(downfloaters, key=_player_rank_key))
-                cached_key = next_bracket_key_cache_snapshot.get(ordered_downfloaters)
-                if cached_key is not None:
-                    return cached_key
-                if not next_bracket_validator(ordered_downfloaters):
-                    return None
-                if not next_bracket_cache_snapshot.get(ordered_downfloaters, False):
-                    return None
-                return next_bracket_key_cache_snapshot.get(ordered_downfloaters)
-
-            try:
-                bracket_result = _pair_bracket_with_optional_limit(
-                    bracket_players,
-                    context=BracketContext(
-                        mdp_ids=mdp_ids,
-                        initial_color=initial_color,
-                        next_bracket_validator=next_bracket_validator,
-                        next_bracket_key=next_bracket_key,
-                    ),
-                    allow_bye=False,
-                    sequential_search_max_players=sequential_search_max_players,
-                    initial_color=initial_color,
-                    allow_heuristic_fallback=allow_heuristic_fallback,
-                )
-            except PairingError:
-                continue
-
-            all_pairings.extend(
-                pairing for pairing in bracket_result.pairings if pairing.black_id is not None
-            )
-            by_id = {player.player_id: player for player in bracket_players}
-            carried_mdps = tuple(by_id[player_id] for player_id in bracket_result.unpaired_ids)
-            index += collapse_size
-            solved = True
-            break
-
-        if not solved:
-            return None
-
-    return tuple(all_pairings)
-
-
 def pair_round_dutch(
     players: tuple[PlayerState, ...],
     *,
     sequential_search_max_players: int | None = None,
     initial_color: Color = "white",
-    allow_heuristic_fallback: bool = True,
 ) -> PairingResult:
-    """Pair one full round with bracket chaining over scoregroups.
+    """Pair one full round with deterministic Dutch bracket chaining.
 
     References:
     - C.04.3 section 1.9.2: pairing proceeds bracket by bracket from top scoregroup.
@@ -327,39 +163,13 @@ def pair_round_dutch(
 
     Tuning:
     - `sequential_search_max_players` overrides the bracket-level exact-search
-      size cap used by `pair_bracket`; `None` keeps the default.
-    - When a cap is active, round-level collapse backtracking also uses a lower
-      player-count ceiling so fast mode can hand medium-size events to the
-      greedy pipeline sooner.
+      size cap used by `pair_bracket`; `None` uses the current bracket size.
     """
     if not players:
         return PairingResult(pairings=(), unpaired_ids=(), float_assignments=())
 
     ordered_players = tuple(sorted(players, key=_player_rank_key))
     scoregroups = _group_residents_by_score(ordered_players)
-
-    # Collapse backtracking improves parity in rare edge cases, but its search
-    # space can grow quickly. For larger tournaments, keep a bounded fast path.
-    if allow_heuristic_fallback and len(ordered_players) > _collapse_search_max_players(
-        sequential_search_max_players=sequential_search_max_players
-    ):
-        pairings = _pair_round_dutch_greedy(
-            scoregroups,
-            sequential_search_max_players=sequential_search_max_players,
-            initial_color=initial_color,
-            allow_heuristic_fallback=allow_heuristic_fallback,
-        )
-        if pairings is None:
-            raise PairingError("round cannot be fully paired under current absolute constraints")
-        return PairingResult(
-            pairings=pairings,
-            unpaired_ids=(),
-            float_assignments=build_float_assignments(
-                ordered_players,
-                pairings=pairings,
-                unpaired_ids=(),
-            ),
-        )
 
     @cache
     def solve(
@@ -411,7 +221,7 @@ def pair_round_dutch(
                         allow_bye=True,
                         sequential_search_max_players=sequential_search_max_players,
                         initial_color=initial_color,
-                        allow_heuristic_fallback=allow_heuristic_fallback,
+                        allow_heuristic_fallback=False,
                     )
                 except ExactSearchUnavailableError:
                     unsupported_found = True
@@ -476,7 +286,7 @@ def pair_round_dutch(
                             allow_bye=True,
                             sequential_search_max_players=sequential_search_max_players,
                             initial_color=initial_color,
-                            allow_heuristic_fallback=allow_heuristic_fallback,
+                            allow_heuristic_fallback=False,
                         )
                     except ExactSearchUnavailableError:
                         unsupported_found = True
@@ -562,7 +372,7 @@ def pair_round_dutch(
                         allow_bye=False,
                         sequential_search_max_players=sequential_search_max_players,
                         initial_color=initial_color,
-                        allow_heuristic_fallback=allow_heuristic_fallback,
+                        allow_heuristic_fallback=False,
                     )
                 except ExactSearchUnavailableError:
                     unsupported_found = True
@@ -632,7 +442,7 @@ def pair_round_dutch(
                     allow_bye=False,
                     sequential_search_max_players=sequential_search_max_players,
                     initial_color=initial_color,
-                    allow_heuristic_fallback=allow_heuristic_fallback,
+                    allow_heuristic_fallback=False,
                 )
             except ExactSearchUnavailableError:
                 unsupported_found = True
@@ -686,7 +496,7 @@ def pair_round_dutch(
     unsupported_found = False
     solution = solve(scoregroups, ())
     if solution is None:
-        if unsupported_found and not allow_heuristic_fallback:
+        if unsupported_found:
             raise PairingError(
                 "exact Dutch mode currently requires heuristic fallback for this round"
             )
@@ -708,52 +518,9 @@ def pair_round_dutch_exact(
     sequential_search_max_players: int | None = None,
     initial_color: Color = "white",
 ) -> PairingResult:
-    """Pair one full round without heuristic fallback.
-
-    This currently exposes the exact-search surface already implemented in the
-    bracket and round pipeline. When the solver would need weighted or greedy
-    approximations, it raises `PairingError` instead of silently switching
-    search policy. When no explicit search limit is provided, exact mode uses
-    the current bracket size rather than the old public 12-player cap.
-    """
+    """Alias for the canonical exact Dutch round solver."""
     return pair_round_dutch(
         players,
         sequential_search_max_players=sequential_search_max_players,
         initial_color=initial_color,
-        allow_heuristic_fallback=False,
-    )
-
-
-def pair_round_dutch_fast(
-    players: tuple[PlayerState, ...],
-    *,
-    sequential_search_max_players: int | None = None,
-    initial_color: Color = "white",
-) -> PairingResult:
-    """Pair one full round with the greedy bracket pipeline only.
-
-    This skips collapse backtracking to keep runtime bounded for synthetic
-    workload generation and large stress scenarios.
-    `sequential_search_max_players` has the same meaning as in
-    `pair_round_dutch`.
-    """
-    if not players:
-        return PairingResult(pairings=(), unpaired_ids=(), float_assignments=())
-    scoregroups = _group_residents_by_score(tuple(sorted(players, key=_player_rank_key)))
-    pairings = _pair_round_dutch_greedy(
-        scoregroups,
-        sequential_search_max_players=sequential_search_max_players,
-        initial_color=initial_color,
-    )
-    if pairings is None:
-        raise PairingError("round cannot be fully paired under current absolute constraints")
-    ordered_players = tuple(sorted(players, key=_player_rank_key))
-    return PairingResult(
-        pairings=pairings,
-        unpaired_ids=(),
-        float_assignments=build_float_assignments(
-            ordered_players,
-            pairings=pairings,
-            unpaired_ids=(),
-        ),
     )

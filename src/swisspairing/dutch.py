@@ -492,7 +492,7 @@ def _homogeneous_exact_candidate_upper_bound(player_count: int) -> int:
 
     Keep the exact path only while the article-order candidate space stays
     within a tractable budget; larger homogeneous brackets fall back to the
-    weighted/D.1-D.2 approximation path even in strict mode.
+    weighted/D.1-D.2 approximation path when heuristic fallback is enabled.
     """
     if player_count <= 1:
         return 1

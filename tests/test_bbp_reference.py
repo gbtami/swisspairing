@@ -43,7 +43,7 @@ def _has_bbp_executable() -> bool:
     return _bbp_executable().exists()
 
 
-def _run_fixture(name: str, *, mode: str) -> dict[str, Any]:
+def _run_fixture(name: str) -> dict[str, Any]:
     fixture_path = FIXTURES_DIRECTORY / f"{name}.trf"
     completed = subprocess.run(
         [
@@ -55,8 +55,6 @@ def _run_fixture(name: str, *, mode: str) -> dict[str, Any]:
             "0",
             "--repeats",
             "1",
-            "--swisspairing-mode",
-            mode,
             "--bbp-executable",
             str(_bbp_executable()),
         ],
@@ -89,9 +87,8 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-@pytest.mark.parametrize("mode", ["fast", "strict"])
-def test_bbp_reference_dutch_2025_c5_matches_bbp_and_expected_output(mode: str) -> None:
-    payload = _run_fixture("dutch_2025_C5", mode=mode)
+def test_bbp_reference_dutch_2025_c5_matches_bbp_and_expected_output() -> None:
+    payload = _run_fixture("dutch_2025_C5")
 
     assert payload["reference_pairings_equal"] is False
     assert payload["pairings_equal_vs_bbp"] is True
@@ -99,11 +96,8 @@ def test_bbp_reference_dutch_2025_c5_matches_bbp_and_expected_output(mode: str) 
     assert _swisspairing_pairings(payload) == _expected_pairings("dutch_2025_C5")
 
 
-@pytest.mark.parametrize("mode", ["fast", "strict"])
-def test_bbp_reference_dutch_2025_c9_matches_both_references_and_expected_output(
-    mode: str,
-) -> None:
-    payload = _run_fixture("dutch_2025_C9", mode=mode)
+def test_bbp_reference_dutch_2025_c9_matches_both_references_and_expected_output() -> None:
+    payload = _run_fixture("dutch_2025_C9")
 
     assert payload["reference_pairings_equal"] is True
     assert payload["pairings_equal_vs_bbp"] is True
@@ -112,7 +106,7 @@ def test_bbp_reference_dutch_2025_c9_matches_both_references_and_expected_output
 
 
 def test_bbp_reference_issue_7_is_legacy_divergence_fixture() -> None:
-    payload = _run_fixture("issue_7", mode="strict")
+    payload = _run_fixture("issue_7")
 
     # BBP issue 7 was opened in 2020, well before the 2026 Dutch ruleset.
     # Keep it checked in as a legacy diagnostic because the current references

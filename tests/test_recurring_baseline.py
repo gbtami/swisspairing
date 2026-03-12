@@ -49,7 +49,7 @@ def test_append_trend_rows_writes_header_once(tmp_path: Path) -> None:
                 "seed": 20260370,
                 "sla_preset": "preset-a",
                 "sla_passed": 0,
-                "sla_failures": "fast p95 exceeded",
+                "sla_failures": "p95 exceeded",
             }
         ],
     )

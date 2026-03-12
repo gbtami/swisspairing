@@ -32,8 +32,6 @@ from swisspairing.exceptions import PairingError as SwissPairingError
 from swisspairing.model import Color, FloatKind, Pairing, PlayerState
 from swisspairing.tournament import pair_round_dutch
 
-_DEFAULT_FAST_SEQUENTIAL_SEARCH_MAX_PLAYERS = 6
-
 
 def _build_forbidden_map(trf: Any) -> dict[int, set[int]]:
     forbidden_map: dict[int, set[int]] = {}
@@ -269,7 +267,6 @@ def _time_swisspairing(
     *,
     warmup: int,
     repeats: int,
-    sequential_search_max_players: int | None,
     initial_color: Color,
 ) -> dict[str, Any]:
     timings_ms: list[float] = []
@@ -280,7 +277,6 @@ def _time_swisspairing(
         try:
             raw = pair_round_dutch(
                 states,
-                sequential_search_max_players=sequential_search_max_players,
                 initial_color=initial_color,
             )
             last_pairings = _normalize_swisspairing_pairings(raw.pairings)
@@ -294,7 +290,6 @@ def _time_swisspairing(
             try:
                 raw = pair_round_dutch(
                     states,
-                    sequential_search_max_players=sequential_search_max_players,
                     initial_color=initial_color,
                 )
                 last_pairings = _normalize_swisspairing_pairings(raw.pairings)
@@ -316,21 +311,9 @@ def main() -> None:
     parser.add_argument("--trf", type=Path, required=True)
     parser.add_argument("--warmup", type=int, default=1)
     parser.add_argument("--repeats", type=int, default=5)
-    parser.add_argument(
-        "--swisspairing-mode",
-        choices=("fast", "strict"),
-        default="fast",
-    )
-    parser.add_argument(
-        "--fast-sequential-search-max-players",
-        type=int,
-        default=_DEFAULT_FAST_SEQUENTIAL_SEARCH_MAX_PLAYERS,
-    )
     parser.add_argument("--bbp-executable", required=True)
     parser.add_argument("--javafo-jar")
     args = parser.parse_args()
-    if args.fast_sequential_search_max_players < 0:
-        raise SystemExit("--fast-sequential-search-max-players must be >= 0")
 
     trf_path = args.trf.resolve()
     trf = TrfParser.parse(trf_path)
@@ -352,14 +335,10 @@ def main() -> None:
             repeats=args.repeats,
             javafo_jar=args.javafo_jar,
         )
-    swisspairing_limit = (
-        None if args.swisspairing_mode == "strict" else args.fast_sequential_search_max_players
-    )
     swisspairing_result = _time_swisspairing(
         states,
         warmup=args.warmup,
         repeats=args.repeats,
-        sequential_search_max_players=swisspairing_limit,
         initial_color=initial_color,
     )
 
@@ -385,8 +364,6 @@ def main() -> None:
         "trf": portable_path_str(trf_path),
         "warmup": args.warmup,
         "repeats": args.repeats,
-        "swisspairing_mode": args.swisspairing_mode,
-        "fast_sequential_search_max_players": args.fast_sequential_search_max_players,
         "bbp_executable": args.bbp_executable,
         "py4swiss": py4swiss_result,
         "bbp": bbp_result,

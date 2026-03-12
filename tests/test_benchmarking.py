@@ -41,52 +41,41 @@ def test_build_benchmark_summary_uses_both_ok_denominator() -> None:
     payloads = [
         {
             "py4swiss": _timed_result(ok=True, timings_ms=[1.0]),
-            "swisspairing_fast": _timed_result(ok=True, timings_ms=[2.0]),
-            "swisspairing_strict": _timed_result(ok=True, timings_ms=[3.0]),
-            "pairings_equal_fast": True,
-            "pairings_equal_strict": True,
+            "swisspairing": _timed_result(ok=True, timings_ms=[2.0]),
+            "pairings_equal": True,
         },
         {
             "py4swiss": _timed_result(ok=True, timings_ms=[1.5]),
-            "swisspairing_fast": _timed_result(ok=True, timings_ms=[2.5]),
-            "runner_error_strict": "strict runner failed",
-            "pairings_equal_fast": False,
+            "swisspairing": _timed_result(ok=True, timings_ms=[2.5]),
+            "pairings_equal": False,
         },
         {
-            "runner_error_fast": "fast runner failed",
-            "runner_error_strict": "strict runner failed",
+            "runner_error": "runner failed",
         },
     ]
 
     summary = build_benchmark_summary(payloads, total_cases=3)
 
-    assert summary["cases_executed"] == 1
-    assert summary["cases_executed_fast"] == 2
-    assert summary["cases_executed_strict"] == 1
-    assert summary["cases_runner_error"] == 2
-    assert summary["cases_runner_error_fast"] == 1
-    assert summary["cases_runner_error_strict"] == 2
-    assert summary["cases_both_ok_fast"] == 2
-    assert summary["cases_both_ok_strict"] == 1
-    assert summary["pairing_equal_rate_fast_when_both_ok"] == 0.5
-    assert summary["pairing_equal_rate_fast_over_all_cases"] == 1 / 3
-    assert summary["pairing_equal_rate_strict_when_both_ok"] == 1.0
-    assert summary["pairing_equal_rate_strict_over_all_cases"] == 1 / 3
+    assert summary["cases_executed"] == 2
+    assert summary["cases_runner_error"] == 1
+    assert summary["cases_both_ok"] == 2
+    assert summary["pairing_equal_rate_when_both_ok"] == 0.5
+    assert summary["pairing_equal_rate_over_all_cases"] == 1 / 3
 
 
-def test_evaluate_benchmark_sla_checks_fast_equality_rate() -> None:
+def test_evaluate_benchmark_sla_checks_equality_rate() -> None:
     summary = {
-        "swisspairing_fast_success_rate": 1.0,
+        "swisspairing_success_rate": 1.0,
         "runner_error_rate": 0.0,
-        "swisspairing_fast_p95_ms": 25.0,
-        "p50_ratio_fast_over_py4swiss": 0.5,
-        "pairing_equal_rate_fast_when_both_ok": 0.75,
+        "swisspairing_p95_ms": 25.0,
+        "p50_ratio_swisspairing_over_py4swiss": 0.5,
+        "pairing_equal_rate_when_both_ok": 0.75,
     }
-    sla = BenchmarkSLA(min_fast_equality_rate_when_both_ok=0.9)
+    sla = BenchmarkSLA(min_equality_rate_when_both_ok=0.9)
 
     failures = evaluate_benchmark_sla(summary, sla)
 
-    assert failures == ["fast equality rate when both ok 0.750 is below minimum 0.900"]
+    assert failures == ["equality rate when both ok 0.750 is below minimum 0.900"]
 
 
 def test_current_recurring_sla_preset_matches_checked_in_baseline() -> None:

@@ -269,7 +269,6 @@ uv run python benchmarks/reference_compare_case_runner.py \
   --trf tests/reference_fixtures/bbp/dutch_2025_C5.trf \
   --warmup 0 \
   --repeats 1 \
-  --swisspairing-mode fast \
   --bbp-executable ~/bbpPairings/bbpPairings.exe
 ```
 
@@ -295,10 +294,10 @@ Current checked-in synthetic guardrail preset:
 
 - `post-bounded-c8-20260311`
 
-Treat this preset as a regression alarm for the current pragmatic fast-path
-benchmark profile, not as a release gate for exact/FIDE mode. For exact-mode
-work, prefer real-world exact runtimes and checked rule/corpus behavior over
-holding an older synthetic fast-path SLA constant.
+Treat this preset as a regression alarm for unexpected runtime blowups, not as
+a release gate for exact/FIDE mode. For exact-mode work, prefer real-world
+exact runtimes and checked rule/corpus behavior over holding an older
+synthetic SLA constant.
 
 Command:
 
@@ -306,7 +305,6 @@ Command:
 uv run python benchmarks/run_recurring_baselines.py \
   --output-root benchmarks/results/recurring \
   --tournaments-per-profile 8 \
-  --fast-sequential-search-max-players 6 \
   --repeats 1 \
   --warmup 0 \
   --timeout-seconds 120 \
@@ -406,37 +404,20 @@ benchmarks/import_lichess_fixtures.sh
 
 ## Integration Tuning
 
-For pychess adapter usage:
+Current solver contract:
 
-```bash
-export SWISSPAIRING_PAIRING_MODE=fast
-export SWISSPAIRING_SEQUENTIAL_SEARCH_MAX_PLAYERS=8
-```
-
-Precedence:
-
-1. explicit function argument
-2. `SWISSPAIRING_SEQUENTIAL_SEARCH_MAX_PLAYERS`
-3. `SWISSPAIRING_PAIRING_MODE`
-
-Current practical default:
-
-- `fast` mode with cap `6`
-
-Current architectural direction:
-
-- exact/FIDE mode is the canonical solver target in this repo
-- `fast` remains an operational compatibility mode for downstream integration
-  and synthetic benchmark guardrails while the exact path is still being
-  cleaned up
+- `pair_round_dutch()` is now the canonical exact/FIDE round solver
+- `pair_snapshots_dutch()` is now the canonical exact/FIDE adapter entry point
+- the old `fast` mode was removed from the public adapter surface
+- recurring synthetic baselines remain only as regression alarms for runtime
+  blowups, not as a reason to preserve a second public pairing mode
 
 ## Known Reference Findings
 
 - `dutch_2025_C5` is the clearest local case where `bbpPairings` and
   `swisspairing` agree while `py4swiss` disagrees
-- Aeroflot round 5 is another concrete `bbpPairings`/`swisspairing` vs
-  `py4swiss` split, but only on the final 3-player bracket; `swisspairing`
-  now matches `bbpPairings` there
+- Aeroflot round 5 is still the main remaining BBP-backed exact-mode split on
+  the checked OTB corpus after removing the old fast-mode path
 - On the checked public JaVaFo release, Aeroflot round 5 aligns with the
   `py4swiss` side rather than the BBP/2026 side. Treat that as Swiss-Manager
   lineage evidence, not as stronger normative evidence than FIDE + BBP.

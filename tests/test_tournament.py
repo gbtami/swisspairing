@@ -10,7 +10,6 @@ from swisspairing.model import FloatAssignment, FloatKind, Pairing, PlayerState
 from swisspairing.tournament import (
     pair_round_dutch,
     pair_round_dutch_exact,
-    pair_round_dutch_fast,
 )
 
 
@@ -324,12 +323,10 @@ def test_pair_round_dutch_uses_initial_color_when_article_5_2_5_breaks_the_tie()
         _player(player_id="even", pairing_no=2, score=3),
     )
 
-    strict_result = pair_round_dutch(players, initial_color="black")
-    fast_result = pair_round_dutch_fast(players, initial_color="black")
+    result = pair_round_dutch(players, initial_color="black")
 
-    assert strict_result.pairings == (Pairing(white_id="even", black_id="odd"),)
-    assert strict_result.unpaired_ids == ()
-    assert fast_result == strict_result
+    assert result.pairings == (Pairing(white_id="even", black_id="odd"),)
+    assert result.unpaired_ids == ()
 
 
 def test_pair_round_dutch_large_fixture_pairs_all_players_once() -> None:
@@ -380,7 +377,7 @@ def test_pair_round_dutch_very_large_fixture_pairs_all_players_once() -> None:
     assert all(pairing.black_id is not None for pairing in result.pairings)
 
 
-def test_pair_round_dutch_fast_cap_keeps_late_entry_fixture_parity() -> None:
+def test_pair_round_dutch_keeps_late_entry_fixture_parity() -> None:
     players = (
         PlayerState(
             player_id="1",
@@ -470,7 +467,7 @@ def test_pair_round_dutch_fast_cap_keeps_late_entry_fixture_parity() -> None:
         ),
     )
 
-    result = pair_round_dutch(players, sequential_search_max_players=6)
+    result = pair_round_dutch(players)
 
     assert _normalized_pairs(result.pairings) == {
         ("1", "3"),
@@ -527,7 +524,7 @@ def test_pair_round_dutch_collapses_for_lower_score_bye_candidate() -> None:
         ),
     )
 
-    result = pair_round_dutch(players, sequential_search_max_players=6)
+    result = pair_round_dutch(players)
 
     assert _normalized_pairs(result.pairings) == {
         ("1", "5"),
@@ -582,7 +579,7 @@ def test_pair_round_dutch_pause_like_state_keeps_lowest_score_bye() -> None:
         ),
     )
 
-    result = pair_round_dutch(players, sequential_search_max_players=6)
+    result = pair_round_dutch(players)
 
     assert _normalized_pairs(result.pairings) == {
         ("1", None),

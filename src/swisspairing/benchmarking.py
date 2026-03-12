@@ -33,225 +33,90 @@ class BenchmarkSLA:
     for exact/FIDE correctness.
     """
 
-    min_fast_success_rate: float | None = None
+    min_success_rate: float | None = None
     max_runner_error_rate: float | None = None
-    max_fast_p95_ms: float | None = None
-    max_fast_p50_ratio: float | None = None
-    min_fast_equality_rate_when_both_ok: float | None = None
+    max_p95_ms: float | None = None
+    max_p50_ratio: float | None = None
+    min_equality_rate_when_both_ok: float | None = None
 
 
 RECURRING_SYNTHETIC_SLA_PRESETS: dict[str, dict[int, BenchmarkSLA]] = {
-    # Synthetic recurring presets are fast-path regression guardrails. Exact
-    # solver work should be evaluated primarily against checked rule/corpus
-    # behavior and real-world exact runtimes, not against holding these values
-    # constant forever.
-    # Current recommended recurring synthetic baseline after bounding the
-    # medium-size [C8] odd-refinement tails and keeping the p512 sweep.
+    # Synthetic recurring presets are regression guardrails. Exact solver work
+    # should be evaluated primarily against checked rule/corpus behavior and
+    # real-world exact runtimes, not against holding these values constant.
     "post-bounded-c8-20260311": {
         16: BenchmarkSLA(
-            min_fast_success_rate=1.0,
+            min_success_rate=1.0,
             max_runner_error_rate=0.0,
-            max_fast_p95_ms=10.0,
-            max_fast_p50_ratio=1.05,
-            min_fast_equality_rate_when_both_ok=0.75,
+            max_p95_ms=10.0,
+            max_p50_ratio=1.05,
+            min_equality_rate_when_both_ok=0.75,
         ),
         32: BenchmarkSLA(
-            min_fast_success_rate=1.0,
+            min_success_rate=1.0,
             max_runner_error_rate=0.0,
-            max_fast_p95_ms=120.0,
-            max_fast_p50_ratio=2.6,
-            min_fast_equality_rate_when_both_ok=0.3,
+            max_p95_ms=120.0,
+            max_p50_ratio=2.6,
+            min_equality_rate_when_both_ok=0.3,
         ),
         64: BenchmarkSLA(
-            min_fast_success_rate=1.0,
+            min_success_rate=1.0,
             max_runner_error_rate=0.0,
-            max_fast_p95_ms=160.0,
-            max_fast_p50_ratio=0.4,
-            min_fast_equality_rate_when_both_ok=0.55,
+            max_p95_ms=160.0,
+            max_p50_ratio=0.4,
+            min_equality_rate_when_both_ok=0.55,
         ),
         128: BenchmarkSLA(
-            min_fast_success_rate=1.0,
+            min_success_rate=1.0,
             max_runner_error_rate=0.0,
-            max_fast_p95_ms=500.0,
-            max_fast_p50_ratio=0.6,
-            min_fast_equality_rate_when_both_ok=0.4,
+            max_p95_ms=500.0,
+            max_p50_ratio=0.6,
+            min_equality_rate_when_both_ok=0.4,
         ),
         256: BenchmarkSLA(
-            min_fast_success_rate=1.0,
+            min_success_rate=1.0,
             max_runner_error_rate=0.0,
-            max_fast_p95_ms=950.0,
-            max_fast_p50_ratio=0.6,
-            min_fast_equality_rate_when_both_ok=0.6,
+            max_p95_ms=950.0,
+            max_p50_ratio=0.6,
+            min_equality_rate_when_both_ok=0.6,
         ),
         512: BenchmarkSLA(
-            min_fast_success_rate=1.0,
+            min_success_rate=1.0,
             max_runner_error_rate=0.0,
-            max_fast_p95_ms=1500.0,
-            max_fast_p50_ratio=0.3,
-            min_fast_equality_rate_when_both_ok=0.8,
+            max_p95_ms=1500.0,
+            max_p50_ratio=0.3,
+            min_equality_rate_when_both_ok=0.8,
         ),
     },
-    # Historical synthetic baseline kept for reference after lowering the fast
-    # sequential-search cap to 6 and extending the checked-in sweep to p512.
+    # Historical synthetic baselines are kept for reference.
     "post-fast-cap-6-plus-512-20260306": {
-        16: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=10.0,
-            max_fast_p50_ratio=0.75,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
-        32: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=40.0,
-            max_fast_p50_ratio=0.8,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
-        64: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=35.0,
-            max_fast_p50_ratio=0.15,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
-        128: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=60.0,
-            max_fast_p50_ratio=0.18,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
-        256: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=325.0,
-            max_fast_p50_ratio=0.25,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
-        512: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=3000.0,
-            max_fast_p50_ratio=0.6,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
+        16: BenchmarkSLA(1.0, 0.0, 10.0, 0.75, 1.0),
+        32: BenchmarkSLA(1.0, 0.0, 40.0, 0.8, 1.0),
+        64: BenchmarkSLA(1.0, 0.0, 35.0, 0.15, 1.0),
+        128: BenchmarkSLA(1.0, 0.0, 60.0, 0.18, 1.0),
+        256: BenchmarkSLA(1.0, 0.0, 325.0, 0.25, 1.0),
+        512: BenchmarkSLA(1.0, 0.0, 3000.0, 0.6, 1.0),
     },
-    # Historical synthetic baseline kept for reference before p512 was folded
-    # into the default recurring sweep.
     "post-fast-cap-6-20260306": {
-        16: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=10.0,
-            max_fast_p50_ratio=0.75,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
-        32: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=40.0,
-            max_fast_p50_ratio=0.8,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
-        64: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=35.0,
-            max_fast_p50_ratio=0.15,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
-        128: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=60.0,
-            max_fast_p50_ratio=0.18,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
-        256: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=325.0,
-            max_fast_p50_ratio=0.25,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
+        16: BenchmarkSLA(1.0, 0.0, 10.0, 0.75, 1.0),
+        32: BenchmarkSLA(1.0, 0.0, 40.0, 0.8, 1.0),
+        64: BenchmarkSLA(1.0, 0.0, 35.0, 0.15, 1.0),
+        128: BenchmarkSLA(1.0, 0.0, 60.0, 0.18, 1.0),
+        256: BenchmarkSLA(1.0, 0.0, 325.0, 0.25, 1.0),
     },
-    # Historical synthetic baseline kept for reference after the C8
-    # next-bracket-key runtime cut in the round-level collapse solver.
     "post-c8-next-bracket-key-cut-20260306": {
-        16: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=85.0,
-            max_fast_p50_ratio=2.0,
-            min_fast_equality_rate_when_both_ok=0.9,
-        ),
-        32: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=170.0,
-            max_fast_p50_ratio=0.9,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
-        64: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=70.0,
-            max_fast_p50_ratio=0.6,
-            min_fast_equality_rate_when_both_ok=0.8,
-        ),
-        128: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=220.0,
-            max_fast_p50_ratio=0.2,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
-        256: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=325.0,
-            max_fast_p50_ratio=0.25,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
+        16: BenchmarkSLA(1.0, 0.0, 85.0, 2.0, 0.9),
+        32: BenchmarkSLA(1.0, 0.0, 170.0, 0.9, 1.0),
+        64: BenchmarkSLA(1.0, 0.0, 70.0, 0.6, 0.8),
+        128: BenchmarkSLA(1.0, 0.0, 220.0, 0.2, 1.0),
+        256: BenchmarkSLA(1.0, 0.0, 325.0, 0.25, 1.0),
     },
-    # Historical synthetic baseline kept for reference after the runtime fix.
     "post-parity-sweep-20260306b": {
-        16: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=60.0,
-            max_fast_p50_ratio=2.5,
-            min_fast_equality_rate_when_both_ok=0.9,
-        ),
-        32: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=80.0,
-            max_fast_p50_ratio=0.5,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
-        64: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=40.0,
-            max_fast_p50_ratio=0.5,
-            min_fast_equality_rate_when_both_ok=0.8,
-        ),
-        128: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=220.0,
-            max_fast_p50_ratio=0.2,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
-        256: BenchmarkSLA(
-            min_fast_success_rate=1.0,
-            max_runner_error_rate=0.0,
-            max_fast_p95_ms=325.0,
-            max_fast_p50_ratio=0.25,
-            min_fast_equality_rate_when_both_ok=1.0,
-        ),
+        16: BenchmarkSLA(1.0, 0.0, 60.0, 2.5, 0.9),
+        32: BenchmarkSLA(1.0, 0.0, 80.0, 0.5, 1.0),
+        64: BenchmarkSLA(1.0, 0.0, 40.0, 0.5, 0.8),
+        128: BenchmarkSLA(1.0, 0.0, 220.0, 0.2, 1.0),
+        256: BenchmarkSLA(1.0, 0.0, 325.0, 0.25, 1.0),
     },
 }
 
@@ -859,27 +724,21 @@ def py4swiss_runtime_probe(
     return False, message
 
 
-def case_swisspairing_result(
-    case_payload: Mapping[str, Any],
-    mode: str,
-) -> dict[str, Any] | None:
-    """Extract a swisspairing mode payload from a merged case report."""
-    if mode == "fast":
-        value = case_payload.get("swisspairing_fast") or case_payload.get("swisspairing")
-        return _as_payload_dict(value)
-    if mode == "strict":
-        return _as_payload_dict(case_payload.get("swisspairing_strict"))
-    raise ValueError(f"unknown mode: {mode}")
+def case_swisspairing_result(case_payload: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Extract the swisspairing payload from a case report."""
+    value = case_payload.get("swisspairing") or case_payload.get("swisspairing_fast")
+    if value is None:
+        value = case_payload.get("swisspairing_strict")
+    return _as_payload_dict(value)
 
 
-def case_pairings_equal(case_payload: Mapping[str, Any], mode: str) -> bool | None:
-    """Extract equality flag for the requested swisspairing mode."""
-    if mode == "fast":
-        value = case_payload.get("pairings_equal_fast", case_payload.get("pairings_equal"))
-    elif mode == "strict":
+def case_pairings_equal(case_payload: Mapping[str, Any]) -> bool | None:
+    """Extract the swisspairing vs py4swiss equality flag from a case report."""
+    value = case_payload.get("pairings_equal")
+    if value is None:
+        value = case_payload.get("pairings_equal_fast")
+    if value is None:
         value = case_payload.get("pairings_equal_strict")
-    else:
-        raise ValueError(f"unknown mode: {mode}")
     return value if isinstance(value, bool) else None
 
 
@@ -891,124 +750,51 @@ def build_benchmark_summary(
     """Build aggregate benchmark metrics from per-case payloads."""
     py4_available = [payload for payload in payloads if "py4swiss" in payload]
     py4_ok = [payload for payload in py4_available if payload["py4swiss"]["ok"]]
-    sp_fast_ok = [
-        payload
-        for payload in payloads
-        if (case_swisspairing_result(payload, "fast") or {}).get("ok")
-    ]
-    sp_strict_ok = [
-        payload
-        for payload in payloads
-        if (case_swisspairing_result(payload, "strict") or {}).get("ok")
+    swisspairing_ok = [
+        payload for payload in payloads if (case_swisspairing_result(payload) or {}).get("ok")
     ]
 
-    both_ok_fast = [
+    both_ok = [
         payload
         for payload in payloads
         if ("py4swiss" in payload and payload["py4swiss"]["ok"])
-        and (case_swisspairing_result(payload, "fast") or {}).get("ok")
+        and (case_swisspairing_result(payload) or {}).get("ok")
     ]
-    both_ok_strict = [
-        payload
-        for payload in payloads
-        if ("py4swiss" in payload and payload["py4swiss"]["ok"])
-        and (case_swisspairing_result(payload, "strict") or {}).get("ok")
-    ]
-    equal_fast_ok = [
-        payload for payload in both_ok_fast if case_pairings_equal(payload, "fast") is True
-    ]
-    equal_strict_ok = [
-        payload for payload in both_ok_strict if case_pairings_equal(payload, "strict") is True
-    ]
+    equal_ok = [payload for payload in both_ok if case_pairings_equal(payload) is True]
 
     py4_timings = [timing for payload in py4_ok for timing in payload["py4swiss"]["timings_ms"]]
-    sp_fast_timings = [
+    swisspairing_timings = [
         timing
-        for payload in sp_fast_ok
-        for timing in (case_swisspairing_result(payload, "fast") or {}).get("timings_ms", [])
-    ]
-    sp_strict_timings = [
-        timing
-        for payload in sp_strict_ok
-        for timing in (case_swisspairing_result(payload, "strict") or {}).get("timings_ms", [])
+        for payload in swisspairing_ok
+        for timing in (case_swisspairing_result(payload) or {}).get("timings_ms", [])
     ]
 
-    fast_runner_error_count = len(
-        [payload for payload in payloads if payload.get("runner_error_fast")]
-    )
-    strict_runner_error_count = len(
-        [payload for payload in payloads if payload.get("runner_error_strict")]
-    )
-    any_runner_error_count = len(
-        [
-            payload
-            for payload in payloads
-            if payload.get("runner_error")
-            or payload.get("runner_error_fast")
-            or payload.get("runner_error_strict")
-        ]
-    )
+    runner_error_count = len([payload for payload in payloads if payload.get("runner_error")])
 
     summary: dict[str, Any] = {
         "cases_total": total_cases,
-        "cases_executed": total_cases - any_runner_error_count,
-        "cases_executed_fast": total_cases - fast_runner_error_count,
-        "cases_executed_strict": total_cases - strict_runner_error_count,
-        "cases_runner_error": any_runner_error_count,
-        "cases_runner_error_fast": fast_runner_error_count,
-        "cases_runner_error_strict": strict_runner_error_count,
-        "cases_both_ok_fast": len(both_ok_fast),
-        "cases_both_ok_strict": len(both_ok_strict),
-        "runner_error_rate": any_runner_error_count / total_cases if total_cases else 0.0,
-        "runner_error_rate_fast": fast_runner_error_count / total_cases if total_cases else 0.0,
-        "runner_error_rate_strict": (
-            strict_runner_error_count / total_cases if total_cases else 0.0
-        ),
+        "cases_executed": total_cases - runner_error_count,
+        "cases_runner_error": runner_error_count,
+        "cases_both_ok": len(both_ok),
+        "runner_error_rate": runner_error_count / total_cases if total_cases else 0.0,
         "py4swiss_success_rate": len(py4_ok) / total_cases if total_cases else 0.0,
-        "swisspairing_fast_success_rate": len(sp_fast_ok) / total_cases if total_cases else 0.0,
-        "swisspairing_strict_success_rate": (
-            len(sp_strict_ok) / total_cases if total_cases else 0.0
-        ),
-        "pairing_equal_rate_fast_when_both_ok": (
-            len(equal_fast_ok) / len(both_ok_fast) if both_ok_fast else 0.0
-        ),
-        "pairing_equal_rate_strict_when_both_ok": (
-            len(equal_strict_ok) / len(both_ok_strict) if both_ok_strict else 0.0
-        ),
-        "pairing_equal_rate_fast_over_all_cases": (
-            len(equal_fast_ok) / total_cases if total_cases else 0.0
-        ),
-        "pairing_equal_rate_strict_over_all_cases": (
-            len(equal_strict_ok) / total_cases if total_cases else 0.0
-        ),
+        "swisspairing_success_rate": len(swisspairing_ok) / total_cases if total_cases else 0.0,
+        "pairing_equal_rate_when_both_ok": len(equal_ok) / len(both_ok) if both_ok else 0.0,
+        "pairing_equal_rate_over_all_cases": len(equal_ok) / total_cases if total_cases else 0.0,
         "py4swiss_p50_ms": percentile(py4_timings, 0.50),
         "py4swiss_p95_ms": percentile(py4_timings, 0.95),
-        "swisspairing_fast_p50_ms": percentile(sp_fast_timings, 0.50),
-        "swisspairing_fast_p95_ms": percentile(sp_fast_timings, 0.95),
-        "swisspairing_strict_p50_ms": percentile(sp_strict_timings, 0.50),
-        "swisspairing_strict_p95_ms": percentile(sp_strict_timings, 0.95),
+        "swisspairing_p50_ms": percentile(swisspairing_timings, 0.50),
+        "swisspairing_p95_ms": percentile(swisspairing_timings, 0.95),
     }
 
     if summary["py4swiss_p50_ms"] > 0:
-        summary["p50_ratio_fast_over_py4swiss"] = (
-            summary["swisspairing_fast_p50_ms"] / summary["py4swiss_p50_ms"]
-            if sp_fast_timings
-            else None
-        )
-        summary["p50_ratio_strict_over_py4swiss"] = (
-            summary["swisspairing_strict_p50_ms"] / summary["py4swiss_p50_ms"]
-            if sp_strict_timings
+        summary["p50_ratio_swisspairing_over_py4swiss"] = (
+            summary["swisspairing_p50_ms"] / summary["py4swiss_p50_ms"]
+            if swisspairing_timings
             else None
         )
     else:
-        summary["p50_ratio_fast_over_py4swiss"] = None
-        summary["p50_ratio_strict_over_py4swiss"] = None
-
-    summary["swisspairing_success_rate"] = summary["swisspairing_fast_success_rate"]
-    summary["pairing_equal_rate_when_both_ok"] = summary["pairing_equal_rate_fast_when_both_ok"]
-    summary["swisspairing_p50_ms"] = summary["swisspairing_fast_p50_ms"]
-    summary["swisspairing_p95_ms"] = summary["swisspairing_fast_p95_ms"]
-    summary["p50_ratio_swisspairing_over_py4swiss"] = summary["p50_ratio_fast_over_py4swiss"]
+        summary["p50_ratio_swisspairing_over_py4swiss"] = None
 
     return summary
 
@@ -1017,11 +803,11 @@ def evaluate_benchmark_sla(summary: Mapping[str, Any], sla: BenchmarkSLA) -> lis
     """Return human-readable SLA violations for a benchmark summary."""
     failures: list[str] = []
 
-    if sla.min_fast_success_rate is not None:
-        observed = float(summary["swisspairing_fast_success_rate"])
-        if observed < sla.min_fast_success_rate:
+    if sla.min_success_rate is not None:
+        observed = float(summary["swisspairing_success_rate"])
+        if observed < sla.min_success_rate:
             failures.append(
-                f"fast success rate {observed:.3f} is below minimum {sla.min_fast_success_rate:.3f}"
+                f"success rate {observed:.3f} is below minimum {sla.min_success_rate:.3f}"
             )
 
     if sla.max_runner_error_rate is not None:
@@ -1031,30 +817,27 @@ def evaluate_benchmark_sla(summary: Mapping[str, Any], sla: BenchmarkSLA) -> lis
                 f"runner error rate {observed:.3f} exceeds maximum {sla.max_runner_error_rate:.3f}"
             )
 
-    if sla.max_fast_p95_ms is not None:
-        observed = float(summary["swisspairing_fast_p95_ms"])
-        if observed > sla.max_fast_p95_ms:
-            failures.append(
-                f"fast p95 {observed:.2f}ms exceeds maximum {sla.max_fast_p95_ms:.2f}ms"
-            )
+    if sla.max_p95_ms is not None:
+        observed = float(summary["swisspairing_p95_ms"])
+        if observed > sla.max_p95_ms:
+            failures.append(f"p95 {observed:.2f}ms exceeds maximum {sla.max_p95_ms:.2f}ms")
 
-    if sla.max_fast_p50_ratio is not None:
-        observed = summary["p50_ratio_fast_over_py4swiss"]
+    if sla.max_p50_ratio is not None:
+        observed = summary["p50_ratio_swisspairing_over_py4swiss"]
         if observed is None:
-            failures.append("fast p50 ratio is unavailable (py4swiss p50 is zero)")
-        elif float(observed) > sla.max_fast_p50_ratio:
+            failures.append("p50 ratio is unavailable (py4swiss p50 is zero)")
+        elif float(observed) > sla.max_p50_ratio:
             failures.append(
-                f"fast p50 ratio {float(observed):.3f}x exceeds maximum "
-                f"{sla.max_fast_p50_ratio:.3f}x"
+                f"p50 ratio {float(observed):.3f}x exceeds maximum {sla.max_p50_ratio:.3f}x"
             )
 
-    if sla.min_fast_equality_rate_when_both_ok is not None:
-        observed = float(summary["pairing_equal_rate_fast_when_both_ok"])
-        if observed < sla.min_fast_equality_rate_when_both_ok:
+    if sla.min_equality_rate_when_both_ok is not None:
+        observed = float(summary["pairing_equal_rate_when_both_ok"])
+        if observed < sla.min_equality_rate_when_both_ok:
             failures.append(
-                "fast equality rate when both ok "
+                "equality rate when both ok "
                 f"{observed:.3f} is below minimum "
-                f"{sla.min_fast_equality_rate_when_both_ok:.3f}"
+                f"{sla.min_equality_rate_when_both_ok:.3f}"
             )
 
     return failures

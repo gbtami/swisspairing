@@ -93,7 +93,6 @@ def main() -> None:
     parser.add_argument("--seed-base", type=int, default=20260306)
     parser.add_argument("--warmup", type=int, default=1)
     parser.add_argument("--repeats", type=int, default=3)
-    parser.add_argument("--fast-sequential-search-max-players", type=int, default=6)
     parser.add_argument("--timeout-seconds", type=int, default=120)
     parser.add_argument("--output-root", type=Path, default=_default_output_root())
     parser.add_argument("--run-id")
@@ -112,8 +111,6 @@ def main() -> None:
         raise SystemExit("--max-snapshots-per-tournament must be > 0")
     if args.repeats <= 0:
         raise SystemExit("--repeats must be > 0")
-    if args.fast_sequential_search_max_players < 0:
-        raise SystemExit("--fast-sequential-search-max-players must be >= 0")
     if args.timeout_seconds <= 0:
         raise SystemExit("--timeout-seconds must be > 0")
 
@@ -198,8 +195,6 @@ def main() -> None:
             str(args.repeats),
             "--timeout-seconds",
             str(args.timeout_seconds),
-            "--fast-sequential-search-max-players",
-            str(args.fast_sequential_search_max_players),
             "--json-output",
             str(benchmark_json),
         ]
@@ -269,55 +264,23 @@ def main() -> None:
                 "exported_files": simulate_summary.get("exported_files"),
                 "cases_total": benchmark_summary.get("cases_total"),
                 "cases_executed": benchmark_summary.get("cases_executed"),
-                "cases_executed_fast": benchmark_summary.get("cases_executed_fast"),
-                "cases_executed_strict": benchmark_summary.get("cases_executed_strict"),
                 "cases_runner_error": benchmark_summary.get("cases_runner_error"),
-                "cases_runner_error_fast": benchmark_summary.get("cases_runner_error_fast"),
-                "cases_runner_error_strict": benchmark_summary.get("cases_runner_error_strict"),
-                "cases_both_ok_fast": benchmark_summary.get("cases_both_ok_fast"),
-                "cases_both_ok_strict": benchmark_summary.get("cases_both_ok_strict"),
+                "cases_both_ok": benchmark_summary.get("cases_both_ok"),
                 "runner_error_rate": benchmark_summary.get("runner_error_rate"),
-                "runner_error_rate_fast": benchmark_summary.get("runner_error_rate_fast"),
-                "runner_error_rate_strict": benchmark_summary.get("runner_error_rate_strict"),
                 "py4swiss_success_rate": benchmark_summary.get("py4swiss_success_rate"),
                 "swisspairing_success_rate": benchmark_summary.get("swisspairing_success_rate"),
-                "swisspairing_fast_success_rate": benchmark_summary.get(
-                    "swisspairing_fast_success_rate"
-                ),
-                "swisspairing_strict_success_rate": benchmark_summary.get(
-                    "swisspairing_strict_success_rate"
-                ),
                 "pairing_equal_rate_when_both_ok": benchmark_summary.get(
                     "pairing_equal_rate_when_both_ok"
                 ),
-                "pairing_equal_rate_fast_when_both_ok": benchmark_summary.get(
-                    "pairing_equal_rate_fast_when_both_ok"
-                ),
-                "pairing_equal_rate_strict_when_both_ok": benchmark_summary.get(
-                    "pairing_equal_rate_strict_when_both_ok"
-                ),
-                "pairing_equal_rate_fast_over_all_cases": benchmark_summary.get(
-                    "pairing_equal_rate_fast_over_all_cases"
-                ),
-                "pairing_equal_rate_strict_over_all_cases": benchmark_summary.get(
-                    "pairing_equal_rate_strict_over_all_cases"
+                "pairing_equal_rate_over_all_cases": benchmark_summary.get(
+                    "pairing_equal_rate_over_all_cases"
                 ),
                 "py4swiss_p50_ms": benchmark_summary.get("py4swiss_p50_ms"),
                 "py4swiss_p95_ms": benchmark_summary.get("py4swiss_p95_ms"),
                 "swisspairing_p50_ms": benchmark_summary.get("swisspairing_p50_ms"),
                 "swisspairing_p95_ms": benchmark_summary.get("swisspairing_p95_ms"),
-                "swisspairing_fast_p50_ms": benchmark_summary.get("swisspairing_fast_p50_ms"),
-                "swisspairing_fast_p95_ms": benchmark_summary.get("swisspairing_fast_p95_ms"),
-                "swisspairing_strict_p50_ms": benchmark_summary.get("swisspairing_strict_p50_ms"),
-                "swisspairing_strict_p95_ms": benchmark_summary.get("swisspairing_strict_p95_ms"),
                 "p50_ratio_swisspairing_over_py4swiss": benchmark_summary.get(
                     "p50_ratio_swisspairing_over_py4swiss"
-                ),
-                "p50_ratio_fast_over_py4swiss": benchmark_summary.get(
-                    "p50_ratio_fast_over_py4swiss"
-                ),
-                "p50_ratio_strict_over_py4swiss": benchmark_summary.get(
-                    "p50_ratio_strict_over_py4swiss"
                 ),
                 "sla_preset": args.sla_preset or "",
                 "sla_passed": ("" if benchmark_sla is None else int(bool(benchmark_sla["passed"]))),
@@ -349,7 +312,6 @@ def main() -> None:
             "seed_base": args.seed_base,
             "warmup": args.warmup,
             "repeats": args.repeats,
-            "fast_sequential_search_max_players": args.fast_sequential_search_max_players,
             "timeout_seconds": args.timeout_seconds,
             "sla_preset": args.sla_preset,
         },

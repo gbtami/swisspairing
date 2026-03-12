@@ -57,94 +57,6 @@ def _run_case(
     trf_path: Path,
     warmup: int,
     repeats: int,
-    fast_sequential_search_max_players: int,
-    timeout_seconds: int,
-    bbp_executable: str,
-    javafo_jar: str | None,
-    env: dict[str, str],
-) -> dict[str, Any]:
-    fast_payload = _run_case_mode(
-        python_executable=python_executable,
-        runner_script=runner_script,
-        trf_path=trf_path,
-        warmup=warmup,
-        repeats=repeats,
-        swisspairing_mode="fast",
-        fast_sequential_search_max_players=fast_sequential_search_max_players,
-        timeout_seconds=timeout_seconds,
-        bbp_executable=bbp_executable,
-        javafo_jar=javafo_jar,
-        env=env,
-    )
-    strict_payload = _run_case_mode(
-        python_executable=python_executable,
-        runner_script=runner_script,
-        trf_path=trf_path,
-        warmup=warmup,
-        repeats=repeats,
-        swisspairing_mode="strict",
-        fast_sequential_search_max_players=fast_sequential_search_max_players,
-        timeout_seconds=timeout_seconds,
-        bbp_executable=bbp_executable,
-        javafo_jar=javafo_jar,
-        env=env,
-    )
-
-    merged: dict[str, Any] = {
-        "trf": portable_path_str(trf_path),
-        "fast_sequential_search_max_players": fast_sequential_search_max_players,
-    }
-
-    reference_source = None
-    if "runner_error" not in fast_payload:
-        reference_source = fast_payload
-    elif "runner_error" not in strict_payload:
-        reference_source = strict_payload
-    if reference_source is not None:
-        merged["py4swiss"] = reference_source["py4swiss"]
-        merged["bbp"] = reference_source["bbp"]
-        merged["reference_pairings_equal"] = reference_source["reference_pairings_equal"]
-        if "javafo" in reference_source:
-            merged["javafo"] = reference_source["javafo"]
-            merged["reference_pairings_equal_vs_javafo"] = reference_source[
-                "reference_pairings_equal_vs_javafo"
-            ]
-
-    if "runner_error" in fast_payload:
-        merged["runner_error_fast"] = fast_payload["runner_error"]
-    else:
-        merged["swisspairing_fast"] = fast_payload["swisspairing"]
-        merged["pairings_equal_fast_vs_py4swiss"] = fast_payload["pairings_equal_vs_py4swiss"]
-        merged["pairings_equal_fast_vs_bbp"] = fast_payload["pairings_equal_vs_bbp"]
-        if "pairings_equal_vs_javafo" in fast_payload:
-            merged["pairings_equal_fast_vs_javafo"] = fast_payload["pairings_equal_vs_javafo"]
-
-    if "runner_error" in strict_payload:
-        merged["runner_error_strict"] = strict_payload["runner_error"]
-    else:
-        merged["swisspairing_strict"] = strict_payload["swisspairing"]
-        merged["pairings_equal_strict_vs_py4swiss"] = strict_payload["pairings_equal_vs_py4swiss"]
-        merged["pairings_equal_strict_vs_bbp"] = strict_payload["pairings_equal_vs_bbp"]
-        if "pairings_equal_vs_javafo" in strict_payload:
-            merged["pairings_equal_strict_vs_javafo"] = strict_payload["pairings_equal_vs_javafo"]
-
-    if "runner_error_fast" in merged and "runner_error_strict" in merged:
-        merged["runner_error"] = (
-            f"fast={merged['runner_error_fast']}; strict={merged['runner_error_strict']}"
-        )
-
-    return merged
-
-
-def _run_case_mode(
-    *,
-    python_executable: str,
-    runner_script: Path,
-    trf_path: Path,
-    warmup: int,
-    repeats: int,
-    swisspairing_mode: str,
-    fast_sequential_search_max_players: int,
     timeout_seconds: int,
     bbp_executable: str,
     javafo_jar: str | None,
@@ -159,10 +71,6 @@ def _run_case_mode(
         str(warmup),
         "--repeats",
         str(repeats),
-        "--swisspairing-mode",
-        swisspairing_mode,
-        "--fast-sequential-search-max-players",
-        str(fast_sequential_search_max_players),
         "--bbp-executable",
         bbp_executable,
     ]
@@ -180,7 +88,7 @@ def _run_case_mode(
     except subprocess.TimeoutExpired:
         return {
             "trf": portable_path_str(trf_path),
-            "runner_error": f"{swisspairing_mode} runner timed out after {timeout_seconds}s",
+            "runner_error": f"runner timed out after {timeout_seconds}s",
         }
     if completed.returncode != 0:
         return {
@@ -219,25 +127,19 @@ def _print_case_row(case_payload: dict[str, Any]) -> None:
     py4 = case_payload["py4swiss"]
     bbp = case_payload["bbp"]
     javafo = case_payload.get("javafo")
-    fast = case_payload.get("swisspairing_fast")
-    strict = case_payload.get("swisspairing_strict")
+    swisspairing = case_payload.get("swisspairing")
     print(
         f"{trf_name:40} py4[{_result_text(py4)}] "
         f"bbp[{_result_text(bbp)}] ref_equal={case_payload.get('reference_pairings_equal')} "
         f"javafo[{_result_text(javafo)}] "
         f"ref_equal_vs_javafo={case_payload.get('reference_pairings_equal_vs_javafo')} "
-        f"sp_fast[{_result_text(fast)}] ratio_vs_py4={_ratio_text(base=py4, other=fast)} "
-        f"ratio_vs_bbp={_ratio_text(base=bbp, other=fast)} "
-        f"ratio_vs_javafo={_ratio_text(base=javafo, other=fast)} "
-        f"equal_vs_py4={case_payload.get('pairings_equal_fast_vs_py4swiss')} "
-        f"equal_vs_bbp={case_payload.get('pairings_equal_fast_vs_bbp')} "
-        f"equal_vs_javafo={case_payload.get('pairings_equal_fast_vs_javafo')} "
-        f"sp_strict[{_result_text(strict)}] ratio_vs_py4={_ratio_text(base=py4, other=strict)} "
-        f"ratio_vs_bbp={_ratio_text(base=bbp, other=strict)} "
-        f"ratio_vs_javafo={_ratio_text(base=javafo, other=strict)} "
-        f"equal_vs_py4={case_payload.get('pairings_equal_strict_vs_py4swiss')} "
-        f"equal_vs_bbp={case_payload.get('pairings_equal_strict_vs_bbp')} "
-        f"equal_vs_javafo={case_payload.get('pairings_equal_strict_vs_javafo')}"
+        f"sp[{_result_text(swisspairing)}] "
+        f"ratio_vs_py4={_ratio_text(base=py4, other=swisspairing)} "
+        f"ratio_vs_bbp={_ratio_text(base=bbp, other=swisspairing)} "
+        f"ratio_vs_javafo={_ratio_text(base=javafo, other=swisspairing)} "
+        f"equal_vs_py4={case_payload.get('pairings_equal_vs_py4swiss')} "
+        f"equal_vs_bbp={case_payload.get('pairings_equal_vs_bbp')} "
+        f"equal_vs_javafo={case_payload.get('pairings_equal_vs_javafo')}"
     )
 
 
@@ -284,11 +186,8 @@ def _build_summary(payloads: list[dict[str, Any]], *, total_cases: int) -> dict[
     py4_p50, py4_p95 = _timing_summary(payloads, "py4swiss")
     bbp_p50, bbp_p95 = _timing_summary(payloads, "bbp")
     javafo_p50, javafo_p95 = _timing_summary(payloads, "javafo")
-    fast_p50, fast_p95 = _timing_summary(payloads, "swisspairing_fast")
-    strict_p50, strict_p95 = _timing_summary(payloads, "swisspairing_strict")
+    swisspairing_p50, swisspairing_p95 = _timing_summary(payloads, "swisspairing")
     runner_error_cases = sum(1 for payload in payloads if "runner_error" in payload)
-    runner_error_fast = sum(1 for payload in payloads if "runner_error_fast" in payload)
-    runner_error_strict = sum(1 for payload in payloads if "runner_error_strict" in payload)
 
     return {
         "cases_total": total_cases,
@@ -307,29 +206,17 @@ def _build_summary(payloads: list[dict[str, Any]], *, total_cases: int) -> dict[
             for payload in payloads
             if isinstance(payload.get("javafo"), dict) and payload["javafo"]["ok"]
         ),
-        "cases_executed_fast": sum(
+        "cases_executed_swisspairing": sum(
             1
             for payload in payloads
-            if isinstance(payload.get("swisspairing_fast"), dict)
-            and payload["swisspairing_fast"]["ok"]
-        ),
-        "cases_executed_strict": sum(
-            1
-            for payload in payloads
-            if isinstance(payload.get("swisspairing_strict"), dict)
-            and payload["swisspairing_strict"]["ok"]
+            if isinstance(payload.get("swisspairing"), dict) and payload["swisspairing"]["ok"]
         ),
         "cases_runner_error": runner_error_cases,
-        "cases_runner_error_fast": runner_error_fast,
-        "cases_runner_error_strict": runner_error_strict,
         "runner_error_rate": runner_error_cases / total_cases,
-        "runner_error_rate_fast": runner_error_fast / total_cases,
-        "runner_error_rate_strict": runner_error_strict / total_cases,
         "py4swiss_success_rate": _rate(payloads, "py4swiss"),
         "bbp_success_rate": _rate(payloads, "bbp"),
         "javafo_success_rate": _rate(payloads, "javafo"),
-        "swisspairing_fast_success_rate": _rate(payloads, "swisspairing_fast"),
-        "swisspairing_strict_success_rate": _rate(payloads, "swisspairing_strict"),
+        "swisspairing_success_rate": _rate(payloads, "swisspairing"),
         "pairing_equal_rate_py4swiss_vs_bbp_when_both_ok": _equality_rate(
             payloads,
             "reference_pairings_equal",
@@ -338,29 +225,17 @@ def _build_summary(payloads: list[dict[str, Any]], *, total_cases: int) -> dict[
             payloads,
             "reference_pairings_equal_vs_javafo",
         ),
-        "pairing_equal_rate_fast_vs_py4swiss_when_both_ok": _equality_rate(
+        "pairing_equal_rate_swisspairing_vs_py4swiss_when_both_ok": _equality_rate(
             payloads,
-            "pairings_equal_fast_vs_py4swiss",
+            "pairings_equal_vs_py4swiss",
         ),
-        "pairing_equal_rate_fast_vs_bbp_when_both_ok": _equality_rate(
+        "pairing_equal_rate_swisspairing_vs_bbp_when_both_ok": _equality_rate(
             payloads,
-            "pairings_equal_fast_vs_bbp",
+            "pairings_equal_vs_bbp",
         ),
-        "pairing_equal_rate_fast_vs_javafo_when_both_ok": _equality_rate(
+        "pairing_equal_rate_swisspairing_vs_javafo_when_both_ok": _equality_rate(
             payloads,
-            "pairings_equal_fast_vs_javafo",
-        ),
-        "pairing_equal_rate_strict_vs_py4swiss_when_both_ok": _equality_rate(
-            payloads,
-            "pairings_equal_strict_vs_py4swiss",
-        ),
-        "pairing_equal_rate_strict_vs_bbp_when_both_ok": _equality_rate(
-            payloads,
-            "pairings_equal_strict_vs_bbp",
-        ),
-        "pairing_equal_rate_strict_vs_javafo_when_both_ok": _equality_rate(
-            payloads,
-            "pairings_equal_strict_vs_javafo",
+            "pairings_equal_vs_javafo",
         ),
         "py4swiss_p50_ms": py4_p50,
         "py4swiss_p95_ms": py4_p95,
@@ -368,16 +243,11 @@ def _build_summary(payloads: list[dict[str, Any]], *, total_cases: int) -> dict[
         "bbp_p95_ms": bbp_p95,
         "javafo_p50_ms": javafo_p50,
         "javafo_p95_ms": javafo_p95,
-        "swisspairing_fast_p50_ms": fast_p50,
-        "swisspairing_fast_p95_ms": fast_p95,
-        "swisspairing_strict_p50_ms": strict_p50,
-        "swisspairing_strict_p95_ms": strict_p95,
-        "p50_ratio_fast_over_py4swiss": _ratio(py4_p50, fast_p50),
-        "p50_ratio_fast_over_bbp": _ratio(bbp_p50, fast_p50),
-        "p50_ratio_fast_over_javafo": _ratio(javafo_p50, fast_p50),
-        "p50_ratio_strict_over_py4swiss": _ratio(py4_p50, strict_p50),
-        "p50_ratio_strict_over_bbp": _ratio(bbp_p50, strict_p50),
-        "p50_ratio_strict_over_javafo": _ratio(javafo_p50, strict_p50),
+        "swisspairing_p50_ms": swisspairing_p50,
+        "swisspairing_p95_ms": swisspairing_p95,
+        "p50_ratio_swisspairing_over_py4swiss": _ratio(py4_p50, swisspairing_p50),
+        "p50_ratio_swisspairing_over_bbp": _ratio(bbp_p50, swisspairing_p50),
+        "p50_ratio_swisspairing_over_javafo": _ratio(javafo_p50, swisspairing_p50),
     }
 
 
@@ -392,14 +262,11 @@ def main() -> None:
     parser.add_argument("--case", action="append", default=[])
     parser.add_argument("--warmup", type=int, default=1)
     parser.add_argument("--repeats", type=int, default=5)
-    parser.add_argument("--fast-sequential-search-max-players", type=int, default=6)
     parser.add_argument("--timeout-seconds", type=int, default=30)
     parser.add_argument("--bbp-executable", default=_default_bbp_executable())
     parser.add_argument("--javafo-jar", default=_default_javafo_jar())
     parser.add_argument("--json-output", type=Path)
     args = parser.parse_args()
-    if args.fast_sequential_search_max_players < 0:
-        raise SystemExit("--fast-sequential-search-max-players must be >= 0")
     if not args.bbp_executable:
         raise SystemExit(
             "--bbp-executable is required; set SWISSPAIRING_BBP_EXECUTABLE "
@@ -453,7 +320,6 @@ def main() -> None:
             trf_path=case,
             warmup=args.warmup,
             repeats=args.repeats,
-            fast_sequential_search_max_players=args.fast_sequential_search_max_players,
             timeout_seconds=args.timeout_seconds,
             bbp_executable=args.bbp_executable,
             javafo_jar=args.javafo_jar,

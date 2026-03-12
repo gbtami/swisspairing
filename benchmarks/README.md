@@ -4,9 +4,7 @@ This folder contains a reproducible benchmark harness for comparing:
 
 - `py4swiss` Dutch engine
 - optional `JaVaFo` public release for Swiss-Manager-lineage comparisons
-- `swisspairing` Dutch round pairing in both:
-  - strict mode (`sequential_search_max_players=None`)
-  - fast bounded mode (`sequential_search_max_players=6` by default)
+- `swisspairing` exact Dutch round pairing
 
 on the same TRF inputs.
 
@@ -37,7 +35,7 @@ jar from:
 
 - `benchmark_py4swiss_compare.py`: multi-case driver with timeout isolation.
 - `benchmark_reference_compare.py`: multi-case driver for `py4swiss`,
-  `bbpPairings`, optional `JaVaFo`, and both `swisspairing` modes.
+  `bbpPairings`, optional `JaVaFo`, and `swisspairing`.
 - `reference_compare_case_runner.py`: single-case timed runner for the same
   engine set.
 - `py4swiss_bench_case_runner.py`: single-case timed runner (JSON output).
@@ -66,7 +64,6 @@ Run against custom TRF exports (for example, pychess Swiss state exports):
 uv run python benchmarks/benchmark_py4swiss_compare.py \
   --fixtures-dir /path/to/trf_exports \
   --pattern '*.trf' \
-  --fast-sequential-search-max-players 6 \
   --repeats 7 \
   --timeout-seconds 60
 ```
@@ -93,8 +90,7 @@ uv run python benchmarks/benchmark_py4swiss_compare.py \
   --pattern '*.trf' \
   --warmup 0 \
   --repeats 1 \
-  --timeout-seconds 30 \
-  --fast-sequential-search-max-players 6
+  --timeout-seconds 30
 ```
 
 Run with SLA checks (non-zero exit when violated):
@@ -103,8 +99,8 @@ Run with SLA checks (non-zero exit when violated):
 uv run python benchmarks/benchmark_py4swiss_compare.py \
   --fixtures-dir /tmp/sim_swiss_trf \
   --pattern '*.trf' \
-  --sla-min-fast-success-rate 0.99 \
-  --sla-min-fast-equality-rate-when-both-ok 0.95 \
+  --sla-min-success-rate 0.99 \
+  --sla-min-equality-rate-when-both-ok 0.95 \
   --sla-max-runner-error-rate 0.01 \
   --sla-max-fast-p95-ms 2000 \
   --sla-max-fast-p50-ratio 10.0
@@ -155,7 +151,6 @@ uv run python benchmarks/reference_compare_case_runner.py \
   --trf benchmarks/fixtures/chess_results/aeroflot_open_2026/aeroflot_open_2026_r02.trf \
   --warmup 0 \
   --repeats 1 \
-  --swisspairing-mode fast \
   --bbp-executable ~/bbpPairings/bbpPairings.exe
 ```
 
@@ -243,7 +238,6 @@ Run recurring baseline profiles (default: 16, 32, 64, 128, 256, 512):
 uv run python benchmarks/run_recurring_baselines.py \
   --output-root benchmarks/results/recurring \
   --tournaments-per-profile 8 \
-  --fast-sequential-search-max-players 6 \
   --repeats 3 \
   --warmup 1 \
   --timeout-seconds 120
@@ -256,7 +250,6 @@ checked-in `post-bounded-c8-20260311` baseline:
 uv run python benchmarks/run_recurring_baselines.py \
   --output-root benchmarks/results/recurring \
   --tournaments-per-profile 8 \
-  --fast-sequential-search-max-players 6 \
   --repeats 1 \
   --warmup 0 \
   --timeout-seconds 120 \
@@ -293,12 +286,12 @@ Output artifacts:
 - `benchmarks/fixtures/chess_results/aeroflot_open_2026` is the first
   checked-in real-world OTB corpus reconstructed from external exports. The
   first checked Aeroflot round-2 and round-3 published-pairing regressions are
-  now covered in normal tests and currently match in `swisspairing` fast mode,
+  now covered in normal tests and currently match in `swisspairing`,
   `py4swiss`, and BBP.
 - `benchmarks/fixtures/lichess` contains normalized TRF16 fixtures exported
   from Lichess Swiss events, plus source/provenance notes.
 - `benchmarks/fixtures/p64_regressions` contains checked-in synthetic tail
-  cases for 64-player fast-mode runtime work.
+  cases for 64-player runtime work.
 - `benchmarks/fixtures/p32_regressions` contains checked-in synthetic tail
   cases for the current midsize `[C8]` runtime work.
 - `benchmarks/fixtures/p128_regressions` contains checked-in synthetic tail
@@ -318,13 +311,12 @@ Output artifacts:
   relax or obsolete a fast-path preset if the checked rulebook/corpus behavior
   improves and real-world exact runtimes stay practical.
 - Recurring baseline trend rows include run id, profile size, exported fixture
-  counts, runner error rate, both-ok case counts, fast+strict success/equality
-  rates, p50/p95 timings, ratios, calibrated SLA pass/fail status, and git
-  metadata.
+  counts, runner error rate, both-ok case counts, success/equality rates,
+  p50/p95 timings, ratios, calibrated SLA pass/fail status, and git metadata.
 - Summary includes:
   - success rates for both engines,
-  - pairing equality rates for `swisspairing_fast` and `swisspairing_strict`
-    using both-ok denominators plus over-all-case rates,
-  - global p50/p95 latencies (milliseconds) for both modes,
+  - `swisspairing` pairing equality rates using both-ok denominators plus
+    over-all-case rates,
+  - global p50/p95 latencies (milliseconds),
   - p50 ratios against any enabled external engine (`py4swiss`,
     `bbpPairings`, `JaVaFo`).
