@@ -469,11 +469,10 @@ Current solver contract:
   `swisspairing`, `bbpPairings`, `py4swiss`, and the checked JaVaFo release
   all agree there, and the earlier round-1 runtime tail is fixed.
 - Spring 2026 / ChessHouse is also a clean consensus corpus on the completed
-  compare cases: rounds 1 / 2 / 3 / 5 / 6 / 7 / 8 / 9 all matched across
-  `swisspairing`, `bbpPairings`, `py4swiss`, and the checked JaVaFo release.
-  It is mainly useful as an exact-runtime stress corpus: round 4 timed out
-  under the current 30-second compare-runner limit, and direct exact timings
-  were about `47.7s` for round 4, `13.0s` for round 7, and `15.7s` for
+  compare cases: rounds 1-9 now all match across `swisspairing`,
+  `bbpPairings`, `py4swiss`, and the checked JaVaFo release. It remains
+  mainly useful as an exact-runtime stress corpus: direct exact timings are
+  now about `20.8s` for round 4, `12.0s` for round 7, and `17.1s` for
   round 8.
 - Budapest Spring Festival 2026 Group A round 5 and the checked Lichess
   `cY3wR140` / `KQYWuizM` fixtures now align `swisspairing` with

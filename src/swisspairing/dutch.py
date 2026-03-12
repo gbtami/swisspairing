@@ -2437,8 +2437,25 @@ def _solve_without_bye_candidate_uncached(
                 sequential_search_max_players=sequential_search_max_players,
                 exact_candidate_max=_MAX_HOMOGENEOUS_EXACT_SEQUENCE_CANDIDATES,
             ):
-                remainder_candidates = _iter_homogeneous_candidates(rest)
-                preselect_fixed_downfloater_homogeneous = True
+                try:
+                    even_result = _solve_even_players(
+                        rest,
+                        context=remainder_context,
+                        sequential_search_max_players=len(rest),
+                    )
+                except ExactSearchUnavailableError:
+                    unsupported_found = True
+                    continue
+                except PairingError:
+                    continue
+                remainder_candidates = (
+                    _CandidateInternal(
+                        pairings=even_result.pairings,
+                        unresolved=even_result.unresolved,
+                        bye_player=None,
+                        sequence_no=0,
+                    ),
+                )
             else:
                 try:
                     even_result = _solve_even_players(

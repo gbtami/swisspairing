@@ -233,10 +233,9 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     Budapest Group B and Graz stress cases.
   - Imported another Chess-Results OTB corpus, Spring 2026 / ChessHouse
     (`176` players, `9` rounds). It is clean four-engine consensus on the
-    completed compare cases, but it now stands out as the worst unchecked
-    exact-runtime hotspot: round 4 timed out under the current `30s`
-    compare-runner limit, and direct exact timings were about `47.7s`
-    on round 4, `13.0s` on round 7, and `15.7s` on round 8.
+    full `9/9` compare run, and it now stands out as the main remaining
+    exact-runtime hotspot: direct exact timings are about `20.8s` on round 4,
+    `12.0s` on round 7, and `17.1s` on round 8.
   - Extended unit-test coverage for criteria and sequence behavior.
 - Next:
   - Keep exact/FIDE correctness as the primary target and treat recurring
