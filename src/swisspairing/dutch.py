@@ -669,18 +669,19 @@ def _candidate_pair_sort_key(
 
 def _canonical_candidate_shape(
     candidate: _CandidateInternal,
-) -> tuple[tuple[tuple[str, str], ...], tuple[str, ...], str | None]:
+) -> tuple[tuple[tuple[int, int], ...], tuple[int, ...], int | None]:
     canonical_pairs = tuple(
         sorted(
-            cast(
-                tuple[str, str],
-                tuple(sorted((left.player_id, right.player_id))),
+            (
+                (left.pairing_no, right.pairing_no)
+                if left.pairing_no <= right.pairing_no
+                else (right.pairing_no, left.pairing_no)
             )
             for left, right in candidate.pairings
         )
     )
-    unresolved_ids = tuple(player.player_id for player in candidate.unresolved)
-    bye_id = None if candidate.bye_player is None else candidate.bye_player.player_id
+    unresolved_ids = tuple(player.pairing_no for player in candidate.unresolved)
+    bye_id = None if candidate.bye_player is None else candidate.bye_player.pairing_no
     return canonical_pairs, unresolved_ids, bye_id
 
 
@@ -824,7 +825,7 @@ def _select_best_candidate(
     context: BracketContext,
 ) -> _CandidateInternal | None:
     unique_candidates: dict[
-        tuple[tuple[tuple[str, str], ...], tuple[str, ...], str | None],
+        tuple[tuple[tuple[int, int], ...], tuple[int, ...], int | None],
         _CandidateInternal,
     ] = {}
     for candidate in candidates:
@@ -973,7 +974,7 @@ def _iter_homogeneous_candidates_cached(
 
     bsn_by_player_id = {player.player_id: index + 1 for index, player in enumerate(ordered_players)}
     generated: list[_CandidateInternal] = []
-    seen_shapes: set[tuple[tuple[tuple[str, str], ...], tuple[str, ...], str | None]] = set()
+    seen_shapes: set[tuple[tuple[tuple[int, int], ...], tuple[int, ...], int | None]] = set()
     sequence_no = sequence_start
 
     for s1, s2 in _iter_resident_exchanges(ordered_players):
@@ -1656,7 +1657,11 @@ def _candidate_quality_key(
         sequence_no,
     ) = _candidate_local_quality_key(candidate, context.mdp_ids, context.initial_color)
     c8 = _next_bracket_c1_to_c7_violation(downfloaters=downfloaters, context=context)
-    c8_key = _next_bracket_key(downfloaters=downfloaters, context=context)
+    c8_key = (
+        NextBracketKey()
+        if c8
+        else _next_bracket_key(downfloaters=downfloaters, context=context)
+    )
 
     return (
         c5,
@@ -1693,34 +1698,29 @@ def pairing_result_next_bracket_local_key(
     Later local quality layers ([C9]-[C21]) belong to the current bracket's own
     comparison and should not override it merely through lookahead.
     """
+    del context
     by_id = {player.player_id: player for player in players}
-    reconstructed_pairs: list[tuple[PlayerState, PlayerState]] = []
-    bye_player: PlayerState | None = None
-
+    bye_score = 0
+    paired_games = 0
     for pairing in result.pairings:
-        white = by_id[pairing.white_id]
         if pairing.black_id is None:
-            bye_player = white
+            bye_score = by_id[pairing.white_id].score
             continue
-        reconstructed_pairs.append((white, by_id[pairing.black_id]))
-
-    candidate = _CandidateInternal(
-        pairings=tuple(reconstructed_pairs),
-        unresolved=tuple(by_id[player_id] for player_id in result.unpaired_ids),
-        bye_player=bye_player,
-        sequence_no=0,
+        paired_games += 1
+    unresolved_ids = tuple(
+        sorted(
+            result.unpaired_ids,
+            key=lambda player_id: _player_rank_key(by_id[player_id]),
+        )
     )
-    local_key = _candidate_quality_key(
-        candidate=candidate,
-        context=BracketContext(
-            mdp_ids=context.mdp_ids,
-            initial_color=context.initial_color,
-        ),
+    unresolved_scores = tuple(
+        by_id[player_id].score
+        for player_id in unresolved_ids
     )
     return NextBracketLocalKey(
-        c5=local_key[0],
-        c6=local_key[1],
-        c7=local_key[2],
+        c5=bye_score,
+        c6=-paired_games,
+        c7=unresolved_scores,
     )
 
 

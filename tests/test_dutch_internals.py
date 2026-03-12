@@ -26,8 +26,9 @@ from swisspairing.dutch import (
     _select_best_homogeneous_odd_candidate,
     _use_heterogeneous_exact_search,
     _use_homogeneous_exact_search,
+    pairing_result_next_bracket_local_key,
 )
-from swisspairing.model import Color, FloatKind, PlayerState
+from swisspairing.model import Color, FloatKind, Pairing, PairingResult, PlayerState
 
 
 def _player(
@@ -658,3 +659,72 @@ def test_multi_mdp_incomplete_tie_keeps_article_sequence_order() -> None:
         )
         == article_first
     )
+
+
+def test_pairing_result_next_bracket_local_key_uses_only_c5_to_c7() -> None:
+    players = tuple(
+        _player(
+            player_id=player_id,
+            pairing_no=pairing_no,
+            score=score,
+            color_history=(),
+        )
+        for player_id, pairing_no, score in (
+            ("p1", 1, 4),
+            ("p2", 2, 4),
+            ("p3", 3, 3),
+            ("p4", 4, 3),
+            ("p5", 5, 2),
+        )
+    )
+    result = PairingResult(
+        pairings=(
+            Pairing(white_id="p2", black_id="p1"),
+            Pairing(white_id="p4", black_id="p3"),
+            Pairing(white_id="p5", black_id=None),
+        ),
+        unpaired_ids=("p3",),
+        float_assignments=(),
+    )
+
+    key = pairing_result_next_bracket_local_key(
+        players=players,
+        result=result,
+        context=BracketContext(mdp_ids=frozenset({"p1"}), initial_color="black"),
+    )
+
+    assert key == dutch_module.NextBracketLocalKey(c5=2, c6=-2, c7=(3,))
+
+
+def test_candidate_quality_key_skips_next_bracket_key_when_c8_already_fails() -> None:
+    players = tuple(
+        _player(player_id=f"p{i}", pairing_no=i, score=3, color_history=()) for i in range(1, 5)
+    )
+    candidate = _CandidateInternal(
+        pairings=((players[0], players[1]),),
+        unresolved=(players[2], players[3]),
+        bye_player=None,
+        sequence_no=0,
+    )
+    key_calls = 0
+
+    def next_bracket_validator(_: tuple[PlayerState, ...]) -> bool:
+        return False
+
+    def next_bracket_key(_: tuple[PlayerState, ...]) -> dutch_module.NextBracketKey:
+        nonlocal key_calls
+        key_calls += 1
+        return dutch_module.NextBracketKey(local=dutch_module.NextBracketLocalKey(c5=-1))
+
+    key = dutch_module._candidate_quality_key(
+        candidate=candidate,
+        context=BracketContext(
+            initial_color="white",
+            next_bracket_validator=next_bracket_validator,
+            next_bracket_key=next_bracket_key,
+        ),
+    )
+
+    assert key[3] == 1
+    assert key[4] == dutch_module.NextBracketKey()
+    assert key_calls == 0
