@@ -27,6 +27,18 @@
     {
       "label": "budapest_group_b_r08",
       "trf": "benchmarks/fixtures/chess_results/budapest_spring_festival_2026_group_b_2250/budapest_spring_festival_2026_group_b_2250_r08.trf"
+    },
+    {
+      "label": "prague_d_r02",
+      "trf": "benchmarks/fixtures/chess_results/prague_international_chess_festival_2026_d/prague_international_chess_festival_2026_d_r02.trf"
+    },
+    {
+      "label": "prague_d_r03",
+      "trf": "benchmarks/fixtures/chess_results/prague_international_chess_festival_2026_d/prague_international_chess_festival_2026_d_r03.trf"
+    },
+    {
+      "label": "prague_d_r04",
+      "trf": "benchmarks/fixtures/chess_results/prague_international_chess_festival_2026_d/prague_international_chess_festival_2026_d_r04.trf"
     }
   ]
 }

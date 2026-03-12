@@ -336,6 +336,7 @@ It tracks the checked real-world exact stress set:
 - Aeroflot rounds 2 / 3 / 5
 - Graz round 4
 - Budapest Group B rounds 5 / 7 / 8
+- Prague D rounds 2 / 3 / 4
 
 Use this before refreshing any synthetic recurring expectation. If the exact
 solver changes materially, check these case runtimes first.
@@ -344,9 +345,12 @@ Operational target for the current pychess integration:
 
 - treat `5s` as the preferred between-round countdown target, not as a hard
   solver cutoff
-- current checked worst-case cold exact runtimes are in the high single-digit
-  seconds, so a rare overrun can be handled by briefly keeping the tournament
-  in a `pairing in progress` state instead of forcing a non-exact fallback
+- current checked Prague D cold exact outliers are still well above that
+  target, so the current exact benchmark set is a tracking tool, not a release
+  gate
+- the Budapest / Graz exact stress cases are in the high single-digit seconds,
+  so a rare overrun there can be handled by briefly keeping the tournament in
+  a `pairing in progress` state instead of forcing a non-exact fallback
 - if the countdown reaches `0` before pairing finishes, the client can show a
   short wait message such as `Be patient, pairing is almost ready...`
 

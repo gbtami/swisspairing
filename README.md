@@ -20,9 +20,10 @@ work, but it is still under active development.
 - The pychess integration path already works from an installed `swisspairing`
   wheel in `pychess-variants`, but it is not the default production backend
   yet.
-- Current checked worst-case exact runtimes are in the high single-digit
-  seconds; for pychess use, the between-round countdown is treated as a soft
-  UX target rather than a hard solver cutoff.
+- Current checked exact runtimes are in the high single-digit seconds on the
+  Budapest / Graz stress cases, while Prague D rounds 2 / 3 / 4 remain larger
+  cold-runtime outliers. For pychess use, the between-round countdown is
+  treated as a soft UX target rather than a hard solver cutoff.
 
 For the current roadmap and progress notes, see [docs/PLAN.md](docs/PLAN.md).
 For the rule-transition notes that matter for this repo, see

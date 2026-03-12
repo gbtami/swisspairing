@@ -224,11 +224,9 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - Budapest Group B round 8 now matches the `py4swiss` / `bbpPairings`
     consensus in exact mode too, after restoring article-order tie-breaks in
     the odd one-MDP and odd homogeneous exact fallback paths.
-  - The checked exact runtime corpus is now down to high single-digit seconds
-    on the remaining Budapest Group B cold stress cases, which is acceptable
-    for the current pychess deployment model: the `5s` between-round countdown
-    is a preferred UX target, not a hard solver cutoff, and the round start
-    can be delayed briefly with a `pairing in progress` message when needed.
+  - The checked exact runtime corpus now explicitly includes Prague D rounds
+    2 / 3 / 4 as the current large cold-runtime outliers, alongside the
+    Budapest Group B and Graz stress cases.
   - Extended unit-test coverage for criteria and sequence behavior.
 - Next:
   - Keep exact/FIDE correctness as the primary target and treat recurring
@@ -239,7 +237,8 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     or below about `5s` for common cases is good UX, but exact correctness is
     still preferred over forcing a hard cutoff, and occasional high
     single-digit second pairing runs are acceptable if the round waits
-    briefly for pairing completion.
+    briefly for pairing completion. Prague D is the current known exception
+    and the next runtime target.
   - If the current exact-structure and caching work stops yielding worthwhile
     speedups, the last major implementation lever is a compact integer-based
     internal solver representation behind the existing public API. That means

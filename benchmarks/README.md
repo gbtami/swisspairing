@@ -281,6 +281,11 @@ Default manifest:
 
 - `benchmarks/fixtures/exact_runtime_cases.json`
 
+Current tracked outliers in that manifest:
+
+- Budapest Group B rounds 5 / 7 / 8
+- Prague D rounds 2 / 3 / 4
+
 ## Notes
 
 - The benchmark and reference drivers reuse the active interpreter, so run
