@@ -269,6 +269,18 @@ Output artifacts:
 - `benchmarks/results/recurring/<run_id>/p<size>/benchmark.json`
 - `benchmarks/results/recurring/trend.csv` (appended on each run)
 
+Benchmark the checked exact real-world corpus:
+
+```bash
+uv run python benchmarks/benchmark_exact_corpus.py \
+  --warmup 0 \
+  --repeats 1
+```
+
+Default manifest:
+
+- `benchmarks/fixtures/exact_runtime_cases.json`
+
 ## Notes
 
 - The benchmark and reference drivers reuse the active interpreter, so run
@@ -316,6 +328,8 @@ Output artifacts:
   release criteria for exact/FIDE mode. Exact-mode work may legitimately
   relax or obsolete an older preset if the checked rulebook/corpus behavior
   improves and real-world exact runtimes stay practical.
+- For exact/FIDE runtime work, prefer the checked exact real-world corpus over
+  refreshing the synthetic recurring sweep first.
 - Recurring baseline trend rows include run id, profile size, exported fixture
   counts, runner error rate, both-ok case counts, success/equality rates,
   p50/p95 timings, ratios, calibrated SLA pass/fail status, and git metadata.

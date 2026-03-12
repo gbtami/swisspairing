@@ -97,6 +97,10 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     py4swiss-compare sweep was intentionally not adopted as the new baseline:
     it is still useful for spotting runtime blowups, but it is no longer a
     good canonical performance target for the exact solver.
+  - Added a dedicated exact runtime corpus benchmark over the checked
+    real-world stress set (Aeroflot, Graz, and Budapest Group B) so exact-mode
+    performance can be watched on meaningful fixtures instead of only through
+    the older synthetic py4swiss sweep.
   - Local `bbpPairings` build now works as a second external oracle, and the
     benchmark harness can run three-way TRF comparisons across
     `swisspairing`, `py4swiss`, and `bbpPairings`.

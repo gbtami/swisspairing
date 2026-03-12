@@ -317,6 +317,29 @@ uv run python benchmarks/run_recurring_baselines.py \
   --sla-preset post-bounded-c8-20260311
 ```
 
+### Exact corpus runtimes
+
+Preferred runtime check for exact/FIDE work:
+
+```bash
+uv run python benchmarks/benchmark_exact_corpus.py \
+  --warmup 0 \
+  --repeats 1
+```
+
+Default manifest:
+
+- `benchmarks/fixtures/exact_runtime_cases.json`
+
+It tracks the checked real-world exact stress set:
+
+- Aeroflot rounds 2 / 3 / 5
+- Graz round 4
+- Budapest Group B rounds 5 / 7 / 8
+
+Use this before refreshing any synthetic recurring expectation. If the exact
+solver changes materially, check these case runtimes first.
+
 ### Real-world Chess-Results import
 
 Preferred path: fetch and convert directly from a Chess-Results event URL:

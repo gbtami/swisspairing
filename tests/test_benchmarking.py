@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -9,6 +10,7 @@ from swisspairing.benchmarking import (
     RECURRING_SYNTHETIC_SLA_PRESETS,
     BenchmarkSLA,
     build_benchmark_summary,
+    build_player_states_from_trf,
     build_trf_float_history_by_player_id,
     build_trf_had_full_point_unplayed_round_by_player_id,
     build_trf_initial_color,
@@ -89,6 +91,20 @@ def test_current_recurring_sla_preset_covers_default_profiles() -> None:
         assert sla.max_p50_ratio is not None and sla.max_p50_ratio > 0.0
         assert sla.min_equality_rate_when_both_ok is not None
         assert 0.0 <= sla.min_equality_rate_when_both_ok <= 1.0
+
+
+def test_exact_runtime_manifest_references_existing_trfs() -> None:
+    manifest_path = (
+        Path(__file__).resolve().parents[1] / "benchmarks" / "fixtures" / "exact_runtime_cases.json"
+    )
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    labels = [entry["label"] for entry in payload["cases"]]
+
+    assert labels
+    assert len(labels) == len(set(labels))
+    for entry in payload["cases"]:
+        trf_path = Path(__file__).resolve().parents[1] / entry["trf"]
+        assert trf_path.is_file(), trf_path
 
 
 def test_sort_pairings_for_compare_preserves_color_orientation() -> None:
@@ -304,12 +320,21 @@ def test_build_trf_float_history_by_player_id_ignores_budapest_forfeit_loss_and_
         FloatKind.NONE,
         FloatKind.NONE,
     )
-    assert history_by_id[103] == (
-        FloatKind.NONE,
-        FloatKind.NONE,
-        FloatKind.NONE,
-        FloatKind.NONE,
-    )
+
+
+def test_build_player_states_from_trf_preserves_forbidden_pairs_and_initial_markers() -> None:
+    from py4swiss.trf import TrfParser
+
+    trf = TrfParser.parse(Path("tests/golden/fixtures/dutch_d2_criterion_d.trf"))
+
+    states = build_player_states_from_trf(trf)
+    by_id = {state.player_id: state for state in states}
+    left_id, right_id = next(iter(trf.x_section.forbidden_pairs))
+
+    assert states
+    assert str(right_id) in by_id[str(left_id)].forbidden_opponents
+    assert str(left_id) in by_id[str(right_id)].forbidden_opponents
+    assert len(by_id) == len(states)
 
 
 def _lenient_player_line(

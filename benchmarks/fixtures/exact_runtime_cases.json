@@ -1,0 +1,32 @@
+{
+  "cases": [
+    {
+      "label": "aeroflot_r02",
+      "trf": "benchmarks/fixtures/chess_results/aeroflot_open_2026/aeroflot_open_2026_r02.trf"
+    },
+    {
+      "label": "aeroflot_r03",
+      "trf": "benchmarks/fixtures/chess_results/aeroflot_open_2026/aeroflot_open_2026_r03.trf"
+    },
+    {
+      "label": "aeroflot_r05",
+      "trf": "benchmarks/fixtures/chess_results/aeroflot_open_2026/aeroflot_open_2026_r05.trf"
+    },
+    {
+      "label": "graz_r04",
+      "trf": "benchmarks/fixtures/chess_results/international_chessopen_graz_2026_a/international_chessopen_graz_2026_a_r04.trf"
+    },
+    {
+      "label": "budapest_group_b_r05",
+      "trf": "benchmarks/fixtures/chess_results/budapest_spring_festival_2026_group_b_2250/budapest_spring_festival_2026_group_b_2250_r05.trf"
+    },
+    {
+      "label": "budapest_group_b_r07",
+      "trf": "benchmarks/fixtures/chess_results/budapest_spring_festival_2026_group_b_2250/budapest_spring_festival_2026_group_b_2250_r07.trf"
+    },
+    {
+      "label": "budapest_group_b_r08",
+      "trf": "benchmarks/fixtures/chess_results/budapest_spring_festival_2026_group_b_2250/budapest_spring_festival_2026_group_b_2250_r08.trf"
+    }
+  ]
+}

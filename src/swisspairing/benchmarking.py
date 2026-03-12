@@ -13,7 +13,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, cast
 
-from swisspairing.model import Color, FloatKind
+from swisspairing.model import Color, FloatKind, PlayerState
 
 _PLAYED_TRF_RESULT_VALUES = frozenset({"1", "=", "0", "W", "D", "L"})
 _NON_PAB_FULL_POINT_UNPLAYED_TRF_RESULT_VALUES = frozenset({"+", "F"})
@@ -132,6 +132,46 @@ def build_trf_initial_color(trf: Any) -> Color:
         True,
     )
     return "white" if first_round_color else "black"
+
+
+def _build_trf_forbidden_map(trf: Any) -> dict[int, set[int]]:
+    forbidden_map: dict[int, set[int]] = {}
+    for left_id, right_id in trf.x_section.forbidden_pairs:
+        forbidden_map.setdefault(left_id, set()).add(right_id)
+        forbidden_map.setdefault(right_id, set()).add(left_id)
+    return forbidden_map
+
+
+def build_player_states_from_trf(trf: Any) -> tuple[PlayerState, ...]:
+    """Reconstruct `PlayerState` rows from a parsed TRF snapshot."""
+    from py4swiss.engines.dutch.player import get_player_infos_from_trf
+
+    py4swiss_players = get_player_infos_from_trf(trf)
+    top_ids = {player.id for player in py4swiss_players if player.top_scorer}
+    forbidden_map = _build_trf_forbidden_map(trf)
+    float_history_by_id = build_trf_float_history_by_player_id(trf)
+    unplayed_games_by_id = build_trf_unplayed_games_by_player_id(trf)
+    full_point_unplayed_round_by_id = build_trf_had_full_point_unplayed_round_by_player_id(trf)
+
+    return tuple(
+        PlayerState(
+            player_id=str(player.id),
+            pairing_no=player.number,
+            score=player.points_with_acceleration,
+            opponents=frozenset(str(opponent_id) for opponent_id in player.opponents),
+            forbidden_opponents=frozenset(
+                str(opponent_id) for opponent_id in forbidden_map.get(player.id, set())
+            ),
+            color_history=tuple("white" if is_white else "black" for is_white in player.colors),
+            unplayed_games=unplayed_games_by_id.get(player.id, 0),
+            had_full_point_bye=player.bye_received,
+            had_full_point_unplayed_round=full_point_unplayed_round_by_id.get(player.id, False),
+            is_top_scorer=player.top_scorer,
+            is_topscorer_or_opponent=player.top_scorer or bool(player.opponents & top_ids),
+            float_history=float_history_by_id.get(player.id, ()),
+        )
+        for player in py4swiss_players
+    )
 
 
 def parse_bbp_pairings_output(output_text: str) -> list[list[str | None]]:
