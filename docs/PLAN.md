@@ -230,6 +230,13 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     synthetic runtime SLAs as regression alarms only. Future exact work
     should be judged mainly on rule conformance, checked corpus behavior, and
     real-world exact runtimes.
+  - If the current exact-structure and caching work stops yielding worthwhile
+    speedups, the last major implementation lever is a compact integer-based
+    internal solver representation behind the existing public API. That means
+    keeping the library surface stable while translating bracket/round state
+    into dense integer indexes, packed flags, and precomputed legality /
+    penalty tables for the internal exact search. This is explicitly a later
+    fallback, not the current active direction.
   - Publish/package `swisspairing` for downstream consumption so downstream
     integrations can move from manual local wheel reinstalls to tagged
     TestPyPI / PyPI releases.
