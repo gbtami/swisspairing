@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
 
 import pytest
 
@@ -139,15 +138,12 @@ def test_pair_bracket_ignores_public_sequence_cap_by_default() -> None:
         context=context,
         allow_bye=False,
         sequential_search_max_players=13,
-        allow_heuristic_fallback=False,
     )
 
     assert result == explicit_result
 
 
-def test_pair_bracket_expands_medium_even_budget_without_weighted_fallback(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_pair_bracket_expands_medium_even_budget() -> None:
     players = (
         _player(
             player_id="p1",
@@ -156,15 +152,6 @@ def test_pair_bracket_expands_medium_even_budget_without_weighted_fallback(
             opponents=frozenset({"p6", "p7", "p8", "p9", "p10"}),
         ),
         *tuple(_player(player_id=f"p{index}", pairing_no=index, score=3) for index in range(2, 11)),
-    )
-
-    def fail_weighted_fallback(*args: Any, **kwargs: Any) -> Any:
-        raise AssertionError("exact mode should not use the homogeneous weighted fallback")
-
-    monkeypatch.setattr(
-        dutch,
-        "_solve_homogeneous_even_players_via_bipartite_fallback",
-        fail_weighted_fallback,
     )
 
     result = pair_bracket(players)
@@ -177,9 +164,7 @@ def test_pair_bracket_expands_medium_even_budget_without_weighted_fallback(
     assert {p1_pair.white_id, p1_pair.black_id} & {"p2", "p3", "p4", "p5"}
 
 
-def test_pair_bracket_solves_large_homogeneous_even_zero_exchange_optimum(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_pair_bracket_solves_large_homogeneous_even_zero_exchange_optimum() -> None:
     players = tuple(
         _player(
             player_id=f"p{index}",
@@ -188,15 +173,6 @@ def test_pair_bracket_solves_large_homogeneous_even_zero_exchange_optimum(
             color_history=("white",) if index <= 7 else ("black",),
         )
         for index in range(1, 15)
-    )
-
-    def fail_weighted_fallback(*args: Any, **kwargs: Any) -> Any:
-        raise AssertionError("exact mode should not use the homogeneous weighted fallback")
-
-    monkeypatch.setattr(
-        dutch,
-        "_solve_homogeneous_even_players_via_bipartite_fallback",
-        fail_weighted_fallback,
     )
 
     result = pair_bracket(players)
@@ -272,9 +248,8 @@ def test_pair_bracket_single_mdp_even_honors_next_bracket_validator(
         *,
         context: BracketContext,
         sequential_search_max_players: int = 12,
-        allow_heuristic_fallback: bool = True,
     ) -> dutch._EvenPairingInternal:
-        del context, sequential_search_max_players, allow_heuristic_fallback
+        del context, sequential_search_max_players
         ids = tuple(player.player_id for player in even_players)
         if ids == ("a", "c", "d", "e"):
             return dutch._EvenPairingInternal(
@@ -330,7 +305,6 @@ def test_pair_bracket_odd_scan_stops_after_lowest_score_group(
         *,
         context: BracketContext,
         sequential_search_max_players: int = 12,
-        allow_heuristic_fallback: bool = True,
     ) -> dutch._EvenPairingInternal:
         if len(even_players) == len(players) - 1:
             missing_id = next(iter(full_ids - {player.player_id for player in even_players}))
@@ -339,7 +313,6 @@ def test_pair_bracket_odd_scan_stops_after_lowest_score_group(
             even_players,
             context=context,
             sequential_search_max_players=sequential_search_max_players,
-            allow_heuristic_fallback=allow_heuristic_fallback,
         )
 
     monkeypatch.setattr(dutch, "_solve_even_players", wrapped_solve_even)
@@ -606,207 +579,6 @@ def test_pair_bracket_uses_c8_next_bracket_key_tie_break() -> None:
     assert ("p1", None) not in pairs
 
 
-def test_homogeneous_odd_refinement_skips_feasibility_only_next_bracket_checks(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    players = (
-        _player(player_id="p1", pairing_no=1, score=2),
-        _player(player_id="p2", pairing_no=2, score=2),
-        _player(player_id="p3", pairing_no=3, score=2),
-    )
-    weighted_candidate = dutch._CandidateInternal(
-        pairings=((players[0], players[1]),),
-        unresolved=(players[2],),
-        bye_player=None,
-        sequence_no=0,
-    )
-
-    def _unexpected_even_solve(*args: Any, **kwargs: Any) -> Any:
-        raise AssertionError(
-            "feasibility-only C8 path should not rescan homogeneous odd candidates"
-        )
-
-    dutch._refine_weighted_homogeneous_odd_candidate.cache_clear()
-    monkeypatch.setattr(dutch, "_solve_even_players", _unexpected_even_solve)
-    try:
-        refined = dutch._refine_weighted_homogeneous_odd_candidate(
-            players,
-            context=BracketContext(next_bracket_validator=lambda _: True),
-            weighted_candidate=weighted_candidate,
-            sequential_search_max_players=6,
-        )
-    finally:
-        dutch._refine_weighted_homogeneous_odd_candidate.cache_clear()
-
-    assert refined is weighted_candidate
-
-
-def test_homogeneous_odd_refinement_scans_only_bounded_c8_tail(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    bracket_players = tuple(
-        _player(player_id=f"p{index}", pairing_no=index, score=2) for index in range(1, 12)
-    )
-    weighted_candidate = dutch._CandidateInternal(
-        pairings=tuple(
-            (bracket_players[index], bracket_players[index + 1]) for index in range(0, 10, 2)
-        ),
-        unresolved=(bracket_players[-1],),
-        bye_player=None,
-        sequence_no=0,
-    )
-
-    scanned_missing_ids: list[str] = []
-
-    def _bounded_even_solve(
-        players: Sequence[PlayerState],
-        *,
-        context: BracketContext,
-        sequential_search_max_players: int,
-    ) -> dutch._EvenPairingInternal:
-        del context, sequential_search_max_players
-        remaining_by_id = {player.player_id for player in players}
-        missing_ids = sorted({player.player_id for player in bracket_players} - remaining_by_id)
-        scanned_missing_ids.extend(missing_ids)
-        return dutch._EvenPairingInternal(
-            pairings=tuple(
-                (players[index], players[index + 1]) for index in range(0, len(players), 2)
-            ),
-            unresolved=(),
-        )
-
-    dutch._refine_weighted_homogeneous_odd_candidate.cache_clear()
-    monkeypatch.setattr(dutch, "_solve_even_players", _bounded_even_solve)
-    try:
-        refined = dutch._refine_weighted_homogeneous_odd_candidate(
-            bracket_players,
-            context=BracketContext(
-                next_bracket_validator=lambda _: True,
-                next_bracket_key=lambda _: NextBracketKey(),
-            ),
-            weighted_candidate=weighted_candidate,
-            sequential_search_max_players=6,
-        )
-    finally:
-        dutch._refine_weighted_homogeneous_odd_candidate.cache_clear()
-
-    assert refined is not None
-    assert scanned_missing_ids == ["p10"]
-
-
-def test_heterogeneous_odd_refinement_uses_tighter_c8_candidate_budget(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    players = (
-        _player(player_id="m1", pairing_no=1, score=3),
-        _player(player_id="p2", pairing_no=2, score=2),
-        _player(player_id="p3", pairing_no=3, score=2),
-    )
-    weighted_candidate = dutch._CandidateInternal(
-        pairings=((players[0], players[1]),),
-        unresolved=(players[2],),
-        bye_player=None,
-        sequence_no=0,
-    )
-    over_budget = dutch._ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES_WITH_NEXT_BRACKET + 1
-
-    def _over_budget_candidates(
-        players: Sequence[PlayerState],
-        *,
-        context: BracketContext,
-    ) -> tuple[dutch._CandidateInternal, ...]:
-        del players, context
-        return (weighted_candidate,) * over_budget
-
-    def _unexpected_selection(
-        candidates: Sequence[dutch._CandidateInternal],
-        *,
-        context: BracketContext,
-    ) -> dutch._CandidateInternal | None:
-        del candidates, context
-        raise AssertionError("over-budget C8 refinement should fall back before exact selection")
-
-    dutch._refine_weighted_heterogeneous_odd_candidate.cache_clear()
-    monkeypatch.setattr(dutch, "_iter_heterogeneous_candidates", _over_budget_candidates)
-    monkeypatch.setattr(dutch, "_select_best_candidate", _unexpected_selection)
-    try:
-        refined = dutch._refine_weighted_heterogeneous_odd_candidate(
-            players,
-            context=BracketContext(
-                mdp_ids=frozenset({"m1"}),
-                next_bracket_validator=lambda _: True,
-            ),
-            weighted_candidate=weighted_candidate,
-        )
-    finally:
-        dutch._refine_weighted_heterogeneous_odd_candidate.cache_clear()
-
-    assert refined is weighted_candidate
-
-
-def test_single_mdp_odd_refinement_skips_c8_branch(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    players = (
-        _player(player_id="m1", pairing_no=1, score=3),
-        _player(player_id="p2", pairing_no=2, score=2),
-        _player(player_id="p3", pairing_no=3, score=2),
-    )
-
-    def _unexpected_remainder_solve(*args: Any, **kwargs: Any) -> Any:
-        raise AssertionError("single-MDP C8 path should keep the existing weighted candidate")
-
-    monkeypatch.setattr(dutch, "_solve_without_bye_candidate", _unexpected_remainder_solve)
-
-    refined = dutch._refine_weighted_single_mdp_odd_candidate(
-        players,
-        context=BracketContext(
-            mdp_ids=frozenset({"m1"}),
-            next_bracket_validator=lambda _: True,
-        ),
-        sequential_search_max_players=6,
-    )
-
-    assert refined is None
-
-
-def test_heterogeneous_odd_refinement_skips_single_mdp_without_next_bracket(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    players = (
-        _player(player_id="m1", pairing_no=1, score=3),
-        _player(player_id="p2", pairing_no=2, score=2),
-        _player(player_id="p3", pairing_no=3, score=2),
-    )
-    weighted_candidate = dutch._CandidateInternal(
-        pairings=((players[0], players[1]),),
-        unresolved=(players[2],),
-        bye_player=None,
-        sequence_no=0,
-    )
-
-    def _unexpected_exact_candidates(
-        players: Sequence[PlayerState],
-        *,
-        context: BracketContext,
-    ) -> tuple[dutch._CandidateInternal, ...]:
-        del players, context
-        raise AssertionError("single-MDP no-C8 refinement should keep the existing candidate")
-
-    dutch._refine_weighted_heterogeneous_odd_candidate.cache_clear()
-    monkeypatch.setattr(dutch, "_iter_heterogeneous_candidates", _unexpected_exact_candidates)
-    try:
-        refined = dutch._refine_weighted_heterogeneous_odd_candidate(
-            players,
-            context=BracketContext(mdp_ids=frozenset({"m1"})),
-            weighted_candidate=weighted_candidate,
-        )
-    finally:
-        dutch._refine_weighted_heterogeneous_odd_candidate.cache_clear()
-
-    assert refined is weighted_candidate
-
-
 def test_pair_bracket_uses_c9_unplayed_games_for_bye_tie_break() -> None:
     players = (
         _player(player_id="p1", pairing_no=1, score=2, unplayed_games=3),
@@ -893,20 +665,9 @@ def test_pair_bracket_initial_homogeneous_allows_empty_float_history_markers() -
     assert result.unpaired_ids == ()
 
 
-def test_pair_bracket_initial_homogeneous_large_odd_bypasses_weighted_bye_path(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_pair_bracket_initial_homogeneous_large_odd_uses_direct_bye_scan() -> None:
     players = tuple(
         _player(player_id=f"p{index}", pairing_no=index, score=0) for index in range(1, 22)
-    )
-
-    def fail_weighted_bye(*args: Any, **kwargs: Any) -> Any:
-        raise AssertionError("weighted large-bye path should not run for trivial round-1 brackets")
-
-    monkeypatch.setattr(
-        dutch,
-        "_select_large_final_bye_candidate_via_weighted_steps",
-        fail_weighted_bye,
     )
 
     result = pair_bracket(players, sequential_search_max_players=0)

@@ -491,8 +491,8 @@ def _homogeneous_exact_candidate_upper_bound(player_count: int) -> int:
     - 12 players -> 665,280 candidates
 
     Keep the exact path only while the article-order candidate space stays
-    within a tractable budget; larger homogeneous brackets fall back to the
-    weighted/D.1-D.2 approximation path when heuristic fallback is enabled.
+    within a tractable budget; larger homogeneous brackets currently require
+    a more specialized exact solver.
     """
     if player_count <= 1:
         return 1
@@ -545,357 +545,8 @@ def _use_heterogeneous_exact_search(
     )
 
 
-def _exact_sequence_candidate_limit(*, allow_heuristic_fallback: bool) -> int:
-    if allow_heuristic_fallback:
-        return _MAX_EXACT_SEQUENCE_CANDIDATES
+def _exact_sequence_candidate_limit() -> int:
     return _MAX_EXACT_SEQUENCE_CANDIDATES_EXACT_MODE
-
-
-def _edge_weight(player_a: PlayerState, player_b: PlayerState, *, context: BracketContext) -> int:
-    """Approximate pair weight used by the generic heterogeneous fallback."""
-    components = _edge_penalty_components(player_a, player_b, context=context)
-    penalty = (
-        (components[0] * 10**12)
-        + (components[1] * 10**10)
-        + (components[2] * 10**8)
-        + (components[3] * 10**6)
-        + (components[4] * 10**5)
-        + (components[5] * 10**4)
-        + (components[6] * 10**3)
-        + (components[7] * 10**2)
-        + (components[8] * 10**1)
-        + components[9]
-    )
-    return -penalty
-
-
-def _pack_penalty_components(
-    *,
-    components: Sequence[int],
-    max_totals: Sequence[int],
-) -> int:
-    packed = 0
-    for component, max_total in zip(components, max_totals, strict=True):
-        packed = (packed * (max_total + 1)) + component
-    return packed
-
-
-def _heterogeneous_pair_penalty(
-    player_a: PlayerState,
-    player_b: PlayerState,
-    *,
-    context: BracketContext,
-    split_size: int,
-    max_score_difference: int,
-) -> int:
-    """Pack pair-local heterogeneous penalties exactly for weighted matching.
-
-    The weighted heterogeneous matcher sums edge penalties across several
-    pairs. Decimal weights are not safe there because lower-priority score
-    difference totals can spill into higher-priority digits. A mixed-radix
-    packing with bracket-level maxima preserves the intended lexicographic
-    [C10]-[C21] ordering for the full matching.
-    """
-
-    components = _edge_penalty_components(player_a, player_b, context=context)
-    player_count_max = 2 * split_size
-    float_count_max = split_size
-    score_difference_max = split_size * max_score_difference
-    max_totals = (
-        player_count_max,  # C10
-        player_count_max,  # C11
-        player_count_max,  # C12
-        player_count_max,  # C13
-        float_count_max,  # C15
-        float_count_max,  # C17
-        score_difference_max,  # C18
-        score_difference_max,  # C19
-        score_difference_max,  # C20
-        score_difference_max,  # C21
-    )
-    return _pack_penalty_components(
-        components=components,
-        max_totals=max_totals,
-    )
-
-
-def _homogeneous_pair_penalty(
-    player_a: PlayerState,
-    player_b: PlayerState,
-    *,
-    split_size: int,
-    initial_color: Color,
-) -> int:
-    """Pack [C10]-[C13] exactly for one homogeneous split edge.
-
-    For homogeneous even brackets the exact article-3.6 / 4.2 / 4.3 candidate
-    objective is additive over pair-local [C10]-[C13] counts. A mixed-radix
-    packing with radix `2 * split_size + 1` preserves that lexicographic order
-    for the total matching while staying within ordinary machine-sized ints.
-    """
-    white, black = _choose_color_order(
-        player_a,
-        player_b,
-        initial_color=initial_color,
-    )
-    c10, c11, c12, c13 = _pair_color_quality(white=white, black=black)
-    radix = (2 * split_size) + 1
-    return (((c10 * radix) + c11) * radix + c12) * radix + c13
-
-
-def _normalized_edge_key(left_id: str, right_id: str) -> tuple[str, str]:
-    if left_id <= right_id:
-        return left_id, right_id
-    return right_id, left_id
-
-
-@dataclass(slots=True)
-class _HomogeneousMatchingState:
-    """Mutable matching state for the large homogeneous Dutch fallback."""
-
-    players: tuple[PlayerState, ...]
-    split_size: int
-    edge_penalties: dict[tuple[str, str], int]
-    tie_scale: int
-    final_bonus: int
-    edge_bonuses: dict[tuple[str, str], int] = field(init=False)
-    removed_edges: set[tuple[str, str]] = field(init=False)
-    matching_by_id: dict[str, str] = field(init=False)
-    by_id: dict[str, PlayerState] = field(init=False)
-
-    def __post_init__(self) -> None:
-        self.edge_bonuses = {}
-        self.removed_edges = set()
-        self.matching_by_id = {}
-        self.by_id = {player.player_id: player for player in self.players}
-        self.update_matching()
-
-    def update_matching(self) -> None:
-        edge_weights = {
-            edge: -(penalty * self.tie_scale) + self.edge_bonuses.get(edge, 0)
-            for edge, penalty in self.edge_penalties.items()
-            if edge not in self.removed_edges
-        }
-        matching = compute_maximum_weight_matching(
-            node_ids=(player.player_id for player in self.players),
-            edge_weights=edge_weights,
-            max_cardinality=True,
-        )
-        matching_by_id: dict[str, str] = {}
-        for left_id, right_id in matching:
-            matching_by_id[left_id] = right_id
-            matching_by_id[right_id] = left_id
-        self.matching_by_id = matching_by_id
-
-    def partner(self, player: PlayerState) -> PlayerState | None:
-        partner_id = self.matching_by_id.get(player.player_id)
-        if partner_id is None:
-            return None
-        return self.by_id[partner_id]
-
-    def has_match(self, player: PlayerState) -> bool:
-        return player.player_id in self.matching_by_id
-
-    def in_current_s1(self, player: PlayerState) -> bool:
-        partner = self.partner(player)
-        if partner is None:
-            return False
-        return _player_rank_key(player) < _player_rank_key(partner)
-
-    def in_current_s2(self, player: PlayerState) -> bool:
-        return not self.in_current_s1(player)
-
-    def add_to_weights(
-        self,
-        player: PlayerState,
-        others: Sequence[PlayerState],
-        value: int,
-        *,
-        increment: bool = False,
-    ) -> None:
-        for other in others:
-            edge = _normalized_edge_key(player.player_id, other.player_id)
-            if edge in self.edge_penalties and edge not in self.removed_edges:
-                self.edge_bonuses[edge] = self.edge_bonuses.get(edge, 0) + value
-            value += int(increment)
-
-    def remove_weights(self, player: PlayerState, others: Sequence[PlayerState]) -> None:
-        for other in others:
-            edge = _normalized_edge_key(player.player_id, other.player_id)
-            if edge in self.edge_penalties:
-                self.removed_edges.add(edge)
-
-    def finalize_match(self, player_a: PlayerState, player_b: PlayerState) -> None:
-        pair_edge = _normalized_edge_key(player_a.player_id, player_b.player_id)
-        for other in self.players:
-            if other.player_id not in {player_a.player_id, player_b.player_id}:
-                self.remove_weights(player_a, (other,))
-                self.remove_weights(player_b, (other,))
-        self.edge_bonuses[pair_edge] = self.final_bonus
-
-    def to_candidate(self) -> _CandidateInternal:
-        return _matching_to_candidate(
-            set(
-                _normalized_edge_key(left_id, right_id)
-                for left_id, right_id in self.matching_by_id.items()
-                if left_id < right_id
-            ),
-            players=self.players,
-            sequence_no=0,
-        )
-
-
-def _build_homogeneous_matching_state(
-    players: Sequence[PlayerState],
-    *,
-    initial_color: Color,
-) -> _HomogeneousMatchingState | None:
-    ordered_players = tuple(sorted(players, key=_player_rank_key))
-    split_size = len(ordered_players) // 2
-    edge_penalties: dict[tuple[str, str], int] = {}
-    for left, right in combinations(ordered_players, 2):
-        if not _is_legal_pair(left, right):
-            continue
-        edge_penalties[_normalized_edge_key(left.player_id, right.player_id)] = (
-            _homogeneous_pair_penalty(
-                left,
-                right,
-                split_size=split_size,
-                initial_color=initial_color,
-            )
-        )
-    return _build_weighted_matching_state(
-        ordered_players,
-        edge_penalties=edge_penalties,
-        split_size=split_size,
-    )
-
-
-def _build_heterogeneous_matching_state(
-    players: Sequence[PlayerState],
-    *,
-    context: BracketContext,
-) -> _HomogeneousMatchingState | None:
-    ordered_players = tuple(sorted(players, key=_player_rank_key))
-    split_size = len(ordered_players) // 2
-    max_score_difference = max((player.score for player in ordered_players), default=0) - min(
-        (player.score for player in ordered_players), default=0
-    )
-    edge_penalties: dict[tuple[str, str], int] = {}
-    for left, right in combinations(ordered_players, 2):
-        if not _is_legal_pair(left, right, context=context):
-            continue
-        edge_penalties[_normalized_edge_key(left.player_id, right.player_id)] = (
-            _heterogeneous_pair_penalty(
-                left,
-                right,
-                context=context,
-                split_size=split_size,
-                max_score_difference=max_score_difference,
-            )
-        )
-    return _build_weighted_matching_state(
-        ordered_players,
-        edge_penalties=edge_penalties,
-        split_size=split_size,
-    )
-
-
-def _build_weighted_matching_state(
-    players: tuple[PlayerState, ...],
-    *,
-    edge_penalties: dict[tuple[str, str], int],
-    split_size: int,
-) -> _HomogeneousMatchingState | None:
-    if not edge_penalties and players:
-        return None
-
-    player_count = len(players)
-    bracket_bits = max(1, player_count.bit_length())
-    max_d2_edge_bonus = ((1 << (2 * bracket_bits)) + player_count) << 1
-    max_d1_edge_bonus = player_count
-    max_edge_bonus = (player_count * max_d2_edge_bonus * 2) + (player_count * max_d1_edge_bonus)
-    tie_scale = (player_count * max_edge_bonus) + 1
-
-    max_penalty = max(edge_penalties.values(), default=0)
-    max_matching_weight = (split_size * max_penalty * tie_scale) + (split_size * max_edge_bonus)
-    final_bonus = max_matching_weight + 1
-
-    return _HomogeneousMatchingState(
-        players=players,
-        split_size=split_size,
-        edge_penalties=edge_penalties,
-        tie_scale=tie_scale,
-        final_bonus=final_bonus,
-    )
-
-
-def _apply_homogeneous_remainder_steps(
-    state: _HomogeneousMatchingState,
-    residents: Sequence[PlayerState],
-) -> None:
-    if not residents:
-        return
-
-    resident_list = list(residents)
-    pairs = sum(int(state.has_match(player)) for player in resident_list) // 2
-    homogeneous_s1 = resident_list[:pairs]
-    homogeneous_s2 = resident_list[pairs:]
-    bracket_bits = max(1, len(resident_list).bit_length())
-
-    for index, resident in enumerate(resident_list):
-        value = ((int(index < pairs) << (2 * bracket_bits)) - index) << 1
-        state.add_to_weights(resident, resident_list[index + 1 :], value)
-    state.update_matching()
-    exchanges = sum(int(state.in_current_s2(player)) for player in homogeneous_s1)
-
-    remaining_exchanges = exchanges
-    for index in range(len(homogeneous_s1) - 1, -1, -1):
-        if remaining_exchanges == 0:
-            break
-        resident = homogeneous_s1[index]
-        lower_residents = [*homogeneous_s1[index + 1 :], *homogeneous_s2]
-        was_in_s2 = state.in_current_s2(resident)
-        if not was_in_s2:
-            state.add_to_weights(resident, lower_residents, -1)
-            state.update_matching()
-        if state.in_current_s2(resident):
-            remaining_exchanges -= 1
-            state.remove_weights(resident, lower_residents)
-        if not was_in_s2:
-            state.add_to_weights(resident, lower_residents, 1)
-
-    remaining_exchanges = exchanges
-    for index, resident in enumerate(homogeneous_s2):
-        if remaining_exchanges == 0:
-            break
-        higher_residents = [*homogeneous_s1, *homogeneous_s2[:index]]
-        was_in_s1 = state.in_current_s1(resident)
-        if not was_in_s1:
-            state.add_to_weights(resident, higher_residents, -1)
-            state.update_matching()
-        if state.in_current_s1(resident):
-            remaining_exchanges -= 1
-            state.remove_weights(resident, higher_residents)
-        if not was_in_s1:
-            state.add_to_weights(resident, higher_residents, 1)
-
-    homogeneous_bracket = [*homogeneous_s1, *homogeneous_s2]
-    homogeneous_s1 = [resident for resident in homogeneous_bracket if state.in_current_s1(resident)]
-    homogeneous_s2 = [resident for resident in homogeneous_bracket if state.in_current_s2(resident)]
-
-    for index, resident in enumerate(homogeneous_s1):
-        state.remove_weights(resident, homogeneous_s1[index + 1 :])
-    for index, resident in enumerate(homogeneous_s2):
-        state.remove_weights(resident, homogeneous_s2[index + 1 :])
-
-    for resident in homogeneous_s1:
-        state.add_to_weights(resident, homogeneous_s2[::-1], 0, increment=True)
-        state.update_matching()
-        match = state.partner(resident)
-        if match is None:
-            continue
-        state.finalize_match(resident, match)
 
 
 def _exchange_sort_key(
@@ -1030,10 +681,10 @@ def _homogeneous_article_order_key(
 ) -> tuple[int, int, tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
     """Approximate article-4.x candidate order for large homogeneous brackets.
 
-    This mirrors the same D.2 then D.1 priorities used by the fallback matcher:
-    fewer exchanges first, then better exchange composition, then earlier S2
-    transposition order. It is used only as a tie-break after all quality
-    criteria except generation order are equal.
+    The order follows the same article-4.3 then article-4.2 structure used by
+    the exact generator: fewer exchanges first, then better exchange
+    composition, then earlier S2 transposition order. It is used only as a
+    tie-break after all quality criteria except generation order are equal.
     """
     ordered_players = tuple(sorted(players, key=_player_rank_key))
     split_size = len(ordered_players) // 2
@@ -1101,11 +752,11 @@ def _heterogeneous_structural_tie_key(
 ]:
     """Approximate BBP/FIDE tie resolution inside equal-quality heterogeneous cohorts.
 
-    When [C5]-[C21] still tie exactly, BBP's weighted Dutch implementation
-    tends to prefer the candidate whose resident remainder keeps score
-    differences tighter before falling back to raw generation order. Using this
-    structural key only inside already-equal heterogeneous cohorts closes the
-    checked 2026 reference gap without perturbing the main criterion ordering.
+    When [C5]-[C21] still tie exactly, checked 2026 references tend to prefer
+    the candidate whose resident remainder keeps score differences tighter
+    before falling back to raw generation order. Using this structural key
+    only inside already-equal heterogeneous cohorts closes the checked 2026
+    reference gap without perturbing the main criterion ordering.
     """
 
     mdp_pairs: list[tuple[PlayerState, PlayerState]] = []
@@ -1642,371 +1293,6 @@ def _solve_homogeneous_even_players_via_zero_exchange_exact_shortcut_cached(
     )
 
 
-def _matching_to_candidate(
-    matching: set[tuple[str, str]],
-    *,
-    players: Sequence[PlayerState],
-    sequence_no: int,
-) -> _CandidateInternal:
-    """Convert one matching result into a candidate with unresolved players."""
-    by_id = {player.player_id: player for player in players}
-    matched_ids: set[str] = set()
-    raw_pairs: list[tuple[PlayerState, PlayerState]] = []
-    for left_id, right_id in matching:
-        left = by_id[left_id]
-        right = by_id[right_id]
-        raw_pairs.append((left, right))
-        matched_ids.add(left_id)
-        matched_ids.add(right_id)
-
-    unresolved = tuple(
-        sorted(
-            (player for player in players if player.player_id not in matched_ids),
-            key=_player_rank_key,
-        )
-    )
-    sorted_pairs = tuple(sorted(raw_pairs, key=_candidate_pair_sort_key))
-    return _CandidateInternal(
-        pairings=sorted_pairs,
-        unresolved=unresolved,
-        bye_player=None,
-        sequence_no=sequence_no,
-    )
-
-
-def _solve_homogeneous_even_players_via_bipartite_fallback(
-    players: Sequence[PlayerState],
-    *,
-    initial_color: Color,
-) -> _EvenPairingInternal | None:
-    """Approximate large homogeneous brackets with py4swiss-style D.1/D.2 steps."""
-    state = _build_homogeneous_matching_state(players, initial_color=initial_color)
-    if state is None:
-        return None
-
-    _apply_homogeneous_remainder_steps(state, state.players)
-    candidate = state.to_candidate()
-    return _EvenPairingInternal(pairings=candidate.pairings, unresolved=candidate.unresolved)
-
-
-def _solve_even_players_via_heterogeneous_weighted_steps(
-    players: Sequence[PlayerState],
-    *,
-    context: BracketContext,
-) -> _EvenPairingInternal | None:
-    """Approximate large heterogeneous brackets with py4swiss-style D.3/D.1 steps."""
-    state = _build_heterogeneous_matching_state(players, context=context)
-    if state is None:
-        return None
-
-    mdps = [player for player in state.players if player.player_id in context.mdp_ids]
-    residents = [player for player in state.players if player.player_id not in context.mdp_ids]
-    resident_ids = {player.player_id for player in residents}
-    heterogeneous_s1: list[PlayerState] = []
-
-    for mdp in mdps:
-        partner = state.partner(mdp)
-        has_resident_match = partner is not None and partner.player_id in resident_ids
-        if not has_resident_match:
-            # Article 4.4 first maximizes the number of paired MDPs. Use a
-            # dominating bonus here so a feasible MDP-resident match wins
-            # before pair-local penalty tie-breaks are considered.
-            state.add_to_weights(mdp, residents, state.final_bonus)
-            state.update_matching()
-            partner = state.partner(mdp)
-            has_resident_match = partner is not None and partner.player_id in resident_ids
-        if has_resident_match:
-            heterogeneous_s1.append(mdp)
-            state.add_to_weights(mdp, residents, len(state.players))
-
-    heterogeneous_s2: list[PlayerState] = []
-    for mdp in heterogeneous_s1:
-        state.add_to_weights(mdp, residents[::-1], 0, increment=True)
-        state.update_matching()
-        partner = state.partner(mdp)
-        if partner is None or partner.player_id not in resident_ids:
-            continue
-        heterogeneous_s2.append(partner)
-        state.finalize_match(mdp, partner)
-
-    paired_resident_ids = {player.player_id for player in heterogeneous_s2}
-    remainder = [player for player in residents if player.player_id not in paired_resident_ids]
-    _apply_homogeneous_remainder_steps(state, remainder)
-
-    candidate = state.to_candidate()
-    return _EvenPairingInternal(pairings=candidate.pairings, unresolved=candidate.unresolved)
-
-
-def _solve_without_bye_candidate_via_weighted_steps(
-    players: Sequence[PlayerState],
-    *,
-    context: BracketContext,
-) -> _CandidateInternal | None:
-    """Approximate large odd non-final brackets without explicit downfloater loops.
-
-    For large brackets, iterating all possible downfloaters breaks the Dutch
-    generation order badly. A closer approximation is to keep the unmatched
-    player inside the weighted S1/S2 process itself, like py4swiss does via its
-    bracket matcher with lower-bracket vertices.
-    """
-    ordered_players = tuple(sorted(players, key=_player_rank_key))
-    if not ordered_players:
-        return _CandidateInternal(pairings=(), unresolved=(), bye_player=None, sequence_no=0)
-
-    if context.mdp_ids:
-        state = _build_heterogeneous_matching_state(ordered_players, context=context)
-        if state is None:
-            return None
-
-        mdps = [player for player in state.players if player.player_id in context.mdp_ids]
-        residents = [player for player in state.players if player.player_id not in context.mdp_ids]
-        resident_ids = {player.player_id for player in residents}
-        heterogeneous_s1: list[PlayerState] = []
-
-        for mdp in mdps:
-            partner = state.partner(mdp)
-            has_resident_match = partner is not None and partner.player_id in resident_ids
-            if not has_resident_match:
-                # Article 4.4 first maximizes the number of paired MDPs. Use a
-                # dominating bonus here so a feasible MDP-resident match wins
-                # before pair-local penalty tie-breaks are considered.
-                state.add_to_weights(mdp, residents, state.final_bonus)
-                state.update_matching()
-                partner = state.partner(mdp)
-                has_resident_match = partner is not None and partner.player_id in resident_ids
-            if has_resident_match:
-                heterogeneous_s1.append(mdp)
-                state.add_to_weights(mdp, residents, len(state.players))
-
-        heterogeneous_s2: list[PlayerState] = []
-        for mdp in heterogeneous_s1:
-            state.add_to_weights(mdp, residents[::-1], 0, increment=True)
-            state.update_matching()
-            partner = state.partner(mdp)
-            if partner is None or partner.player_id not in resident_ids:
-                continue
-            heterogeneous_s2.append(partner)
-            state.finalize_match(mdp, partner)
-
-        paired_resident_ids = {player.player_id for player in heterogeneous_s2}
-        remainder = [player for player in residents if player.player_id not in paired_resident_ids]
-        _apply_homogeneous_remainder_steps(state, remainder)
-        return state.to_candidate()
-
-    state = _build_homogeneous_matching_state(
-        ordered_players,
-        initial_color=context.initial_color,
-    )
-    if state is None:
-        return None
-    _apply_homogeneous_remainder_steps(state, state.players)
-    return state.to_candidate()
-
-
-@cache
-def _refine_weighted_homogeneous_odd_candidate(
-    players: Sequence[PlayerState],
-    *,
-    context: BracketContext,
-    weighted_candidate: _CandidateInternal,
-    sequential_search_max_players: int,
-    scan_max_players: int = _ODD_HOMOGENEOUS_REFINEMENT_SCAN_MAX_PLAYERS,
-) -> _CandidateInternal:
-    """Refine medium-size odd homogeneous brackets around the weighted result.
-
-    The weighted odd-bracket fallback is usually close, but can miss the best
-    original-S2 downfloater on medium-size fixtures. Re-checking only those
-    candidates preserves the observed parity improvement without the runtime
-    cost of scanning every possible downfloater.
-    """
-    if context.next_bracket_validator is not None and context.next_bracket_key is None:
-        return weighted_candidate
-
-    ordered_players = tuple(sorted(players, key=_player_rank_key))
-    split_size = len(ordered_players) // 2
-    original_s2 = ordered_players[split_size:]
-    candidate_specs = tuple((index, player) for index, player in enumerate(original_s2))
-
-    if weighted_candidate.unresolved:
-        weighted_downfloater_id = weighted_candidate.unresolved[0].player_id
-        for index, player in enumerate(original_s2):
-            if player.player_id == weighted_downfloater_id:
-                candidate_specs = candidate_specs[: index + 1]
-                break
-
-    if (
-        context.next_bracket_validator is not None
-        and len(ordered_players) <= _ODD_HOMOGENEOUS_REFINEMENT_SKIP_MAX_PLAYERS_WITH_NEXT_BRACKET
-    ):
-        if len(candidate_specs) <= _ODD_HOMOGENEOUS_C8_TAIL_SCAN_CANDIDATES:
-            return weighted_candidate
-        candidate_specs = candidate_specs[-_ODD_HOMOGENEOUS_C8_TAIL_SCAN_CANDIDATES:]
-    if len(ordered_players) > scan_max_players:
-        return weighted_candidate
-
-    refinement_search_limit = min(
-        sequential_search_max_players,
-        _ODD_REFINEMENT_EXACT_SEARCH_MAX_PLAYERS,
-    )
-
-    best_candidate = weighted_candidate
-    best_key_without_generation = _candidate_quality_key(
-        candidate=weighted_candidate,
-        context=context,
-    )[:-1]
-    best_article_order_key = _homogeneous_article_order_key(
-        players=ordered_players,
-        candidate=weighted_candidate,
-    )
-    best_generation_order = len(original_s2)
-
-    for sequence_no, downfloater in candidate_specs:
-        if weighted_candidate.unresolved == (downfloater,):
-            best_generation_order = sequence_no
-            continue
-        rest = tuple(
-            player for player in ordered_players if player.player_id != downfloater.player_id
-        )
-        even_result = _solve_even_players(
-            rest,
-            context=context,
-            sequential_search_max_players=refinement_search_limit,
-        )
-        candidate = _CandidateInternal(
-            pairings=even_result.pairings,
-            unresolved=tuple(sorted((*even_result.unresolved, downfloater), key=_player_rank_key)),
-            bye_player=None,
-            sequence_no=sequence_no,
-        )
-        candidate_key = _candidate_quality_key(candidate=candidate, context=context)
-        key_without_generation = candidate_key[:-1]
-        article_order_key = _homogeneous_article_order_key(
-            players=ordered_players,
-            candidate=candidate,
-        )
-
-        if key_without_generation < best_key_without_generation:
-            best_key_without_generation = key_without_generation
-            best_article_order_key = article_order_key
-            best_generation_order = sequence_no
-            best_candidate = candidate
-            continue
-
-        if key_without_generation > best_key_without_generation:
-            continue
-
-        if article_order_key < best_article_order_key:
-            best_article_order_key = article_order_key
-            best_generation_order = sequence_no
-            best_candidate = candidate
-            continue
-
-        if article_order_key != best_article_order_key:
-            continue
-
-        if sequence_no < best_generation_order:
-            best_generation_order = sequence_no
-            best_candidate = candidate
-
-    return best_candidate
-
-
-@cache
-def _refine_weighted_heterogeneous_odd_candidate(
-    players: Sequence[PlayerState],
-    *,
-    context: BracketContext,
-    weighted_candidate: _CandidateInternal,
-) -> _CandidateInternal:
-    """Restore exact odd heterogeneous choice when the candidate space is still cheap.
-
-    Fast mode can skip the exact heterogeneous scan because of the bracket-size
-    cap even when the article-order candidate space is tiny. In those cases,
-    reuse the exact sequence search as a narrow refinement instead of trusting
-    the weighted approximation's downfloater choice.
-    """
-    if len(context.mdp_ids) == 1 and context.next_bracket_validator is None:
-        return weighted_candidate
-
-    ordered_players = tuple(sorted(players, key=_player_rank_key))
-    exact_upper_bound = _heterogeneous_exact_candidate_upper_bound(
-        len(ordered_players),
-        len(context.mdp_ids),
-    )
-    if (
-        len(ordered_players) > _ODD_HETEROGENEOUS_REFINEMENT_MAX_PLAYERS
-        or exact_upper_bound > _ODD_HETEROGENEOUS_REFINEMENT_EXACT_UPPER_BOUND
-    ):
-        return weighted_candidate
-
-    exact_candidates = _iter_heterogeneous_candidates(ordered_players, context=context)
-    max_candidates = _ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES
-    if context.next_bracket_validator is not None:
-        max_candidates = _ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES_WITH_NEXT_BRACKET
-    if len(exact_candidates) > max_candidates:
-        return weighted_candidate
-
-    best_candidate = _select_best_candidate(exact_candidates, context=context)
-    return best_candidate or weighted_candidate
-
-
-@cache
-def _refine_weighted_single_mdp_odd_candidate(
-    players: Sequence[PlayerState],
-    *,
-    context: BracketContext,
-    sequential_search_max_players: int,
-) -> _CandidateInternal | None:
-    """Refine small one-MDP odd brackets by scanning resident partners only."""
-    if context.next_bracket_validator is not None:
-        return None
-
-    ordered_players = tuple(sorted(players, key=_player_rank_key))
-    if len(ordered_players) > _SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS or len(context.mdp_ids) != 1:
-        return None
-
-    mdp = next((player for player in ordered_players if player.player_id in context.mdp_ids), None)
-    if mdp is None:
-        return None
-
-    residents = tuple(player for player in ordered_players if player.player_id != mdp.player_id)
-    best_candidate: _CandidateInternal | None = None
-    best_key: tuple[object, ...] | None = None
-    refinement_search_limit = min(
-        sequential_search_max_players,
-        _SINGLE_MDP_ODD_REFINEMENT_SEARCH_MAX_PLAYERS,
-    )
-
-    for sequence_no, resident in enumerate(residents):
-        if not _is_legal_pair(mdp, resident, context=context):
-            continue
-        remainder_players = tuple(
-            player for player in residents if player.player_id != resident.player_id
-        )
-        remainder_candidate = _solve_without_bye_candidate(
-            remainder_players,
-            context=BracketContext(initial_color=context.initial_color),
-            sequential_search_max_players=refinement_search_limit,
-        )
-        candidate = _CandidateInternal(
-            pairings=tuple(
-                sorted(
-                    (*remainder_candidate.pairings, (mdp, resident)),
-                    key=_candidate_pair_sort_key,
-                )
-            ),
-            unresolved=remainder_candidate.unresolved,
-            bye_player=None,
-            sequence_no=sequence_no,
-        )
-        candidate_key = _candidate_quality_key(candidate=candidate, context=context)
-        if best_key is None or candidate_key < best_key:
-            best_key = candidate_key
-            best_candidate = candidate
-
-    return best_candidate
-
-
 def _solve_single_mdp_odd_exact(
     players: Sequence[PlayerState],
     *,
@@ -2057,7 +1343,6 @@ def _solve_single_mdp_odd_exact(
                 remainder_players,
                 context=remainder_context,
                 sequential_search_max_players=sequential_search_max_players,
-                allow_heuristic_fallback=False,
             )
         except ExactSearchUnavailableError:
             unsupported_found = True
@@ -2088,162 +1373,20 @@ def _solve_single_mdp_odd_exact(
     return best_candidate
 
 
-@cache
-def _refine_weighted_single_mdp_remainder_candidate(
-    players: Sequence[PlayerState],
-    *,
-    context: BracketContext,
-    weighted_candidate: _CandidateInternal,
-    sequential_search_max_players: int,
-) -> _CandidateInternal:
-    """Re-solve the weighted one-MDP remainder once before broader refinement.
-
-    The weighted heterogeneous fallback often picks the correct MDP partner but
-    can still miss the best resident downfloater in the homogeneous remainder.
-    Re-solving only that remainder is much cheaper than scanning every partner
-    and is enough to recover medium-size one-MDP cases like Graz round 4.
-    """
-    ordered_players = tuple(sorted(players, key=_player_rank_key))
-    if len(context.mdp_ids) != 1 or len(weighted_candidate.unresolved) != 1:
-        return weighted_candidate
-
-    mdp = next((player for player in ordered_players if player.player_id in context.mdp_ids), None)
-    if mdp is None:
-        return weighted_candidate
-
-    mdp_partner: PlayerState | None = None
-    for player_a, player_b in weighted_candidate.pairings:
-        mdp_pair = _mdp_and_opponent(player_a, player_b, context=context)
-        if mdp_pair is None or mdp_pair[0].player_id != mdp.player_id:
-            continue
-        mdp_partner = mdp_pair[1]
-        break
-
-    if mdp_partner is None:
-        return weighted_candidate
-
-    residents = tuple(player for player in ordered_players if player.player_id != mdp.player_id)
-    refinement_search_limit = min(
-        sequential_search_max_players,
-        _SINGLE_MDP_ODD_REFINEMENT_SEARCH_MAX_PLAYERS,
-    )
-    remainder_players = tuple(
-        player for player in residents if player.player_id != mdp_partner.player_id
-    )
-    remainder_context = BracketContext(initial_color=context.initial_color)
-    remainder_candidate = _solve_without_bye_candidate(
-        remainder_players,
-        context=remainder_context,
-        sequential_search_max_players=refinement_search_limit,
-    )
-    if (
-        _ODD_HOMOGENEOUS_REFINEMENT_SCAN_MAX_PLAYERS
-        < len(remainder_players)
-        <= _SINGLE_MDP_REMAINDER_HOMOGENEOUS_REFINEMENT_MAX_PLAYERS
-    ):
-        weighted_remainder_candidate = _solve_without_bye_candidate_via_weighted_steps(
-            remainder_players,
-            context=remainder_context,
-        )
-        if weighted_remainder_candidate is not None and weighted_remainder_candidate.unresolved:
-            remainder_candidate = _refine_weighted_homogeneous_odd_candidate(
-                remainder_players,
-                context=remainder_context,
-                weighted_candidate=weighted_remainder_candidate,
-                sequential_search_max_players=refinement_search_limit,
-                scan_max_players=_SINGLE_MDP_REMAINDER_HOMOGENEOUS_REFINEMENT_MAX_PLAYERS,
-            )
-    sequence_no = next(
-        index for index, player in enumerate(residents) if player.player_id == mdp_partner.player_id
-    )
-    refined_candidate = _CandidateInternal(
-        pairings=tuple(
-            sorted(
-                (*remainder_candidate.pairings, (mdp, mdp_partner)),
-                key=_candidate_pair_sort_key,
-            )
-        ),
-        unresolved=remainder_candidate.unresolved,
-        bye_player=None,
-        sequence_no=sequence_no,
-    )
-    if _candidate_quality_key(
-        candidate=refined_candidate, context=context
-    ) < _candidate_quality_key(
-        candidate=weighted_candidate,
-        context=context,
-    ):
-        return refined_candidate
-    return weighted_candidate
-
-
-def _select_large_final_bye_candidate_via_weighted_steps(
-    players: Sequence[PlayerState],
-    *,
-    context: BracketContext,
-    bye_candidates: Sequence[PlayerState],
-    sequential_search_max_players: int,
-) -> _CandidateInternal | None:
-    """Pick one large final-bracket bye without scanning every legal candidate.
-
-    For very large odd final brackets, evaluating every legal bye candidate means
-    re-solving the full even remainder once per player. Reuse the odd weighted
-    matcher to identify the likely article-order bye first, then solve the
-    even remainder exactly once for that selected player.
-    """
-    ordered_players = tuple(sorted(players, key=_player_rank_key))
-    if len(ordered_players) <= _ODD_FINAL_BYE_SCAN_MAX_PLAYERS:
-        return None
-
-    weighted_candidate = _solve_without_bye_candidate_via_weighted_steps(
-        ordered_players,
-        context=context,
-    )
-    if weighted_candidate is None or len(weighted_candidate.unresolved) != 1:
-        return None
-
-    bye_player = weighted_candidate.unresolved[0]
-    reversed_bye_candidates = tuple(reversed(tuple(bye_candidates)))
-    try:
-        sequence_no = next(
-            index
-            for index, candidate in enumerate(reversed_bye_candidates)
-            if candidate.player_id == bye_player.player_id
-        )
-    except StopIteration:
-        return None
-
-    rest = tuple(player for player in ordered_players if player.player_id != bye_player.player_id)
-    even_result = _solve_even_players(
-        rest,
-        context=context,
-        sequential_search_max_players=sequential_search_max_players,
-    )
-    return _CandidateInternal(
-        pairings=even_result.pairings,
-        unresolved=even_result.unresolved,
-        bye_player=bye_player,
-        sequence_no=sequence_no,
-    )
-
-
 def _solve_even_players(
     players: Sequence[PlayerState],
     *,
     context: BracketContext,
     sequential_search_max_players: int = _SEQUENTIAL_SEARCH_MAX_PLAYERS,
-    allow_heuristic_fallback: bool = True,
 ) -> _EvenPairingInternal:
     """Compute one maximum-cardinality matching for an even-sized set."""
     if len(players) % 2 != 0:
         raise PairingError("internal even solver received odd player count")
 
-    exact_candidate_max = _exact_sequence_candidate_limit(
-        allow_heuristic_fallback=allow_heuristic_fallback
-    )
+    exact_candidate_max = _exact_sequence_candidate_limit()
     exact_search_attempted = False
 
-    if not context.mdp_ids and not allow_heuristic_fallback:
+    if not context.mdp_ids:
         exact_shortcut = _solve_homogeneous_even_players_via_zero_exchange_exact_shortcut_cached(
             tuple(sorted(players, key=_player_rank_key)),
             context.initial_color,
@@ -2251,7 +1394,7 @@ def _solve_even_players(
         if exact_shortcut is not None:
             return exact_shortcut
 
-    if len(context.mdp_ids) == 1 and not allow_heuristic_fallback:
+    if len(context.mdp_ids) == 1:
         exact_search_attempted = True
         single_mdp_exact = _solve_even_players_via_single_mdp_exact(players, context=context)
         if single_mdp_exact is not None:
@@ -2278,137 +1421,14 @@ def _solve_even_players(
         if sequence_result is not None:
             return sequence_result
 
-    if not allow_heuristic_fallback:
-        if exact_search_attempted:
-            return _EvenPairingInternal(
-                pairings=(),
-                unresolved=tuple(sorted(players, key=_player_rank_key)),
-            )
-        raise ExactSearchUnavailableError(
-            "exact Dutch mode currently requires heuristic fallback for this even bracket"
+    if exact_search_attempted:
+        return _EvenPairingInternal(
+            pairings=(),
+            unresolved=tuple(sorted(players, key=_player_rank_key)),
         )
-
-    if context.mdp_ids:
-        fallback_result = _solve_even_players_via_heterogeneous_weighted_steps(
-            players,
-            context=context,
-        )
-        if fallback_result is not None and not fallback_result.unresolved:
-            return fallback_result
-    else:
-        fallback_result = _solve_homogeneous_even_players_via_bipartite_fallback(
-            players,
-            initial_color=context.initial_color,
-        )
-        if fallback_result is not None and not fallback_result.unresolved:
-            return fallback_result
-
-    by_id = {player.player_id: player for player in players}
-    edge_weights: dict[tuple[str, str], int] = {}
-
-    for left, right in combinations(players, 2):
-        if not _is_legal_pair(left, right, context=context):
-            continue
-        key = (left.player_id, right.player_id)
-        edge_weights[key] = _edge_weight(left, right, context=context)
-
-    matching = compute_maximum_weight_matching(
-        node_ids=(player.player_id for player in players),
-        edge_weights=edge_weights,
-        max_cardinality=True,
+    raise ExactSearchUnavailableError(
+        "exact Dutch mode currently requires heuristic fallback for this even bracket"
     )
-
-    matched_ids: set[str] = set()
-    raw_pairs: list[tuple[PlayerState, PlayerState]] = []
-    for left_id, right_id in matching:
-        left = by_id[left_id]
-        right = by_id[right_id]
-        raw_pairs.append((left, right))
-        matched_ids.add(left_id)
-        matched_ids.add(right_id)
-
-    unresolved = tuple(
-        sorted(
-            (player for player in players if player.player_id not in matched_ids),
-            key=_player_rank_key,
-        )
-    )
-
-    sorted_pairs = tuple(
-        sorted(
-            raw_pairs,
-            key=lambda pair: (
-                _player_rank_key(pair[0]),
-                _player_rank_key(pair[1]),
-            ),
-        )
-    )
-    unrestricted_result = _EvenPairingInternal(pairings=sorted_pairs, unresolved=unresolved)
-
-    if context.mdp_ids:
-        fallback_result = _solve_even_players_via_heterogeneous_weighted_steps(
-            players,
-            context=context,
-        )
-        if fallback_result is not None:
-            fallback_pairs = len(fallback_result.pairings)
-            unrestricted_pairs = len(unrestricted_result.pairings)
-            if fallback_pairs > unrestricted_pairs:
-                return fallback_result
-            if fallback_pairs == unrestricted_pairs:
-                fallback_candidate = _CandidateInternal(
-                    pairings=fallback_result.pairings,
-                    unresolved=fallback_result.unresolved,
-                    bye_player=None,
-                    sequence_no=0,
-                )
-                unrestricted_candidate = _CandidateInternal(
-                    pairings=unrestricted_result.pairings,
-                    unresolved=unrestricted_result.unresolved,
-                    bye_player=None,
-                    sequence_no=1,
-                )
-                if _candidate_quality_key(
-                    candidate=fallback_candidate,
-                    context=context,
-                ) <= _candidate_quality_key(
-                    candidate=unrestricted_candidate,
-                    context=context,
-                ):
-                    return fallback_result
-    else:
-        fallback_result = _solve_homogeneous_even_players_via_bipartite_fallback(
-            players,
-            initial_color=context.initial_color,
-        )
-        if fallback_result is not None:
-            fallback_pairs = len(fallback_result.pairings)
-            unrestricted_pairs = len(unrestricted_result.pairings)
-            if fallback_pairs > unrestricted_pairs:
-                return fallback_result
-            if fallback_pairs == unrestricted_pairs:
-                fallback_candidate = _CandidateInternal(
-                    pairings=fallback_result.pairings,
-                    unresolved=fallback_result.unresolved,
-                    bye_player=None,
-                    sequence_no=0,
-                )
-                unrestricted_candidate = _CandidateInternal(
-                    pairings=unrestricted_result.pairings,
-                    unresolved=unrestricted_result.unresolved,
-                    bye_player=None,
-                    sequence_no=1,
-                )
-                if _candidate_quality_key(
-                    candidate=fallback_candidate,
-                    context=BracketContext(initial_color=context.initial_color),
-                ) <= _candidate_quality_key(
-                    candidate=unrestricted_candidate,
-                    context=BracketContext(initial_color=context.initial_color),
-                ):
-                    return fallback_result
-
-    return unrestricted_result
 
 
 def _candidate_downfloaters(candidate: _CandidateInternal) -> tuple[PlayerState, ...]:
@@ -2940,7 +1960,6 @@ def _solve_even_players_via_single_mdp_exact_cached(
                 remainder_players,
                 context=remainder_context,
                 sequential_search_max_players=len(remainder_players),
-                allow_heuristic_fallback=False,
             )
         except ExactSearchUnavailableError:
             continue
@@ -3012,7 +2031,6 @@ def _solve_even_players_via_single_mdp_exact_uncached(
                 remainder_players,
                 context=remainder_context,
                 sequential_search_max_players=len(remainder_players),
-                allow_heuristic_fallback=False,
             )
         except ExactSearchUnavailableError:
             unsupported_found = True
@@ -3136,7 +2154,6 @@ def _find_single_mdp_even_feasible_unresolved(
                 remainder_players,
                 context=remainder_context,
                 sequential_search_max_players=sequential_search_max_players,
-                allow_heuristic_fallback=False,
             )
         except ExactSearchUnavailableError:
             unsupported_found = True
@@ -3162,23 +2179,19 @@ def _solve_without_bye_candidate_uncached(
     *,
     context: BracketContext,
     sequential_search_max_players: int,
-    allow_heuristic_fallback: bool,
 ) -> _CandidateInternal:
     """Return best candidate for a bracket that cannot assign a pairing bye."""
     ordered_players = players
     if not ordered_players:
         return _CandidateInternal(pairings=(), unresolved=(), bye_player=None, sequence_no=0)
 
-    exact_candidate_max = _exact_sequence_candidate_limit(
-        allow_heuristic_fallback=allow_heuristic_fallback
-    )
+    exact_candidate_max = _exact_sequence_candidate_limit()
 
     if len(ordered_players) % 2 == 0:
         even_result = _solve_even_players(
             ordered_players,
             context=context,
             sequential_search_max_players=sequential_search_max_players,
-            allow_heuristic_fallback=allow_heuristic_fallback,
         )
         return _CandidateInternal(
             pairings=even_result.pairings,
@@ -3193,7 +2206,7 @@ def _solve_without_bye_candidate_uncached(
         sequential_search_max_players=sequential_search_max_players,
         exact_candidate_max=exact_candidate_max,
     )
-    if len(context.mdp_ids) == 1 and not allow_heuristic_fallback:
+    if len(context.mdp_ids) == 1:
         use_exact_heterogeneous = False
     if use_exact_heterogeneous:
         best_candidate = _select_best_candidate(
@@ -3216,7 +2229,7 @@ def _solve_without_bye_candidate_uncached(
         if best_candidate is not None:
             return best_candidate
 
-    if len(context.mdp_ids) == 1 and not allow_heuristic_fallback:
+    if len(context.mdp_ids) == 1:
         single_mdp_odd_exact = _solve_single_mdp_odd_exact(
             ordered_players,
             context=context,
@@ -3224,70 +2237,21 @@ def _solve_without_bye_candidate_uncached(
         )
         if single_mdp_odd_exact is not None:
             return single_mdp_odd_exact
-
-    if allow_heuristic_fallback and (
-        len(ordered_players) > sequential_search_max_players
-        or (context.mdp_ids and not use_exact_heterogeneous)
-        or (not context.mdp_ids and not use_exact_homogeneous)
-    ):
-        weighted_candidate = _solve_without_bye_candidate_via_weighted_steps(
-            ordered_players,
-            context=context,
-        )
-        if weighted_candidate is not None and weighted_candidate.unresolved:
-            refined_weighted_candidate = weighted_candidate
-            if len(weighted_candidate.unresolved) == 1:
-                if len(context.mdp_ids) == 1:
-                    refined_weighted_candidate = _refine_weighted_single_mdp_remainder_candidate(
-                        ordered_players,
-                        context=context,
-                        weighted_candidate=refined_weighted_candidate,
-                        sequential_search_max_players=sequential_search_max_players,
-                    )
-                    refined_single_mdp = _refine_weighted_single_mdp_odd_candidate(
-                        ordered_players,
-                        context=context,
-                        sequential_search_max_players=sequential_search_max_players,
-                    )
-                    if refined_single_mdp is not None:
-                        refined_weighted_candidate = refined_single_mdp
-                if context.mdp_ids and len(ordered_players) <= _ODD_DOWNFLOATER_SCAN_MAX_PLAYERS:
-                    return _refine_weighted_heterogeneous_odd_candidate(
-                        ordered_players,
-                        context=context,
-                        weighted_candidate=refined_weighted_candidate,
-                    )
-                if (
-                    not context.mdp_ids
-                    and len(ordered_players) <= _ODD_HOMOGENEOUS_REFINEMENT_SCAN_MAX_PLAYERS
-                ):
-                    return _refine_weighted_homogeneous_odd_candidate(
-                        ordered_players,
-                        context=context,
-                        weighted_candidate=refined_weighted_candidate,
-                        sequential_search_max_players=sequential_search_max_players,
-                    )
-            return refined_weighted_candidate
-
-    generated: list[_CandidateInternal] = []
     unsupported_found = False
-    if allow_heuristic_fallback:
-        downfloater_groups = tuple((player,) for player in ordered_players)
-    else:
-        score_groups_desc: list[tuple[PlayerState, ...]] = []
-        current_score_group: list[PlayerState] = []
-        current_score: int | None = None
-        for player in ordered_players:
-            if current_score is None or player.score != current_score:
-                if current_score_group:
-                    score_groups_desc.append(tuple(current_score_group))
-                current_score_group = [player]
-                current_score = player.score
-                continue
-            current_score_group.append(player)
-        if current_score_group:
-            score_groups_desc.append(tuple(current_score_group))
-        downfloater_groups = tuple(reversed(score_groups_desc))
+    score_groups_desc: list[tuple[PlayerState, ...]] = []
+    current_score_group: list[PlayerState] = []
+    current_score: int | None = None
+    for player in ordered_players:
+        if current_score is None or player.score != current_score:
+            if current_score_group:
+                score_groups_desc.append(tuple(current_score_group))
+            current_score_group = [player]
+            current_score = player.score
+            continue
+        current_score_group.append(player)
+    if current_score_group:
+        score_groups_desc.append(tuple(current_score_group))
+    downfloater_groups = tuple(reversed(score_groups_desc))
 
     for downfloater_group in downfloater_groups:
         group_candidates: list[_CandidateInternal] = []
@@ -3305,7 +2269,7 @@ def _solve_without_bye_candidate_uncached(
                     next_bracket_key=context.next_bracket_key,
                 )
             feasibility_validator: NextBracketValidator | None = None
-            if not allow_heuristic_fallback and adjusted_context.next_bracket_validator is not None:
+            if adjusted_context.next_bracket_validator is not None:
 
                 def wrapped_feasibility_validator(
                     remainder_downfloaters: tuple[PlayerState, ...],
@@ -3323,11 +2287,7 @@ def _solve_without_bye_candidate_uncached(
 
                 feasibility_validator = wrapped_feasibility_validator
 
-            if (
-                not allow_heuristic_fallback
-                and feasibility_validator is not None
-                and len(adjusted_context.mdp_ids) == 1
-            ):
+            if feasibility_validator is not None and len(adjusted_context.mdp_ids) == 1:
                 try:
                     is_feasible = bracket_is_feasible_exact(
                         rest,
@@ -3362,13 +2322,12 @@ def _solve_without_bye_candidate_uncached(
                     rest,
                     context=remainder_context,
                 )
-            elif len(remainder_context.mdp_ids) == 1 and not allow_heuristic_fallback:
+            elif len(remainder_context.mdp_ids) == 1:
                 try:
                     even_result = _solve_even_players(
                         rest,
                         context=remainder_context,
                         sequential_search_max_players=sequential_search_max_players,
-                        allow_heuristic_fallback=False,
                     )
                 except ExactSearchUnavailableError:
                     unsupported_found = True
@@ -3395,7 +2354,6 @@ def _solve_without_bye_candidate_uncached(
                         rest,
                         context=remainder_context,
                         sequential_search_max_players=sequential_search_max_players,
-                        allow_heuristic_fallback=allow_heuristic_fallback,
                     )
                 except ExactSearchUnavailableError:
                     unsupported_found = True
@@ -3422,13 +2380,10 @@ def _solve_without_bye_candidate_uncached(
                     bye_player=None,
                     sequence_no=sequence_no,
                 )
-                if allow_heuristic_fallback:
-                    generated.append(candidate)
-                else:
-                    group_candidates.append(candidate)
+                group_candidates.append(candidate)
                 sequence_no += 1
 
-        if not allow_heuristic_fallback and group_candidates:
+        if group_candidates:
             if not context.mdp_ids:
                 best_candidate = _select_best_homogeneous_odd_candidate(
                     ordered_players,
@@ -3440,14 +2395,11 @@ def _solve_without_bye_candidate_uncached(
             if best_candidate is not None:
                 return best_candidate
 
-    best_candidate = _select_best_candidate(generated, context=context)
-    if best_candidate is None:
-        if unsupported_found and not allow_heuristic_fallback:
-            raise ExactSearchUnavailableError(
-                "exact Dutch mode currently requires heuristic fallback for this odd bracket"
-            )
-        raise PairingError("internal failure selecting downfloater candidate")
-    return best_candidate
+    if unsupported_found:
+        raise ExactSearchUnavailableError(
+            "exact Dutch mode currently requires heuristic fallback for this odd bracket"
+        )
+    raise PairingError("internal failure selecting downfloater candidate")
 
 
 @cache
@@ -3456,13 +2408,11 @@ def _solve_without_bye_candidate_cached(
     mdp_ids: frozenset[str],
     sequential_search_max_players: int,
     initial_color: Color,
-    allow_heuristic_fallback: bool,
 ) -> _CandidateInternal:
     return _solve_without_bye_candidate_uncached(
         players,
         context=BracketContext(mdp_ids=mdp_ids, initial_color=initial_color),
         sequential_search_max_players=sequential_search_max_players,
-        allow_heuristic_fallback=allow_heuristic_fallback,
     )
 
 
@@ -3471,7 +2421,6 @@ def _solve_without_bye_candidate(
     *,
     context: BracketContext,
     sequential_search_max_players: int = _SEQUENTIAL_SEARCH_MAX_PLAYERS,
-    allow_heuristic_fallback: bool = True,
 ) -> _CandidateInternal:
     ordered_players = tuple(sorted(players, key=_player_rank_key))
     if context.next_bracket_validator is None and context.next_bracket_key is None:
@@ -3480,13 +2429,11 @@ def _solve_without_bye_candidate(
             context.mdp_ids,
             sequential_search_max_players,
             context.initial_color,
-            allow_heuristic_fallback,
         )
     return _solve_without_bye_candidate_uncached(
         ordered_players,
         context=context,
         sequential_search_max_players=sequential_search_max_players,
-        allow_heuristic_fallback=allow_heuristic_fallback,
     )
 
 
@@ -3629,9 +2576,8 @@ def _pair_bracket_impl(
     allow_bye: bool = True,
     sequential_search_max_players: int = _SEQUENTIAL_SEARCH_MAX_PLAYERS,
     initial_color: Color = "white",
-    allow_heuristic_fallback: bool = True,
 ) -> PairingResult:
-    """Internal bracket solver with optional heuristic fallback control.
+    """Internal exact bracket solver.
 
     The function remains deterministic for a fixed input state and context.
     `allow_bye=False` is used for non-final brackets where unresolved players
@@ -3656,7 +2602,6 @@ def _pair_bracket_impl(
             ordered_players,
             context=local_context,
             sequential_search_max_players=sequential_search_max_players,
-            allow_heuristic_fallback=allow_heuristic_fallback,
         )
         pairings: list[Pairing] = []
         for left, right in candidate.pairings:
@@ -3680,7 +2625,6 @@ def _pair_bracket_impl(
             ordered_players,
             context=local_context,
             sequential_search_max_players=sequential_search_max_players,
-            allow_heuristic_fallback=allow_heuristic_fallback,
         )
         pairings: list[Pairing] = []
         for left, right in even_result.pairings:
@@ -3717,9 +2661,7 @@ def _pair_bracket_impl(
         ordered_players,
         context=local_context,
         sequential_search_max_players=sequential_search_max_players,
-        exact_candidate_max=_exact_sequence_candidate_limit(
-            allow_heuristic_fallback=allow_heuristic_fallback
-        ),
+        exact_candidate_max=_exact_sequence_candidate_limit(),
     )
     legal_exact_bye_candidates = tuple(
         candidate
@@ -3733,51 +2675,40 @@ def _pair_bracket_impl(
             raise PairingError("no legal bye candidate available under C2 constraints")
     else:
         best_candidate = None
-        if allow_heuristic_fallback:
-            best_candidate = _select_large_final_bye_candidate_via_weighted_steps(
-                ordered_players,
-                context=local_context,
-                bye_candidates=bye_candidates,
-                sequential_search_max_players=sequential_search_max_players,
-            )
-        if best_candidate is None:
-            best_key: tuple[object, ...] | None = None
-            unsupported_found = False
+        best_key: tuple[object, ...] | None = None
+        unsupported_found = False
 
-            # Exact odd-bracket generation already yields article sequence
-            # order. Keep the fallback scan aligned with that direction so
-            # equal-quality bye candidates still resolve to the same
-            # last-sequence resident.
-            for sequence_no, bye_candidate in enumerate(reversed(bye_candidates)):
-                rest = tuple(
-                    player
-                    for player in ordered_players
-                    if player.player_id != bye_candidate.player_id
+        # Exact odd-bracket generation already yields article sequence
+        # order. Keep the fallback scan aligned with that direction so
+        # equal-quality bye candidates still resolve to the same
+        # last-sequence resident.
+        for sequence_no, bye_candidate in enumerate(reversed(bye_candidates)):
+            rest = tuple(
+                player for player in ordered_players if player.player_id != bye_candidate.player_id
+            )
+            try:
+                even_result = _solve_even_players(
+                    rest,
+                    context=local_context,
+                    sequential_search_max_players=sequential_search_max_players,
                 )
-                try:
-                    even_result = _solve_even_players(
-                        rest,
-                        context=local_context,
-                        sequential_search_max_players=sequential_search_max_players,
-                        allow_heuristic_fallback=allow_heuristic_fallback,
-                    )
-                except ExactSearchUnavailableError:
-                    unsupported_found = True
-                    continue
-                candidate = _CandidateInternal(
-                    pairings=even_result.pairings,
-                    unresolved=even_result.unresolved,
-                    bye_player=bye_candidate,
-                    sequence_no=sequence_no,
-                )
-                candidate_key = _candidate_quality_key(candidate=candidate, context=local_context)
-                if best_key is None or candidate_key < best_key:
-                    best_key = candidate_key
-                    best_candidate = candidate
-            if best_candidate is None and unsupported_found and not allow_heuristic_fallback:
-                raise ExactSearchUnavailableError(
-                    "exact Dutch mode currently requires heuristic fallback for this final bracket"
-                )
+            except ExactSearchUnavailableError:
+                unsupported_found = True
+                continue
+            candidate = _CandidateInternal(
+                pairings=even_result.pairings,
+                unresolved=even_result.unresolved,
+                bye_player=bye_candidate,
+                sequence_no=sequence_no,
+            )
+            candidate_key = _candidate_quality_key(candidate=candidate, context=local_context)
+            if best_key is None or candidate_key < best_key:
+                best_key = candidate_key
+                best_candidate = candidate
+        if best_candidate is None and unsupported_found:
+            raise ExactSearchUnavailableError(
+                "exact Dutch mode currently requires heuristic fallback for this final bracket"
+            )
 
     if best_candidate is None:
         raise PairingError("internal failure selecting bye candidate")
@@ -3898,7 +2829,6 @@ def bracket_is_feasible_exact(
                         rest,
                         context=feasibility_context,
                         sequential_search_max_players=effective_search_limit,
-                        allow_heuristic_fallback=False,
                     )
                 except ExactSearchUnavailableError:
                     unsupported_found = True
@@ -3925,7 +2855,6 @@ def bracket_is_feasible_exact(
             ordered_players,
             context=local_context,
             sequential_search_max_players=effective_search_limit,
-            allow_heuristic_fallback=False,
         )
         return not even_result.unresolved
 
@@ -3952,7 +2881,6 @@ def bracket_is_feasible_exact(
                 rest,
                 context=local_context,
                 sequential_search_max_players=effective_search_limit,
-                allow_heuristic_fallback=False,
             )
         except ExactSearchUnavailableError:
             unsupported_found = True
@@ -3980,8 +2908,7 @@ def pair_bracket(
     """Pair one bracket with the canonical exact Dutch solver.
 
     This uses only the current exact-search surface and raises `PairingError`
-    when the solver would otherwise switch to weighted or greedy
-    approximations.
+    when the solver does not yet support the bracket exactly.
     """
     exact_search_max_players = (
         len(players) if sequential_search_max_players is None else sequential_search_max_players
@@ -3993,7 +2920,6 @@ def pair_bracket(
             allow_bye=allow_bye,
             sequential_search_max_players=exact_search_max_players,
             initial_color=initial_color,
-            allow_heuristic_fallback=False,
         )
     except ExactSearchUnavailableError as exc:
         raise PairingError(str(exc)) from exc
