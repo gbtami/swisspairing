@@ -1134,15 +1134,27 @@ def _homogeneous_exact_pair_penalty_cached(
     radix = (2 * pair_count) + 1
     return (((c10 * radix) + c11) * radix + c12) * radix + c13
 
+@cache
+def _homogeneous_legal_exact_pair_penalty_cached(
+    left: PlayerState,
+    right: PlayerState,
+    initial_color: Color,
+    pair_count: int,
+) -> int | None:
+    """Return the exact homogeneous pair penalty when the pair is legal."""
+    if not _is_legal_pair(left, right):
+        return None
+    return _homogeneous_exact_pair_penalty_cached(left, right, initial_color, pair_count)
 
-def _homogeneous_exact_pair_penalty(
+
+def _homogeneous_legal_exact_pair_penalty(
     left: PlayerState,
     right: PlayerState,
     *,
     initial_color: Color,
     pair_count: int,
-) -> int:
-    return _homogeneous_exact_pair_penalty_cached(left, right, initial_color, pair_count)
+) -> int | None:
+    return _homogeneous_legal_exact_pair_penalty_cached(left, right, initial_color, pair_count)
 
 
 @cache
@@ -1163,14 +1175,14 @@ def _homogeneous_zero_exchange_min_penalty(
     by_id = {player.player_id: player for player in (*s1, *s2)}
     for left in s1:
         for right in s2:
-            if not _is_legal_pair(left, right):
-                continue
-            penalty = _homogeneous_exact_pair_penalty(
+            penalty = _homogeneous_legal_exact_pair_penalty(
                 left,
                 right,
                 initial_color=initial_color,
                 pair_count=pair_count,
             )
+            if penalty is None:
+                continue
             edge_weights[(left.player_id, right.player_id)] = -penalty
 
     matching = compute_maximum_weight_matching(
@@ -1185,12 +1197,14 @@ def _homogeneous_zero_exchange_min_penalty(
     s1_ids = {player.player_id for player in s1}
     for first_id, second_id in matching:
         left_id, right_id = (first_id, second_id) if first_id in s1_ids else (second_id, first_id)
-        total_penalty += _homogeneous_exact_pair_penalty(
+        pair_penalty = _homogeneous_legal_exact_pair_penalty(
             by_id[left_id],
             by_id[right_id],
             initial_color=initial_color,
             pair_count=pair_count,
         )
+        assert pair_penalty is not None
+        total_penalty += pair_penalty
     return total_penalty
 
 
@@ -1210,14 +1224,14 @@ def _homogeneous_global_min_penalty(
     edge_weights: dict[tuple[str, str], int] = {}
     by_id = {player.player_id: player for player in players}
     for left, right in combinations(players, 2):
-        if not _is_legal_pair(left, right):
-            continue
-        penalty = _homogeneous_exact_pair_penalty(
+        penalty = _homogeneous_legal_exact_pair_penalty(
             left,
             right,
             initial_color=initial_color,
             pair_count=pair_count,
         )
+        if penalty is None:
+            continue
         edge_weights[(left.player_id, right.player_id)] = -penalty
 
     matching = compute_maximum_weight_matching(
@@ -1230,12 +1244,14 @@ def _homogeneous_global_min_penalty(
 
     total_penalty = 0
     for left_id, right_id in matching:
-        total_penalty += _homogeneous_exact_pair_penalty(
+        pair_penalty = _homogeneous_legal_exact_pair_penalty(
             by_id[left_id],
             by_id[right_id],
             initial_color=initial_color,
             pair_count=pair_count,
         )
+        assert pair_penalty is not None
+        total_penalty += pair_penalty
     return total_penalty
 
 
@@ -1255,14 +1271,14 @@ def _build_zero_exchange_earliest_optimal_pairs(
     left = s1[0]
     remaining_s1 = s1[1:]
     for index, right in enumerate(s2):
-        if not _is_legal_pair(left, right):
-            continue
-        pair_penalty = _homogeneous_exact_pair_penalty(
+        pair_penalty = _homogeneous_legal_exact_pair_penalty(
             left,
             right,
             initial_color=initial_color,
             pair_count=pair_count,
         )
+        if pair_penalty is None:
+            continue
         remaining_s2 = s2[:index] + s2[index + 1 :]
         remaining_penalty = _homogeneous_zero_exchange_min_penalty(
             remaining_s1,
