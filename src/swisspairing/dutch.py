@@ -59,6 +59,9 @@ class NextBracketKey:
     future_game_counts: tuple[int, ...] = ()
 
 
+_EMPTY_NEXT_BRACKET_KEY = NextBracketKey()
+
+
 type NextBracketKeyFn = Callable[[tuple[PlayerState, ...]], NextBracketKey | None]
 
 
@@ -1547,10 +1550,10 @@ def _next_bracket_key(
 ) -> NextBracketKey:
     key_fn = context.next_bracket_key
     if key_fn is None:
-        return NextBracketKey()
+        return _EMPTY_NEXT_BRACKET_KEY
     key = _next_bracket_key_result(key_fn, downfloaters)
     if key is None:
-        return NextBracketKey()
+        return _EMPTY_NEXT_BRACKET_KEY
     return key
 
 
@@ -1658,8 +1661,8 @@ def _candidate_quality_key(
     ) = _candidate_local_quality_key(candidate, context.mdp_ids, context.initial_color)
     c8 = _next_bracket_c1_to_c7_violation(downfloaters=downfloaters, context=context)
     c8_key = (
-        NextBracketKey()
-        if c8
+        _EMPTY_NEXT_BRACKET_KEY
+        if c8 or context.next_bracket_key is None
         else _next_bracket_key(downfloaters=downfloaters, context=context)
     )
 
