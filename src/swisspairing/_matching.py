@@ -2,31 +2,26 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 
 import rustworkx as rx
 
 
-def compute_maximum_weight_matching(
+def compute_maximum_weight_matching_total(
     *,
-    node_ids: Iterable[str],
-    edge_weights: Mapping[tuple[str, str], int],
+    node_count: int,
+    weighted_edges: Iterable[tuple[int, int, int]],
     max_cardinality: bool = True,
-) -> set[tuple[str, str]]:
-    """Return matching edges as `(node_id_a, node_id_b)` tuples.
+) -> tuple[int, int]:
+    """Return matching cardinality and total weight for an indexed graph.
 
     Notes:
     - This wrapper keeps graph-index handling isolated from pairing logic.
     - Edge weights are expected to be safe C/Rust integers for rustworkx.
     """
     graph = rx.PyGraph()
-    ids = tuple(node_ids)
-    id_to_index = {node_id: index for index, node_id in enumerate(ids)}
-    graph.add_nodes_from([None] * len(ids))
-    graph.extend_from_weighted_edge_list(
-        (id_to_index[left_id], id_to_index[right_id], weight)
-        for (left_id, right_id), weight in edge_weights.items()
-    )
+    graph.add_nodes_from([None] * node_count)
+    graph.extend_from_weighted_edge_list(weighted_edges)
 
     matched = rx.max_weight_matching(
         graph,
@@ -35,12 +30,8 @@ def compute_maximum_weight_matching(
         default_weight=1,
     )
 
-    normalized: set[tuple[str, str]] = set()
-    for left_index, right_index in matched:
-        left_id = ids[left_index]
-        right_id = ids[right_index]
-        if left_id <= right_id:
-            normalized.add((left_id, right_id))
-        else:
-            normalized.add((right_id, left_id))
-    return normalized
+    total_weight = sum(
+        int(graph.get_edge_data(left_index, right_index))
+        for left_index, right_index in matched
+    )
+    return (len(matched), total_weight)

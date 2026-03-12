@@ -12,7 +12,7 @@ from itertools import combinations, permutations
 from math import comb, perm
 from typing import TYPE_CHECKING, cast
 
-from swisspairing._matching import compute_maximum_weight_matching
+from swisspairing._matching import compute_maximum_weight_matching_total
 from swisspairing.exceptions import ExactSearchUnavailableError, PairingError
 from swisspairing.model import (
     Color,
@@ -1204,33 +1204,24 @@ def _homogeneous_zero_exchange_min_penalty(
     if not s1:
         return 0
 
-    edge_weights: dict[tuple[str, str], int] = {}
-    by_id = {player.player_id: player for player in (*s1, *s2)}
-    for left in s1:
-        for right in s2:
+    right_offset = len(s1)
+    weighted_edges: list[tuple[int, int, int]] = []
+    for left_index, left in enumerate(s1):
+        for right_index, right in enumerate(s2, start=right_offset):
             penalty = _homogeneous_legal_exact_pair_penalty(left, right, initial_color, pair_count)
             if penalty is None:
                 continue
-            edge_weights[(left.player_id, right.player_id)] = -penalty
+            weighted_edges.append((left_index, right_index, -penalty))
 
-    matching = compute_maximum_weight_matching(
-        node_ids=(player.player_id for player in (*s1, *s2)),
-        edge_weights=edge_weights,
+    matched_edges, total_weight = compute_maximum_weight_matching_total(
+        node_count=len(s1) + len(s2),
+        weighted_edges=tuple(weighted_edges),
         max_cardinality=True,
     )
-    if len(matching) != len(s1):
+    if matched_edges != len(s1):
         return None
 
-    total_penalty = 0
-    s1_ids = {player.player_id for player in s1}
-    for first_id, second_id in matching:
-        left_id, right_id = (first_id, second_id) if first_id in s1_ids else (second_id, first_id)
-        pair_penalty = _homogeneous_legal_exact_pair_penalty(
-            by_id[left_id], by_id[right_id], initial_color, pair_count
-        )
-        assert pair_penalty is not None
-        total_penalty += pair_penalty
-    return total_penalty
+    return -total_weight
 
 
 @cache
@@ -1246,30 +1237,24 @@ def _homogeneous_global_min_penalty(
         return 0
 
     pair_count = len(players) // 2
-    edge_weights: dict[tuple[str, str], int] = {}
-    by_id = {player.player_id: player for player in players}
-    for left, right in combinations(players, 2):
-        penalty = _homogeneous_legal_exact_pair_penalty(left, right, initial_color, pair_count)
-        if penalty is None:
-            continue
-        edge_weights[(left.player_id, right.player_id)] = -penalty
+    weighted_edges: list[tuple[int, int, int]] = []
+    for left_index, left in enumerate(players):
+        for right_index in range(left_index + 1, len(players)):
+            right = players[right_index]
+            penalty = _homogeneous_legal_exact_pair_penalty(left, right, initial_color, pair_count)
+            if penalty is None:
+                continue
+            weighted_edges.append((left_index, right_index, -penalty))
 
-    matching = compute_maximum_weight_matching(
-        node_ids=(player.player_id for player in players),
-        edge_weights=edge_weights,
+    matched_edges, total_weight = compute_maximum_weight_matching_total(
+        node_count=len(players),
+        weighted_edges=tuple(weighted_edges),
         max_cardinality=True,
     )
-    if len(matching) != pair_count:
+    if matched_edges != pair_count:
         return None
 
-    total_penalty = 0
-    for left_id, right_id in matching:
-        pair_penalty = _homogeneous_legal_exact_pair_penalty(
-            by_id[left_id], by_id[right_id], initial_color, pair_count
-        )
-        assert pair_penalty is not None
-        total_penalty += pair_penalty
-    return total_penalty
+    return -total_weight
 
 
 @cache
