@@ -1205,13 +1205,20 @@ def _homogeneous_zero_exchange_min_penalty(
         return 0
 
     right_offset = len(s1)
-    weighted_edges: list[tuple[int, int, int]] = []
-    for left_index, left in enumerate(s1):
-        for right_index, right in enumerate(s2, start=right_offset):
-            penalty = _homogeneous_legal_exact_pair_penalty(left, right, initial_color, pair_count)
-            if penalty is None:
-                continue
-            weighted_edges.append((left_index, right_index, -penalty))
+    weighted_edges = [
+        (left_index, right_index, -penalty)
+        for left_index, left in enumerate(s1)
+        for right_index, right in enumerate(s2, start=right_offset)
+        if (
+            penalty := _homogeneous_legal_exact_pair_penalty(
+                left,
+                right,
+                initial_color,
+                pair_count,
+            )
+        )
+        is not None
+    ]
 
     matched_edges, total_weight = compute_maximum_weight_matching_total(
         node_count=len(s1) + len(s2),
@@ -1237,14 +1244,20 @@ def _homogeneous_global_min_penalty(
         return 0
 
     pair_count = len(players) // 2
-    weighted_edges: list[tuple[int, int, int]] = []
-    for left_index, left in enumerate(players):
-        for right_index in range(left_index + 1, len(players)):
-            right = players[right_index]
-            penalty = _homogeneous_legal_exact_pair_penalty(left, right, initial_color, pair_count)
-            if penalty is None:
-                continue
-            weighted_edges.append((left_index, right_index, -penalty))
+    weighted_edges = [
+        (left_index, right_index, -penalty)
+        for left_index, left in enumerate(players)
+        for right_index in range(left_index + 1, len(players))
+        if (
+            penalty := _homogeneous_legal_exact_pair_penalty(
+                left,
+                players[right_index],
+                initial_color,
+                pair_count,
+            )
+        )
+        is not None
+    ]
 
     matched_edges, total_weight = compute_maximum_weight_matching_total(
         node_count=len(players),
