@@ -23,11 +23,10 @@ def compute_maximum_weight_matching(
     ids = tuple(node_ids)
     id_to_index = {node_id: index for index, node_id in enumerate(ids)}
     graph.add_nodes_from([None] * len(ids))
-
-    for (left_id, right_id), weight in edge_weights.items():
-        left_index = id_to_index[left_id]
-        right_index = id_to_index[right_id]
-        graph.add_edge(left_index, right_index, weight)
+    graph.extend_from_weighted_edge_list(
+        (id_to_index[left_id], id_to_index[right_id], weight)
+        for (left_id, right_id), weight in edge_weights.items()
+    )
 
     matched = rx.max_weight_matching(
         graph,
