@@ -88,36 +88,6 @@ RECURRING_SYNTHETIC_SLA_PRESETS: dict[str, dict[int, BenchmarkSLA]] = {
             min_equality_rate_when_both_ok=0.8,
         ),
     },
-    # Historical synthetic baselines are kept for reference.
-    "post-fast-cap-6-plus-512-20260306": {
-        16: BenchmarkSLA(1.0, 0.0, 10.0, 0.75, 1.0),
-        32: BenchmarkSLA(1.0, 0.0, 40.0, 0.8, 1.0),
-        64: BenchmarkSLA(1.0, 0.0, 35.0, 0.15, 1.0),
-        128: BenchmarkSLA(1.0, 0.0, 60.0, 0.18, 1.0),
-        256: BenchmarkSLA(1.0, 0.0, 325.0, 0.25, 1.0),
-        512: BenchmarkSLA(1.0, 0.0, 3000.0, 0.6, 1.0),
-    },
-    "post-fast-cap-6-20260306": {
-        16: BenchmarkSLA(1.0, 0.0, 10.0, 0.75, 1.0),
-        32: BenchmarkSLA(1.0, 0.0, 40.0, 0.8, 1.0),
-        64: BenchmarkSLA(1.0, 0.0, 35.0, 0.15, 1.0),
-        128: BenchmarkSLA(1.0, 0.0, 60.0, 0.18, 1.0),
-        256: BenchmarkSLA(1.0, 0.0, 325.0, 0.25, 1.0),
-    },
-    "post-c8-next-bracket-key-cut-20260306": {
-        16: BenchmarkSLA(1.0, 0.0, 85.0, 2.0, 0.9),
-        32: BenchmarkSLA(1.0, 0.0, 170.0, 0.9, 1.0),
-        64: BenchmarkSLA(1.0, 0.0, 70.0, 0.6, 0.8),
-        128: BenchmarkSLA(1.0, 0.0, 220.0, 0.2, 1.0),
-        256: BenchmarkSLA(1.0, 0.0, 325.0, 0.25, 1.0),
-    },
-    "post-parity-sweep-20260306b": {
-        16: BenchmarkSLA(1.0, 0.0, 60.0, 2.5, 0.9),
-        32: BenchmarkSLA(1.0, 0.0, 80.0, 0.5, 1.0),
-        64: BenchmarkSLA(1.0, 0.0, 40.0, 0.5, 0.8),
-        128: BenchmarkSLA(1.0, 0.0, 220.0, 0.2, 1.0),
-        256: BenchmarkSLA(1.0, 0.0, 325.0, 0.25, 1.0),
-    },
 }
 
 
@@ -726,19 +696,12 @@ def py4swiss_runtime_probe(
 
 def case_swisspairing_result(case_payload: Mapping[str, Any]) -> dict[str, Any] | None:
     """Extract the swisspairing payload from a case report."""
-    value = case_payload.get("swisspairing") or case_payload.get("swisspairing_fast")
-    if value is None:
-        value = case_payload.get("swisspairing_strict")
-    return _as_payload_dict(value)
+    return _as_payload_dict(case_payload.get("swisspairing"))
 
 
 def case_pairings_equal(case_payload: Mapping[str, Any]) -> bool | None:
     """Extract the swisspairing vs py4swiss equality flag from a case report."""
     value = case_payload.get("pairings_equal")
-    if value is None:
-        value = case_payload.get("pairings_equal_fast")
-    if value is None:
-        value = case_payload.get("pairings_equal_strict")
     return value if isinstance(value, bool) else None
 
 

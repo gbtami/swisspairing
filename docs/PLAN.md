@@ -20,8 +20,7 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   baselines are guardrails against accidental regressions, not the main
   success metric.
 - Current API direction: `pair_round_dutch()` and `pair_snapshots_dutch()` now
-  point at the exact/FIDE solver; the old public fast-mode path is being
-  retired rather than preserved for compatibility.
+  point at the exact/FIDE solver; the old public two-mode path is gone.
 
 ## Milestones
 
@@ -72,9 +71,9 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     and parity on `dutch_e2_both_absolute_higher_favored`.
   - Round-level collapse search now limits [C8] tie-break lookahead to the
     immediate next bracket, recovering sub-80-player benchmark runtime on the
-    checked-in recurring `p32` fixture catalog and removing strict-mode runner
+    checked-in recurring `p32` fixture catalog and removing legacy runner
     errors there.
-  - Large-event fast path added to bound collapse-search runtime at higher
+  - Large-event runtime path added to bound collapse-search runtime at higher
     player counts.
   - Typed pychess adapter module added for snapshot conversion and
     user-object pairing mapping.
@@ -91,32 +90,19 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - Benchmark summary now records both-ok equality rates separately from
     over-all-case rates, and benchmark runs fail fast when the selected
     interpreter cannot import `py4swiss`.
-  - Refreshed checked-in recurring baselines
-    (`post-c8-next-bracket-key-cut-20260306`,
-    `post-fast-cap-6-20260306`,
-    `post-fast-cap-6-plus-512-20260306`,
-    `post-bounded-c8-20260311`) and matching calibrated SLA presets added,
-    with per-profile pass/fail tracking in recurring baseline outputs.
-  - Pychess adapter runtime mode control added:
-    default `SWISSPAIRING_PAIRING_MODE=fast` (cap=6), explicit `strict` opt-in,
-    while preserving direct cap override via
-    `SWISSPAIRING_SEQUENTIAL_SEARCH_MAX_PLAYERS`.
-  - Benchmark runner now reports both `swisspairing_fast` and
-    `swisspairing_strict` metrics/equality rates and supports SLA-style gates
-    (success rate, timeout/runner error rate, p95 latency, p50 ratio).
+  - Refreshed checked-in recurring baselines culminating in
+    `post-bounded-c8-20260311`, with calibrated SLA presets and per-profile
+    pass/fail tracking in recurring baseline outputs.
   - Local `bbpPairings` build now works as a second external oracle, and the
     benchmark harness can run three-way TRF comparisons across
     `swisspairing`, `py4swiss`, and `bbpPairings`.
-  - Strict exact-search now uses candidate-budget guards plus weighted odd
-    fallback routing, removing the large recurring `p32` / `p128` strict tail
+  - Exact search now uses candidate-budget guards plus weighted odd
+    fallback routing, removing the large recurring `p32` / `p128` tail
     without changing checked py4swiss parity.
   - Recurring synthetic coverage now includes `p512`; the full checked-in
-    sweep still holds fast/strict parity there, fast mode stays at about
-    `0.47x` py4swiss `p50`, and the main added cost is synthetic export time.
-  - Checked-in 64-player regression TRFs added for the slow fast-mode tail.
-  - Historical note: those adapter/runtime-mode bullets describe the earlier
-    two-mode phase. The current public direction is exact/FIDE-first, with the
-    old fast-mode API being removed rather than preserved.
+    sweep remains practical there, and the main added cost is synthetic
+    export time.
+  - Checked-in 64-player regression TRFs added for the slow runtime tail.
   - `PlayerState` now precomputes color-preference state, reducing repeated
     candidate-scoring overhead in large benchmark cases.
   - Current golden parity suite has no xfail fixtures.
@@ -143,12 +129,12 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     corpus reconstructed from Aeroflot Open 2026 (`9` pre-round TRF snapshots
     and published-pairings manifest). Aeroflot rounds 1-3 now have direct
     published-pairing tests and currently match the published pairings in
-    `swisspairing` fast mode, `bbpPairings`, and `py4swiss`.
+    `swisspairing`, `bbpPairings`, and `py4swiss`.
   - Aeroflot round 5 exposed two medium-large fallback gaps: a 33-player
     homogeneous odd bracket needed the weighted downfloater refinement beyond
     the old 20-player cutoff, and a 21-player one-MDP odd bracket needed a
-    narrow resident-partner scan. `swisspairing` fast/strict now match
-    `bbpPairings` on the full round-5 snapshot.
+    narrow resident-partner scan. `swisspairing` now matches `bbpPairings` on
+    the full round-5 snapshot.
   - Aeroflot round 5 also surfaced another concrete local `py4swiss` split:
     `bbpPairings` and `swisspairing` agree on the final 3-player bracket while
     `py4swiss` chooses a different last-bracket pairing/bye outcome.
@@ -195,7 +181,7 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - Added a live Chess-Results event importer and expanded the checked real-world
     OTB corpus with Prague International Chess Festival 2026 D, Budapest Spring
     Festival 2026 Group A, and International Chessopen Graz 2026 A.
-  - Budapest round 7 is now fixed in fast mode, Budapest round 5 now matches
+  - Budapest round 7 is now fixed, Budapest round 5 now matches
     `bbpPairings` after switching the compare/build-state path to TRF-derived
     float history, Graz now matches `bbpPairings`, `py4swiss`, and `JaVaFo`
     on all 9 checked rounds, and the earlier Graz round-1 runtime tail is
@@ -217,9 +203,9 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     documented for downstream projects, and CI installs the built wheel into a
     fresh virtualenv and exercises a small import/pairing smoke test on Python
     3.12, 3.13, and 3.14.
-  - Exact/FIDE mode now has an explicit public boundary
-    (`pair_bracket_exact`, `pair_round_dutch_exact`) and no longer times out
-    on the checked Aeroflot/Graz/Budapest OTB stress cases.
+  - Exact/FIDE mode is now the public default through `pair_bracket()` and
+    `pair_round_dutch()`, and it no longer times out on the checked
+    Aeroflot/Graz/Budapest OTB stress cases.
   - Recent exact-path work now caches sequence-independent pair penalties and
     removes duplicate canonical exact candidates early, which cut the main
     remaining Budapest Group B round-5 cold exact case from about `7.5s` to
@@ -233,7 +219,7 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - Extended unit-test coverage for criteria and sequence behavior.
 - Next:
   - Keep exact/FIDE correctness as the primary target and treat recurring
-    synthetic fast-path SLAs as regression alarms only. Future exact work
+    synthetic runtime SLAs as regression alarms only. Future exact work
     should be judged mainly on rule conformance, checked corpus behavior, and
     real-world exact runtimes.
   - Publish/package `swisspairing` for downstream consumption so downstream
@@ -241,9 +227,8 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     TestPyPI / PyPI releases.
   - Extend the real-world OTB corpus beyond the current
     Aeroflot/Prague/Budapest/Graz/Budapest-Group-B set. After switching the
-    harness to TRF-derived float history, the new Budapest Group B corpus now
-    exposes one clean consensus-engine miss (round 8) plus split-reference
-    cases on rounds 4 / 5 / 9.
+    harness to TRF-derived float history, the Budapest Group B corpus now
+    mainly exposes split-reference cases on rounds 4 / 5 / 9.
   - Deploy the pychess integration behind the existing backend switch, then
     evaluate the default-backend flip after production evidence rather than
     from more local soak expansion alone.

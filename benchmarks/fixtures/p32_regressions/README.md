@@ -26,24 +26,23 @@ uv run python benchmarks/benchmark_py4swiss_compare.py \
   --warmup 0 \
   --repeats 1 \
   --timeout-seconds 120 \
-  --fast-sequential-search-max-players 6 \
   --json-output /tmp/swisspairing-p32-refresh/benchmark.json
 ```
 
-They are kept as stable tail cases for midsize fast/strict runtime work around
+They are kept as stable tail cases for midsize exact runtime work around
 `[C8]` next-bracket refinement.
 
 Observed timings before the March 11 C8 refinement budget fix:
 
-- `sim0001_r06.trf`: fast about `964.19ms`, strict about `992.95ms`
-- `sim0005_r04.trf`: fast about `966.82ms`, strict about `990.56ms`
-- `sim0006_r05.trf`: fast about `1225.28ms`, strict about `1890.55ms`
+- `sim0001_r06.trf`: about `992.95ms`
+- `sim0005_r04.trf`: about `990.56ms`
+- `sim0006_r05.trf`: about `1890.55ms`
 
 Observed timings after the fix on the checked-in bucket:
 
-- `sim0001_r06.trf`: fast about `195.96ms`, strict about `205.06ms`
-- `sim0005_r04.trf`: fast about `104.48ms`, strict about `106.16ms`
-- `sim0006_r05.trf`: fast about `126.23ms`, strict about `157.06ms`
+- `sim0001_r06.trf`: about `205.06ms`
+- `sim0005_r04.trf`: about `106.16ms`
+- `sim0006_r05.trf`: about `157.06ms`
 
 Quick rerun command:
 
@@ -53,6 +52,5 @@ uv run python benchmarks/benchmark_py4swiss_compare.py \
   --pattern '*.trf' \
   --warmup 0 \
   --repeats 1 \
-  --timeout-seconds 30 \
-  --fast-sequential-search-max-players 6
+  --timeout-seconds 30
 ```

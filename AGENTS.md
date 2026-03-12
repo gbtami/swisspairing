@@ -380,11 +380,11 @@ benchmarks/import_lichess_fixtures.sh
   also covered in `tests/test_chess_results.py`.
 - On the checked Budapest corpus, round 5 now matches `bbpPairings` once
   float history is derived from the TRF instead of inherited from
-  `py4swiss`; the earlier round-7 fast-mode-only `swisspairing` divergence is
+  `py4swiss`; the earlier round-7 `swisspairing` divergence is
   fixed.
 - On the checked Budapest Group B corpus, round 8 now matches the
-  `bbpPairings` / `py4swiss` / `JaVaFo` consensus in both fast and exact mode.
-  Rounds 5 / 7 / 8 are now covered by direct `pair_round_dutch_exact()`
+  `bbpPairings` / `py4swiss` / `JaVaFo` consensus in exact mode.
+  Rounds 5 / 7 / 8 are now covered by direct `pair_round_dutch()`
   regressions in `tests/test_chess_results.py`. Rounds 4 / 5 / 9 remain
   split-reference cases where `py4swiss` + `JaVaFo` agree with each other,
   `bbpPairings` differs, and `swisspairing` currently matches neither side.
@@ -408,7 +408,6 @@ Current solver contract:
 
 - `pair_round_dutch()` is now the canonical exact/FIDE round solver
 - `pair_snapshots_dutch()` is now the canonical exact/FIDE adapter entry point
-- the old `fast` mode was removed from the public adapter surface
 - recurring synthetic baselines remain only as regression alarms for runtime
   blowups, not as a reason to preserve a second public pairing mode
 
@@ -417,7 +416,7 @@ Current solver contract:
 - `dutch_2025_C5` is the clearest local case where `bbpPairings` and
   `swisspairing` agree while `py4swiss` disagrees
 - Aeroflot round 5 is still the main remaining BBP-backed exact-mode split on
-  the checked OTB corpus after removing the old fast-mode path
+  the checked OTB corpus
 - On the checked public JaVaFo release, Aeroflot round 5 aligns with the
   `py4swiss` side rather than the BBP/2026 side. Treat that as Swiss-Manager
   lineage evidence, not as stronger normative evidence than FIDE + BBP.
@@ -429,11 +428,10 @@ Current solver contract:
   derived from the TRF instead of inherited from `py4swiss`. In all of those
   cases, `py4swiss` and the checked public JaVaFo release still agree with
   each other on a different pairing.
-- Budapest Spring Festival 2026 Group B round 8 is the cleanest new
-  consensus-engine miss: `bbpPairings`, `py4swiss`, and the checked public
-  JaVaFo release all agree there while `swisspairing` currently differs.
-  Group B rounds 4 / 5 / 9 are also useful, but they are split-reference
-  cases: `py4swiss` + `JaVaFo` on one side, `bbpPairings` on the other, and
+- Budapest Spring Festival 2026 Group B round 8 is now closed: `swisspairing`
+  matches `bbpPairings`, `py4swiss`, and the checked public JaVaFo release
+  there. Group B rounds 4 / 5 / 9 remain useful split-reference cases:
+  `py4swiss` + `JaVaFo` on one side, `bbpPairings` on the other, and
   `swisspairing` currently matches neither side.
 - The public Lichess Swiss lineage is the `cyanfish/bbpPairings` fork
   (`https://github.com/cyanfish/bbpPairings`); its README says the fork is for
@@ -482,9 +480,9 @@ uv run pyright
 uv run pytest
 ```
 
-- If a performance-related change touches the fast path, also rerun the
-  relevant benchmark or recurring baseline slice instead of assuming the old
-  preset still describes current behavior.
+- If a performance-related change touches benchmark-facing runtime behavior,
+  rerun the relevant benchmark or recurring baseline slice instead of assuming
+  the old preset still describes current behavior.
 - For exact-mode work, prioritize checked real-world exact timings and solver
-  behavior over preserving synthetic fast-path numbers.
+  behavior over preserving older synthetic baseline numbers.
 - Do not move AGENTS-level workflow detail back into `README.md`.

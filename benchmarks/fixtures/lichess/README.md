@@ -16,17 +16,17 @@ events.
 - `lichess_swiss_2026.02.14_cY3wR140_weekly-agca-prize-50-dollars.trf`
   - Source URL: `https://lichess.org/swiss/cY3wR140`
   - 2026-03-10 local comparison with TRF-derived float history:
-    `swisspairing` matches `bbpPairings` in both fast and strict, while
+    `swisspairing` matches `bbpPairings`, while
     `py4swiss` and `JaVaFo` agree with each other on a different pairing.
 - `lichess_swiss_2026.02.28_KQYWuizM_weekly-agca-prize-50-dollars.trf`
   - Source URL: `https://lichess.org/swiss/KQYWuizM`
   - 2026-03-10 local comparison with TRF-derived float history:
-    `swisspairing` matches `bbpPairings` in both fast and strict, while
+    `swisspairing` matches `bbpPairings`, while
     `py4swiss` and `JaVaFo` agree with each other on a different pairing.
 - `lichess_swiss_2026.03.03_7TYuxURK_bullet-increment.trf`
   - Source URL: `https://lichess.org/swiss/7TYuxURK`
   - 2026-03-10 local comparison with TRF-derived float history:
-    `swisspairing` matches `bbpPairings` in both fast and strict, while
+    `swisspairing` matches `bbpPairings`, while
     `py4swiss` and `JaVaFo` agree with each other on a different pairing.
 
 ## Reproduce Comparison Snapshot

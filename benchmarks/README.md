@@ -102,8 +102,8 @@ uv run python benchmarks/benchmark_py4swiss_compare.py \
   --sla-min-success-rate 0.99 \
   --sla-min-equality-rate-when-both-ok 0.95 \
   --sla-max-runner-error-rate 0.01 \
-  --sla-max-fast-p95-ms 2000 \
-  --sla-max-fast-p50-ratio 10.0
+  --sla-max-p95-ms 2000 \
+  --sla-max-p50-ratio 10.0
 ```
 
 Export TRF benchmark batches directly from pychess dump files
@@ -302,13 +302,13 @@ Output artifacts:
   practical to benchmark, but its synthetic fixture export is materially
   slower than `p256`; use `--profiles 16,32,64,128,256` if you want the
   lighter historical sweep.
-- Synthetic recurring baselines are endogenous to the current fast pairing
-  pipeline. After a material pairing-path change, add a new checked-in
+- Synthetic recurring baselines are endogenous to the current exact solver
+  implementation. After a material pairing-path change, add a new checked-in
   baseline run plus a new preset name rather than silently retuning an older
   preset.
-- Treat recurring synthetic presets as fast-path regression guardrails, not as
+- Treat recurring synthetic presets as runtime regression guardrails, not as
   release criteria for exact/FIDE mode. Exact-mode work may legitimately
-  relax or obsolete a fast-path preset if the checked rulebook/corpus behavior
+  relax or obsolete an older preset if the checked rulebook/corpus behavior
   improves and real-world exact runtimes stay practical.
 - Recurring baseline trend rows include run id, profile size, exported fixture
   counts, runner error rate, both-ok case counts, success/equality rates,

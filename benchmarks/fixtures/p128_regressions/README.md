@@ -1,7 +1,7 @@
 # 128-Player Tail Regressions
 
 These TRFs were captured from the synthetic benchmark rerun used to investigate
-the remaining March 11 midsize fast-mode tails after the earlier `[C8]` fix.
+the remaining March 11 midsize exact tails after the earlier `[C8]` fix.
 
 - source dir: `/tmp/swisspairing-p128-refresh/fixtures`
 - benchmark input: `/tmp/swisspairing-p128-refresh/benchmark.json`
@@ -26,7 +26,6 @@ uv run python benchmarks/benchmark_py4swiss_compare.py \
   --warmup 0 \
   --repeats 1 \
   --timeout-seconds 120 \
-  --fast-sequential-search-max-players 6 \
   --json-output /tmp/swisspairing-p128-refresh/benchmark.json
 ```
 
@@ -35,14 +34,14 @@ large-ish synthetic tournaments.
 
 Observed timings before the March 11 single-MDP heterogeneous refinement cut:
 
-- `sim0003_r07.trf`: fast about `1490.40ms`, strict about `1648.46ms`
-- `sim0005_r07.trf`: fast about `1629.82ms`, strict about `1645.54ms`
+- `sim0003_r07.trf`: about `1648.46ms`
+- `sim0005_r07.trf`: about `1645.54ms`
 
 Observed timings after the later March 11 bounded `[C8]` refinement cuts on
 the regenerated `p128` batch:
 
-- `sim0003_r07.trf`: fast about `250.57ms`, strict about `361.85ms`
-- `sim0005_r07.trf`: fast about `489.59ms`, strict about `515.74ms`
+- `sim0003_r07.trf`: about `361.85ms`
+- `sim0005_r07.trf`: about `515.74ms`
 
 Quick rerun command:
 
@@ -52,6 +51,5 @@ uv run python benchmarks/benchmark_py4swiss_compare.py \
   --pattern '*.trf' \
   --warmup 0 \
   --repeats 1 \
-  --timeout-seconds 120 \
-  --fast-sequential-search-max-players 6
+  --timeout-seconds 120
 ```

@@ -15,20 +15,19 @@ uv run python benchmarks/run_recurring_baselines.py \
   --max-snapshots-per-tournament 2 \
   --warmup 0 \
   --repeats 1 \
-  --fast-sequential-search-max-players 6 \
   --timeout-seconds 30
 ```
 
-They are kept as stable tail cases for fast-mode runtime work on 64-player
+They are kept as stable tail cases for exact runtime work on 64-player
 tournaments.
 
-Observed `swisspairing_fast` timings before the `PlayerState` color-state cache:
+Observed `swisspairing` timings before the `PlayerState` color-state cache:
 
 - `sim0001_r06.trf`: `2748.97ms`
 - `sim0002_r05.trf`: `478.15ms`
 - `sim0003_r04.trf`: `1378.58ms`
 
-Observed `swisspairing_fast` timings after the cache:
+Observed `swisspairing` timings after the cache:
 
 - `sim0001_r06.trf`: `1826.04ms`
 - `sim0002_r05.trf`: `308.55ms`
@@ -42,6 +41,5 @@ uv run python benchmarks/benchmark_py4swiss_compare.py \
   --pattern '*.trf' \
   --warmup 0 \
   --repeats 1 \
-  --timeout-seconds 30 \
-  --fast-sequential-search-max-players 6
+  --timeout-seconds 30
 ```
