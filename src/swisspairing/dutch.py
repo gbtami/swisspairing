@@ -66,6 +66,49 @@ type NextBracketKeyFn = Callable[[tuple[PlayerState, ...]], NextBracketKey | Non
 
 
 @dataclass(frozen=True, slots=True)
+class _ExtendedNextBracketValidator:
+    """Hashable validator wrapper that appends fixed downfloaters.
+
+    This keeps equivalent [C8] validator shapes cacheable across repeated exact
+    feasibility checks instead of creating identity-unique nested closures.
+    """
+
+    validator_fn: NextBracketValidator
+    fixed_downfloaters: tuple[PlayerState, ...]
+
+    def __call__(self, remainder_downfloaters: tuple[PlayerState, ...]) -> bool:
+        full_downfloaters = tuple(
+            sorted(
+                (*remainder_downfloaters, *self.fixed_downfloaters),
+                key=_player_rank_key,
+            )
+        )
+        return self.validator_fn(full_downfloaters)
+
+
+def _extend_next_bracket_validator(
+    validator: NextBracketValidator,
+    *,
+    fixed_downfloaters: tuple[PlayerState, ...],
+) -> NextBracketValidator:
+    ordered_fixed = tuple(sorted(fixed_downfloaters, key=_player_rank_key))
+    if isinstance(validator, _ExtendedNextBracketValidator):
+        return _ExtendedNextBracketValidator(
+            validator_fn=validator.validator_fn,
+            fixed_downfloaters=tuple(
+                sorted(
+                    (*validator.fixed_downfloaters, *ordered_fixed),
+                    key=_player_rank_key,
+                )
+            ),
+        )
+    return _ExtendedNextBracketValidator(
+        validator_fn=validator,
+        fixed_downfloaters=ordered_fixed,
+    )
+
+
+@dataclass(frozen=True, slots=True)
 class BracketContext:
     """Optional context used by advanced Dutch quality criteria.
 
@@ -2303,22 +2346,10 @@ def _solve_without_bye_candidate_uncached(
                 )
             feasibility_validator: NextBracketValidator | None = None
             if adjusted_context.next_bracket_validator is not None:
-
-                def wrapped_feasibility_validator(
-                    remainder_downfloaters: tuple[PlayerState, ...],
-                    *,
-                    chosen_downfloater: PlayerState = downfloater,
-                    validator: NextBracketValidator = adjusted_context.next_bracket_validator,
-                ) -> bool:
-                    full_downfloaters = tuple(
-                        sorted(
-                            (*remainder_downfloaters, chosen_downfloater),
-                            key=_player_rank_key,
-                        )
-                    )
-                    return validator(full_downfloaters)
-
-                feasibility_validator = wrapped_feasibility_validator
+                feasibility_validator = _extend_next_bracket_validator(
+                    adjusted_context.next_bracket_validator,
+                    fixed_downfloaters=(downfloater,),
+                )
 
             if feasibility_validator is not None and len(adjusted_context.mdp_ids) == 1:
                 try:
@@ -2844,25 +2875,13 @@ def bracket_is_feasible_exact(
                 feasibility_context = adjusted_context
                 validator = local_context.next_bracket_validator
                 if validator is not None:
-
-                    def wrapped_validator(
-                        remainder_downfloaters: tuple[PlayerState, ...],
-                        *,
-                        chosen_downfloater: PlayerState = downfloater,
-                        validator_fn: NextBracketValidator = validator,
-                    ) -> bool:
-                        full_downfloaters = tuple(
-                            sorted(
-                                (*remainder_downfloaters, chosen_downfloater),
-                                key=_player_rank_key,
-                            )
-                        )
-                        return validator_fn(full_downfloaters)
-
                     feasibility_context = BracketContext(
                         mdp_ids=adjusted_context.mdp_ids,
                         initial_color=adjusted_context.initial_color,
-                        next_bracket_validator=wrapped_validator,
+                        next_bracket_validator=_extend_next_bracket_validator(
+                            validator,
+                            fixed_downfloaters=(downfloater,),
+                        ),
                     )
 
                 if len(feasibility_context.mdp_ids) == 1:

@@ -14,6 +14,7 @@ from swisspairing.dutch import (
     _collect_mdp_quality,
     _collect_pair_quality_counts,
     _edge_penalty_components,
+    _extend_next_bracket_validator,
     _heterogeneous_exact_candidate_upper_bound,
     _heterogeneous_structural_tie_key,
     _homogeneous_article_order_key,
@@ -218,6 +219,32 @@ def test_homogeneous_article_order_key_prefers_zero_exchange_candidate() -> None
         players=players,
         candidate=one_exchange,
     )
+
+
+def test_extend_next_bracket_validator_flattens_fixed_downfloaters() -> None:
+    players = tuple(
+        _player(player_id=f"p{i}", pairing_no=i, score=3, color_history=()) for i in range(1, 5)
+    )
+    seen: list[tuple[str, ...]] = []
+
+    def validator(downfloaters: tuple[PlayerState, ...]) -> bool:
+        seen.append(tuple(player.player_id for player in downfloaters))
+        return True
+
+    wrapped_once = _extend_next_bracket_validator(validator, fixed_downfloaters=(players[2],))
+    wrapped_twice = _extend_next_bracket_validator(
+        wrapped_once,
+        fixed_downfloaters=(players[0],),
+    )
+    direct = _extend_next_bracket_validator(
+        validator,
+        fixed_downfloaters=(players[0], players[2]),
+    )
+
+    assert wrapped_twice == direct
+    assert hash(wrapped_twice) == hash(direct)
+    assert wrapped_twice((players[1],)) is True
+    assert seen == [("p1", "p2", "p3")]
 
 
 def test_iter_homogeneous_candidates_deduplicates_pair_orientation() -> None:
