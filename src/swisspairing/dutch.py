@@ -826,21 +826,27 @@ def _select_best_candidate(
     candidates: Sequence[_CandidateInternal],
     *,
     context: BracketContext,
+    dedupe_shapes: bool = True,
 ) -> _CandidateInternal | None:
-    unique_candidates: dict[
-        tuple[tuple[tuple[int, int], ...], tuple[int, ...], int | None],
-        _CandidateInternal,
-    ] = {}
-    for candidate in candidates:
-        shape_key = _canonical_candidate_shape(candidate)
-        current = unique_candidates.get(shape_key)
-        if current is None or candidate.sequence_no < current.sequence_no:
-            unique_candidates[shape_key] = candidate
+    candidate_values: Sequence[_CandidateInternal]
+    if dedupe_shapes:
+        unique_candidates: dict[
+            tuple[tuple[tuple[int, int], ...], tuple[int, ...], int | None],
+            _CandidateInternal,
+        ] = {}
+        for candidate in candidates:
+            shape_key = _canonical_candidate_shape(candidate)
+            current = unique_candidates.get(shape_key)
+            if current is None or candidate.sequence_no < current.sequence_no:
+                unique_candidates[shape_key] = candidate
+        candidate_values = tuple(unique_candidates.values())
+    else:
+        candidate_values = candidates
 
     best_candidate: _CandidateInternal | None = None
     best_key: tuple[object, ...] | None = None
 
-    for candidate in unique_candidates.values():
+    for candidate in candidate_values:
         candidate_key = _candidate_quality_key(candidate=candidate, context=context)
         selection_key: tuple[object, ...]
         if len(context.mdp_ids) > 1 and not candidate.unresolved and candidate.bye_player is None:
@@ -1055,6 +1061,7 @@ def _solve_even_players_via_sequence_cached(
     best_candidate = _select_best_candidate(
         _iter_homogeneous_candidates(players),
         context=BracketContext(initial_color=initial_color),
+        dedupe_shapes=False,
     )
     if best_candidate is None:
         return None
@@ -1072,6 +1079,7 @@ def _solve_even_players_via_sequence_uncached(
     best_candidate = _select_best_candidate(
         _iter_homogeneous_candidates(players),
         context=context,
+        dedupe_shapes=False,
     )
     if best_candidate is None:
         return None
@@ -2267,6 +2275,7 @@ def _solve_without_bye_candidate_uncached(
         best_candidate = _select_best_candidate(
             _iter_homogeneous_candidates(ordered_players),
             context=context,
+            dedupe_shapes=False,
         )
         if best_candidate is not None:
             return best_candidate
