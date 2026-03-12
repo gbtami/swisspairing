@@ -461,21 +461,8 @@ def _edge_penalty_components_cached(
 
 # Exact article-4.x sequence expansion grows factorially by S2 size.
 _SEQUENTIAL_SEARCH_MAX_PLAYERS = 12
-_MAX_EXACT_SEQUENCE_CANDIDATES = 5_000
-_MAX_EXACT_SEQUENCE_CANDIDATES_EXACT_MODE = 50_000
-_ODD_DOWNFLOATER_SCAN_MAX_PLAYERS = 20
-_ODD_REFINEMENT_EXACT_SEARCH_MAX_PLAYERS = 10
-_ODD_HETEROGENEOUS_REFINEMENT_MAX_PLAYERS = 11
-_ODD_HETEROGENEOUS_REFINEMENT_EXACT_UPPER_BOUND = 80_000
-_ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES = 20_000
-_ODD_HETEROGENEOUS_REFINEMENT_MAX_CANDIDATES_WITH_NEXT_BRACKET = 1_000
-_ODD_FINAL_BYE_SCAN_MAX_PLAYERS = 20
-_ODD_HOMOGENEOUS_REFINEMENT_SCAN_MAX_PLAYERS = 34
-_ODD_HOMOGENEOUS_REFINEMENT_SKIP_MAX_PLAYERS_WITH_NEXT_BRACKET = 23
-_ODD_HOMOGENEOUS_C8_TAIL_SCAN_CANDIDATES = 2
-_SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS = 24
-_SINGLE_MDP_REMAINDER_HOMOGENEOUS_REFINEMENT_MAX_PLAYERS = 54
-_SINGLE_MDP_ODD_REFINEMENT_SEARCH_MAX_PLAYERS = 6
+_MAX_EXACT_SEQUENCE_CANDIDATES = 50_000
+_SINGLE_MDP_ODD_EXACT_MAX_PLAYERS = 24
 
 
 @cache
@@ -543,10 +530,6 @@ def _use_heterogeneous_exact_search(
         and _heterogeneous_exact_candidate_upper_bound(player_count, mdp_count)
         <= exact_candidate_max
     )
-
-
-def _exact_sequence_candidate_limit() -> int:
-    return _MAX_EXACT_SEQUENCE_CANDIDATES_EXACT_MODE
 
 
 def _exchange_sort_key(
@@ -1309,7 +1292,7 @@ def _solve_single_mdp_odd_exact(
     ordered_players = tuple(sorted(players, key=_player_rank_key))
     if len(ordered_players) % 2 == 0 or len(context.mdp_ids) != 1:
         return None
-    if len(ordered_players) > _SINGLE_MDP_ODD_REFINEMENT_MAX_PLAYERS:
+    if len(ordered_players) > _SINGLE_MDP_ODD_EXACT_MAX_PLAYERS:
         return None
 
     mdp = next((player for player in ordered_players if player.player_id in context.mdp_ids), None)
@@ -1367,9 +1350,7 @@ def _solve_single_mdp_odd_exact(
             best_candidate = candidate
 
     if best_candidate is None and unsupported_found:
-        raise ExactSearchUnavailableError(
-            "exact Dutch mode currently requires heuristic fallback for this odd bracket"
-        )
+        raise ExactSearchUnavailableError("exact Dutch mode does not yet support this odd bracket")
     return best_candidate
 
 
@@ -1383,7 +1364,7 @@ def _solve_even_players(
     if len(players) % 2 != 0:
         raise PairingError("internal even solver received odd player count")
 
-    exact_candidate_max = _exact_sequence_candidate_limit()
+    exact_candidate_max = _MAX_EXACT_SEQUENCE_CANDIDATES
     exact_search_attempted = False
 
     if not context.mdp_ids:
@@ -1426,9 +1407,7 @@ def _solve_even_players(
             pairings=(),
             unresolved=tuple(sorted(players, key=_player_rank_key)),
         )
-    raise ExactSearchUnavailableError(
-        "exact Dutch mode currently requires heuristic fallback for this even bracket"
-    )
+    raise ExactSearchUnavailableError("exact Dutch mode does not yet support this even bracket")
 
 
 def _candidate_downfloaters(candidate: _CandidateInternal) -> tuple[PlayerState, ...]:
@@ -2069,7 +2048,7 @@ def _solve_even_players_via_single_mdp_exact_uncached(
     if best_candidate is None:
         if unsupported_found:
             raise ExactSearchUnavailableError(
-                "exact Dutch mode currently requires heuristic fallback for this even bracket"
+                "exact Dutch mode does not yet support this even bracket"
             )
         return None
 
@@ -2168,9 +2147,7 @@ def _find_single_mdp_even_feasible_unresolved(
         return unresolved
 
     if unsupported_found:
-        raise ExactSearchUnavailableError(
-            "exact Dutch mode currently requires heuristic fallback for this even bracket"
-        )
+        raise ExactSearchUnavailableError("exact Dutch mode does not yet support this even bracket")
     return None
 
 
@@ -2185,7 +2162,7 @@ def _solve_without_bye_candidate_uncached(
     if not ordered_players:
         return _CandidateInternal(pairings=(), unresolved=(), bye_player=None, sequence_no=0)
 
-    exact_candidate_max = _exact_sequence_candidate_limit()
+    exact_candidate_max = _MAX_EXACT_SEQUENCE_CANDIDATES
 
     if len(ordered_players) % 2 == 0:
         even_result = _solve_even_players(
@@ -2396,9 +2373,7 @@ def _solve_without_bye_candidate_uncached(
                 return best_candidate
 
     if unsupported_found:
-        raise ExactSearchUnavailableError(
-            "exact Dutch mode currently requires heuristic fallback for this odd bracket"
-        )
+        raise ExactSearchUnavailableError("exact Dutch mode does not yet support this odd bracket")
     raise PairingError("internal failure selecting downfloater candidate")
 
 
@@ -2661,7 +2636,7 @@ def _pair_bracket_impl(
         ordered_players,
         context=local_context,
         sequential_search_max_players=sequential_search_max_players,
-        exact_candidate_max=_exact_sequence_candidate_limit(),
+        exact_candidate_max=_MAX_EXACT_SEQUENCE_CANDIDATES,
     )
     legal_exact_bye_candidates = tuple(
         candidate
@@ -2707,7 +2682,7 @@ def _pair_bracket_impl(
                 best_candidate = candidate
         if best_candidate is None and unsupported_found:
             raise ExactSearchUnavailableError(
-                "exact Dutch mode currently requires heuristic fallback for this final bracket"
+                "exact Dutch mode does not yet support this final bracket"
             )
 
     if best_candidate is None:
@@ -2846,7 +2821,7 @@ def bracket_is_feasible_exact(
 
         if unsupported_found:
             raise ExactSearchUnavailableError(
-                "exact Dutch mode currently requires heuristic fallback for this odd bracket"
+                "exact Dutch mode does not yet support this odd bracket"
             )
         return False
 
@@ -2892,7 +2867,7 @@ def bracket_is_feasible_exact(
 
     if unsupported_found:
         raise ExactSearchUnavailableError(
-            "exact Dutch mode currently requires heuristic fallback for this final bracket"
+            "exact Dutch mode does not yet support this final bracket"
         )
     return False
 

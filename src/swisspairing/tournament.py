@@ -483,9 +483,7 @@ def pair_round_dutch(
     solution = solve(scoregroups, ())
     if solution is None:
         if unsupported_found:
-            raise PairingError(
-                "exact Dutch mode currently requires heuristic fallback for this round"
-            )
+            raise PairingError("exact Dutch mode does not yet support this round")
         raise PairingError("round cannot be fully paired under current absolute constraints")
     return PairingResult(
         pairings=solution.pairings,

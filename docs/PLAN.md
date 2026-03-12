@@ -96,9 +96,9 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
   - Local `bbpPairings` build now works as a second external oracle, and the
     benchmark harness can run three-way TRF comparisons across
     `swisspairing`, `py4swiss`, and `bbpPairings`.
-  - Exact search now uses candidate-budget guards plus weighted odd
-    fallback routing, removing the large recurring `p32` / `p128` tail
-    without changing checked py4swiss parity.
+  - Exact search now uses candidate-budget guards plus tighter odd-bracket
+    exact candidate pruning, removing the large recurring `p32` / `p128`
+    tail without changing checked py4swiss parity.
   - Recurring synthetic coverage now includes `p512`; the full checked-in
     sweep remains practical there, and the main added cost is synthetic
     export time.
@@ -130,11 +130,11 @@ For the rule-transition notes that now affect interpretation of Aeroflot and
     and published-pairings manifest). Aeroflot rounds 1-3 now have direct
     published-pairing tests and currently match the published pairings in
     `swisspairing`, `bbpPairings`, and `py4swiss`.
-  - Aeroflot round 5 exposed two medium-large fallback gaps: a 33-player
-    homogeneous odd bracket needed the weighted downfloater refinement beyond
-    the old 20-player cutoff, and a 21-player one-MDP odd bracket needed a
-    narrow resident-partner scan. `swisspairing` now matches `bbpPairings` on
-    the full round-5 snapshot.
+  - Aeroflot round 5 exposed two medium-large exact search gaps: a 33-player
+    homogeneous odd bracket needed deeper downfloater coverage beyond the old
+    20-player cutoff, and a 21-player one-MDP odd bracket needed a narrow
+    resident-partner scan. `swisspairing` now matches `bbpPairings` on the
+    full round-5 snapshot.
   - Aeroflot round 5 also surfaced another concrete local `py4swiss` split:
     `bbpPairings` and `swisspairing` agree on the final 3-player bracket while
     `py4swiss` chooses a different last-bracket pairing/bye outcome.

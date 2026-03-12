@@ -101,7 +101,7 @@ def test_pair_bracket_pairs_small_exact_bracket() -> None:
     assert len(result.pairings) == 2
 
 
-def test_pair_bracket_raises_when_current_solver_needs_heuristic_fallback() -> None:
+def test_pair_bracket_raises_when_current_solver_cannot_yet_solve_exactly() -> None:
     players = tuple(
         _player(player_id=f"p{index}", pairing_no=index, score=score)
         for index, score in enumerate(
@@ -109,7 +109,7 @@ def test_pair_bracket_raises_when_current_solver_needs_heuristic_fallback() -> N
             start=1,
         )
     )
-    with pytest.raises(PairingError, match="heuristic fallback"):
+    with pytest.raises(PairingError, match="does not yet support"):
         pair_bracket(
             players,
             context=BracketContext(mdp_ids=frozenset({"p1", "p2"})),

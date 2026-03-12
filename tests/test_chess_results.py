@@ -868,7 +868,7 @@ def test_aeroflot_later_rounds_are_engine_consensus_vs_published_non_game_cases(
     not _has_py4swiss_runtime(),
     reason="active Python interpreter unavailable for Aeroflot bracket checks",
 )
-def test_aeroflot_round_5_score_20_bracket_refines_weighted_downfloater() -> None:
+def test_aeroflot_round_5_score_20_bracket_refines_exact_downfloater_choice() -> None:
     scoregroups = _group_residents_by_score(_aeroflot_states_for_round(5))
 
     result = pair_bracket(
