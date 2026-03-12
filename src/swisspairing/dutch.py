@@ -1239,6 +1239,7 @@ def _homogeneous_global_min_penalty(
     return total_penalty
 
 
+@cache
 def _build_zero_exchange_earliest_optimal_pairs(
     s1: tuple[PlayerState, ...],
     s2: tuple[PlayerState, ...],
