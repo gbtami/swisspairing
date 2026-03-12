@@ -340,6 +340,16 @@ It tracks the checked real-world exact stress set:
 Use this before refreshing any synthetic recurring expectation. If the exact
 solver changes materially, check these case runtimes first.
 
+Operational target for the current pychess integration:
+
+- treat `5s` as the preferred between-round countdown target, not as a hard
+  solver cutoff
+- current checked worst-case cold exact runtimes are in the high single-digit
+  seconds, so a rare overrun can be handled by briefly keeping the tournament
+  in a `pairing in progress` state instead of forcing a non-exact fallback
+- if the countdown reaches `0` before pairing finishes, the client can show a
+  short wait message such as `Be patient, pairing is almost ready...`
+
 ### Real-world Chess-Results import
 
 Preferred path: fetch and convert directly from a Chess-Results event URL:
