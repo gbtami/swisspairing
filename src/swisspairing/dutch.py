@@ -982,13 +982,14 @@ def _iter_homogeneous_candidates_cached(
         )
 
     bsn_by_player_id = {player.player_id: index + 1 for index, player in enumerate(ordered_players)}
-    legal_pair_keys = {
-        (left.pairing_no, right.pairing_no)
-        if left.pairing_no <= right.pairing_no
-        else (right.pairing_no, left.pairing_no)
-        for left, right in combinations(ordered_players, 2)
-        if _is_legal_pair(left, right)
+    legal_opponents_by_pairing_no: dict[int, set[int]] = {
+        player.pairing_no: set() for player in ordered_players
     }
+    for left, right in combinations(ordered_players, 2):
+        if not _is_legal_pair(left, right):
+            continue
+        legal_opponents_by_pairing_no[left.pairing_no].add(right.pairing_no)
+        legal_opponents_by_pairing_no[right.pairing_no].add(left.pairing_no)
     generated: list[_CandidateInternal] = []
     seen_shapes: set[tuple[tuple[tuple[int, int], ...], tuple[int, ...], int | None]] = set()
     sequence_no = sequence_start
@@ -1002,18 +1003,13 @@ def _iter_homogeneous_candidates_cached(
             raw_pairs = tuple(zip(s1, s2_transposition[: len(s1)], strict=True))
             illegal_pair_found = False
             for left, right in raw_pairs:
-                pair_key = (
-                    (left.pairing_no, right.pairing_no)
-                    if left.pairing_no <= right.pairing_no
-                    else (right.pairing_no, left.pairing_no)
-                )
-                if pair_key not in legal_pair_keys:
+                if right.pairing_no not in legal_opponents_by_pairing_no[left.pairing_no]:
                     illegal_pair_found = True
                     break
             if illegal_pair_found:
                 continue
 
-            unresolved = tuple(sorted(s2_transposition[len(s1) :], key=_player_rank_key))
+            unresolved = s2_transposition[len(s1) :]
             shape_key = (
                 tuple(
                     sorted(
