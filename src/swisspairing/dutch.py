@@ -2320,6 +2320,7 @@ def _solve_without_bye_candidate_uncached(
             )
 
             remainder_candidates: tuple[_CandidateInternal, ...]
+            preselect_fixed_downfloater_homogeneous = False
             if remainder_context.mdp_ids and _use_heterogeneous_exact_search(
                 len(rest),
                 mdp_count=len(remainder_context.mdp_ids),
@@ -2356,6 +2357,7 @@ def _solve_without_bye_candidate_uncached(
                 exact_candidate_max=exact_candidate_max,
             ):
                 remainder_candidates = _iter_homogeneous_candidates(rest)
+                preselect_fixed_downfloater_homogeneous = True
             else:
                 try:
                     even_result = _solve_even_players(
@@ -2374,6 +2376,27 @@ def _solve_without_bye_candidate_uncached(
                         sequence_no=0,
                     ),
                 )
+
+            if preselect_fixed_downfloater_homogeneous:
+                downfloater_candidates: list[_CandidateInternal] = []
+                for remainder in remainder_candidates:
+                    candidate = _CandidateInternal(
+                        pairings=remainder.pairings,
+                        unresolved=(downfloater,),
+                        bye_player=None,
+                        sequence_no=sequence_no,
+                    )
+                    downfloater_candidates.append(candidate)
+                    sequence_no += 1
+                if downfloater_candidates:
+                    best_downfloater_candidate = _select_best_homogeneous_odd_candidate(
+                        ordered_players,
+                        downfloater_candidates,
+                        context=BracketContext(initial_color=adjusted_context.initial_color),
+                    )
+                    if best_downfloater_candidate is not None:
+                        group_candidates.append(best_downfloater_candidate)
+                continue
 
             for remainder in remainder_candidates:
                 unresolved = tuple(
