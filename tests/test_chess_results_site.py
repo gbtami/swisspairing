@@ -134,7 +134,7 @@ def test_fetch_chess_results_page_html_posts_show_tournament_details_gate(
         def __enter__(self) -> _Session:
             return self
 
-        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+        def __exit__(self, _exc_type: object, _exc: object, _tb: object) -> None:
             return None
 
         def get(self, url: str, *, timeout: float) -> _Response:
@@ -217,7 +217,7 @@ def test_load_chess_results_import_plan_handles_show_tournament_details_gate(
         def __enter__(self) -> _Session:
             return self
 
-        def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+        def __exit__(self, _exc_type: object, _exc: object, _tb: object) -> None:
             return None
 
         def get(self, url: str, *, timeout: float) -> _Response:

@@ -22,6 +22,9 @@ from swisspairing.model import (
     PairingResult,
     PlayerState,
 )
+from swisspairing.model import (
+    player_rank_key as _player_rank_key,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Sequence
@@ -146,11 +149,6 @@ class _CandidateInternal:
     unresolved: tuple[PlayerState, ...]
     bye_player: PlayerState | None
     sequence_no: int
-
-
-def _player_rank_key(player: PlayerState) -> tuple[int, int]:
-    """Ranking order per C.04.3 section 1.2 (score desc, TPN asc)."""
-    return (-player.score, player.pairing_no)
 
 
 def _context_with_initial_color(

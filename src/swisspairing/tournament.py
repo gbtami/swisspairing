@@ -18,11 +18,15 @@ from swisspairing.dutch import (
     pairing_result_next_bracket_local_key,
 )
 from swisspairing.exceptions import ExactSearchUnavailableError, PairingError
-from swisspairing.model import Color, Pairing, PairingResult, PlayerState
-
-
-def _player_rank_key(player: PlayerState) -> tuple[int, int]:
-    return (-player.score, player.pairing_no)
+from swisspairing.model import (
+    Color,
+    Pairing,
+    PairingResult,
+    PlayerState,
+)
+from swisspairing.model import (
+    player_rank_key as _player_rank_key,
+)
 
 
 @dataclass(frozen=True, slots=True)

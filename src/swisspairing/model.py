@@ -21,6 +21,11 @@ class FloatKind(StrEnum):
     NONE = "none"
 
 
+def player_rank_key(player: PlayerState) -> tuple[int, int]:
+    """Ranking order per C.04.3 section 1.2 (score desc, TPN asc)."""
+    return (-player.score, player.pairing_no)
+
+
 @dataclass(frozen=True, slots=True)
 class PlayerState:
     """Pairing-relevant state for one participant.

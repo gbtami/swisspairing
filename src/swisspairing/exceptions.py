@@ -6,4 +6,4 @@ class PairingError(RuntimeError):
 
 
 class ExactSearchUnavailableError(PairingError):
-    """Raised when heuristic-free Dutch solving is not yet available."""
+    """Raised when the exact Dutch solver does not yet support a bracket shape."""
