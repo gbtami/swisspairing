@@ -373,6 +373,7 @@ def test_select_best_homogeneous_odd_candidate_skips_article_order_for_losing_qu
         "_homogeneous_article_order_key",
         fake_homogeneous_article_order_key,
     )
+    dutch_module._select_best_homogeneous_odd_candidate_cached.cache_clear()
 
     result = _select_best_homogeneous_odd_candidate(
         players,
@@ -438,6 +439,7 @@ def test_select_best_homogeneous_odd_candidate_skips_c8_for_worse_c5_to_c7(
         "_homogeneous_article_order_key",
         fake_homogeneous_article_order_key,
     )
+    dutch_module._select_best_homogeneous_odd_candidate_cached.cache_clear()
 
     result = _select_best_homogeneous_odd_candidate(
         players,

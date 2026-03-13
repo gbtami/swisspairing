@@ -944,8 +944,37 @@ def _select_best_homogeneous_odd_candidate(
     *,
     context: BracketContext,
 ) -> _CandidateInternal | None:
+    candidate_values = tuple(candidates)
+    cached_result = _select_best_homogeneous_odd_candidate_cached(
+        tuple(sorted(players, key=_player_rank_key)),
+        candidate_values,
+        context.initial_color,
+        context.next_bracket_validator,
+        context.next_bracket_key,
+    )
+    if cached_result is None:
+        return None
+    for candidate in candidate_values:
+        if candidate == cached_result:
+            return candidate
+    return cached_result
+
+
+@cache
+def _select_best_homogeneous_odd_candidate_cached(
+    players: tuple[PlayerState, ...],
+    candidates: tuple[_CandidateInternal, ...],
+    initial_color: Color,
+    next_bracket_validator: NextBracketValidator | None,
+    next_bracket_key: NextBracketKeyFn | None,
+) -> _CandidateInternal | None:
     """Select one odd homogeneous candidate with article-order tie-breaks."""
-    ordered_players = tuple(sorted(players, key=_player_rank_key))
+    context = BracketContext(
+        initial_color=initial_color,
+        next_bracket_validator=next_bracket_validator,
+        next_bracket_key=next_bracket_key,
+    )
+    ordered_players = players
     best_candidate: _CandidateInternal | None = None
     best_key_without_generation: tuple[object, ...] | None = None
     best_c5_to_c7: tuple[object, ...] | None = None
