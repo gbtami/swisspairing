@@ -22,6 +22,27 @@ Effective date split:
 - Pre-2026: `docs/C0403_FIDE_Dutch_System_till_2026_01_31.md`
 - 2026: `docs/C0403_FIDE_Dutch_System_from_2026_02_01.md`
 
+## C.04.4 Other FIDE-approved Pairing Systems
+
+- Pre-2026 container: `docs/C0404_Other_FIDE_approved_Pairing_Systems_till_2026_01_31.md`
+- 2026 container: `docs/C0404_Other_FIDE_approved_Pairing_Systems_from_2026_02_01.md`
+- Pre-2026 Dubov: `docs/C040401_Dubov_System_till_2026_01_31.md`
+- 2026 Dubov: `docs/C040401_Dubov_System_from_2026_02_01.md`
+- Pre-2026 Burstein: `docs/C040402_Burstein_System_till_2026_01_31.md`
+- 2026 Burstein: `docs/C040402_Burstein_System_from_2026_02_01.md`
+- Pre-2026 Lim: `docs/C040403_Lim_System_till_2026_01_31.md`
+- 2026 Lim: `docs/C040403_Lim_System_from_2026_02_01.md`
+
+## C.04.5 Double-Swiss Pairing System
+
+- 2026: `docs/C0405_Double_Swiss_Pairing_System_from_2026_02_01.md`
+- Pre-2026: no separate chapter is listed in the current FIDE handbook index
+
+## C.04.6 Swiss Team Pairing System
+
+- Pre-2026: `docs/C0406_Swiss_Team_Pairing_System_till_2026_01_31.md`
+- 2026: `docs/C0406_Swiss_Team_Pairing_System_from_2026_02_01.md`
+
 ## C.04.7 FIDE-approved Accelerated Systems
 
 - Pre-2026: `docs/C0407_FIDE_approved_Accelerated_Systems_till_2026_01_31.md`
